@@ -1054,7 +1054,7 @@ Use `@vercel/og` or `satori` for generation.
 
 ## Phase 1 — MVP
 
-**Goal**: 3 providers monitored, restock push to Telegram, minimal website.
+**Goal**: 3 providers monitored (BandwagonHost, DMIT, BuyVM), restock push to Telegram, minimal website.
 **Duration**: 4–6 weeks.
 
 ### Task 1.1 — Monorepo Scaffold
@@ -1086,7 +1086,7 @@ Use `@vercel/og` or `satori` for generation.
 
 - [ ] Prisma schema in `packages/database/prisma/schema.prisma`
 - [ ] Tables: `providers`, `products`, `stock_checks`, `stock_events`, `affiliate_links`, `telegram_messages`
-- [ ] Seed script: 3 providers (BuyVM, HostHatch, GreenCloudVPS) with known products
+- [ ] Seed script: 3 providers (BandwagonHost, DMIT, BuyVM) with known products
 - [ ] `packages/database` exports generated Prisma client
 - [ ] Migration runs clean against local Docker PostgreSQL
 
@@ -1104,9 +1104,9 @@ Use `@vercel/og` or `satori` for generation.
 - [ ] Define `StockResult` and `ProviderAdapter` interfaces in `packages/providers/src/types.ts`
 - [ ] Implement adapter registry: `getAdapter(slug) → ProviderAdapter`
 - [ ] Implement 3 adapters:
+  - `bandwagonhost.ts` — Parse plan table + direct URLs, detect limited plan availability
+  - `dmit.ts` — Parse pricing page sections, detect per-product-line stock status
   - `buyvm.ts` — Parse order page, detect slice availability by location
-  - `hosthatch.ts` — Parse product/pricing pages for active plans
-  - `greencloud.ts` — Parse product pages, detect stock per location
 - [ ] Each adapter returns `StockResult[]`
 - [ ] Unit tests per adapter with mocked HTML fixtures
 
@@ -1154,8 +1154,9 @@ export interface ProviderAdapter {
 - [ ] Write `stock_events` row on state transition
 - [ ] Update `products.in_stock` and `products.last_stock_change_at`
 - [ ] Check intervals:
+  - BandwagonHost: 1–2 min (limited plans sell fast)
+  - DMIT: 2–3 min
   - BuyVM: 1–2 min
-  - HostHatch, GreenCloud: 2–3 min
   - All with ±20% random jitter
 - [ ] Error handling:
   - 5 consecutive failures → mark "degraded"
@@ -1164,7 +1165,7 @@ export interface ProviderAdapter {
 - [ ] Max 1 concurrent request per provider domain
 - [ ] Graceful shutdown on SIGTERM
 
-**Done when**: Worker runs in Docker, checks 3 providers on schedule, correctly logs stock_checks and fires stock_events on simulated state changes.
+**Done when**: Worker runs in Docker, checks BandwagonHost + DMIT + BuyVM on schedule, correctly logs stock_checks and fires stock_events on simulated state changes.
 
 ---
 
@@ -1264,9 +1265,9 @@ export interface ProviderAdapter {
 |------|--------|
 | Priority | P0 |
 
+- [ ] `hosthatch.ts` — Parse product/pricing pages for active plans
+- [ ] `greencloud.ts` — Parse WHMCS store pages, detect stock per location
 - [ ] `spartanhost.ts`
-- [ ] `bandwagonhost.ts`
-- [ ] `dmit.ts`
 - [ ] `vmiss.ts`
 - [ ] `netcup.ts`
 - [ ] `akilecloud.ts`
@@ -1411,18 +1412,18 @@ Discovery pipeline (4 layers):
 
 ### S-Tier — Phase 1+2 (Restock Monitoring)
 
-| # | Provider | Focus | Interval |
-|---|----------|-------|----------|
-| 1 | BuyVM | Slice, Storage Slice, location stock | 1–2 min |
-| 2 | HostHatch | Annual deals, Storage, Asia | 2–3 min |
-| 3 | GreenCloudVPS | Tokyo, SG, HK, Storage, annual | 2–3 min |
-| 4 | SpartanHost | Seattle, Dallas, AMD, routing | 2–3 min |
-| 5 | BandwagonHost | Limited plans, DC6/DC9, restocks | 2–3 min |
-| 6 | DMIT | PVM, Premium, Eyeball, by location | 5 min |
-| 7 | VMISS | CN2, BGP, HK, JP, LA | 5 min |
-| 8 | Netcup | VPS/RS specials, limited promos | 5 min |
-| 9 | AkileCloud | HK, JP, SG, optimized routing | 5 min |
-| 10 | V.PS | JP, SG, EU limited plans | 5 min |
+| # | Provider | Focus | Interval | Phase |
+|---|----------|-------|----------|-------|
+| 1 | **BandwagonHost** | Limited plans, DC6/DC9, HK, restocks | 1–2 min | **Phase 1** |
+| 2 | **DMIT** | PVM, Premium, Eyeball, by location | 2–3 min | **Phase 1** |
+| 3 | **BuyVM** | Slice, Storage Slice, location stock | 1–2 min | **Phase 1** |
+| 4 | HostHatch | Annual deals, Storage, Asia | 2–3 min | Phase 2 |
+| 5 | GreenCloudVPS | Tokyo, SG, HK, Storage, annual | 2–3 min | Phase 2 |
+| 6 | SpartanHost | Seattle, Dallas, AMD, routing | 2–3 min | Phase 2 |
+| 7 | VMISS | CN2, BGP, HK, JP, LA | 5 min | Phase 2 |
+| 8 | Netcup | VPS/RS specials, limited promos | 5 min | Phase 2 |
+| 9 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
+| 10 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
 
 ### A-Tier — Phase 4 (Offers + Limited Stock)
 
@@ -1473,7 +1474,7 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 ### Phase 1 MVP — Ready When
 
-- [ ] 3 providers (BuyVM, HostHatch, GreenCloudVPS) checked on schedule
+- [ ] 3 providers (BandwagonHost, DMIT, BuyVM) checked on schedule
 - [ ] Restock correctly detected (consecutive confirmation, dedup)
 - [ ] Telegram restock message sent to channel with correct format
 - [ ] Website shows homepage, provider list, provider detail with live data
