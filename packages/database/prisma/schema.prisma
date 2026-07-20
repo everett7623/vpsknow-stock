@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Provider {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  website   String
+  logoUrl   String?
+  tier      String   @default("S") // S, A, B
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products       Product[]
+  affiliateLinks AffiliateLink[]
+
+  @@map("providers")
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  providerId         String
+  productId          String   // external identifier e.g. "buyvm-slice-1024-lv"
+  planName           String
+  category           String   // vps, vds, dedicated, nat_vps, storage
+  location           String
+  cpu                String?
+  ramMb              Int?
+  storageGb          Int?
+  storageType        String?
+  bandwidthTb        Float?
+  priceCents         Int
+  currency           String   @default("USD")
+  billingCycle       String   @default("monthly")
+  inStock            Boolean  @default(false)
+  lastStockChangeAt  DateTime?
+  lastCheckedAt      DateTime?
+  consecutiveConfirm Int      @default(0)
+  orderUrl           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  provider    Provider     @relation(fields: [providerId], references: [id])
+  stockChecks StockCheck[]
+  stockEvents StockEvent[]
+
+  @@unique([providerId, productId])
+  @@index([inStock])
+  @@index([providerId, inStock])
+  @@map("products")
+}
+
+model StockCheck {
+  id         String   @id @default(cuid())
+  productId  String
+  inStock    Boolean
+  responseMs Int?
+  error      String?
+  raw        Json?
+  checkedAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId, checkedAt])
+  @@map("stock_checks")
+}
+
+model StockEvent {
+  id         String   @id @default(cuid())
+  productId  String
+  eventType  String   // restock, sold_out
+  detectedAt DateTime @default(now())
+  notified   Boolean  @default(false)
+  metadata   Json?
+
+  product          Product          @relation(fields: [productId], references: [id])
+  telegramMessages TelegramMessage[]
+
+  @@index([productId, detectedAt])
+  @@index([eventType, detectedAt])
+  @@map("stock_events")
+}
+
+model AffiliateLink {
+  id         String  @id @default(cuid())
+  providerId String
+  slug       String  @unique // e.g. "buyvm-slice-1024-lv"
+  targetUrl  String
+  shortUrl   String  // go.uukk.de/...
+  clicks     Int     @default(0)
+
+  provider Provider @relation(fields: [providerId], references: [id])
+
+  @@map("affiliate_links")
+}
+
+model TelegramMessage {
+  id           String   @id @default(cuid())
+  channelId    String
+  messageId    Int
+  stockEventId String?
+  content      String
+  sentAt       DateTime @default(now())
+  status       String   @default("sent") // sent, failed, deleted
+
+  stockEvent StockEvent? @relation(fields: [stockEventId], references: [id])
+
+  @@index([channelId, sentAt])
+  @@map("telegram_messages")
+}
+
+model Offer {
+  id             String   @id @default(cuid())
+  source         String   // lowendtalk, provider_blog, manual
+  sourceId       String?  @unique // e.g. LET discussion ID
+  provider       String?
+  title          String
+  body           String?
+  category       String?  // vps, dedicated, nat_vps, storage
+  locations      String[] // array of location names
+  priceCents     Int?
+  currency       String?
+  billingCycle   String?
+  couponCode     String?
+  orderUrl       String?
+  threadUrl      String?
+  isLimitedStock Boolean  @default(false)
+  isRecurring    Boolean  @default(false)
+  isPreorder     Boolean  @default(false)
+  confidence     Float    @default(0)
+  pushed         Boolean  @default(false)
+  postedAt       DateTime?
+  discoveredAt   DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([source, discoveredAt])
+  @@index([pushed, confidence])
+  @@map("offers")
+}
+
+model Subscription {
+  id            String   @id @default(cuid())
+  telegramUserId BigInt  @unique
+  chatId        BigInt
+  providers     String[] // provider slugs, empty = all
+  regions       String[] // region names, empty = all
+  categories    String[] // product categories, empty = all
+  maxPriceCents Int?     // null = no limit
+  eventTypes    String[] // restock, offers, or both
+  isActive      Boolean  @default(true)
+  mutedUntil    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("subscriptions")
+}

@@ -1,0 +1,24 @@
+{
+  "name": "vpsknow-stock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VPS Restock & Offer Alerts Platform",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "prettier": "^3.5.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  },
+  "packageManager": "pnpm@11.6.0",
+  "engines": {
+    "node": ">=22"
+  }
+}

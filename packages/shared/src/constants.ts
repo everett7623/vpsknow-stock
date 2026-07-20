@@ -1,0 +1,65 @@
+export const RESTOCK_COOLDOWN_MS = 60 * 60 * 1000; // 60 min
+export const CONSECUTIVE_CONFIRMS_REQUIRED = 2;
+export const ADAPTER_DEGRADED_THRESHOLD = 5;
+export const ADAPTER_PAUSED_THRESHOLD = 20;
+export const STALE_ADAPTER_MS = 30 * 60 * 1000; // 30 min
+export const JITTER_FACTOR = 0.2; // ±20%
+
+export const LOCATION_ALIASES: Record<string, string> = {
+  lax: 'Los Angeles',
+  la: 'Los Angeles',
+  sjc: 'San Jose',
+  sea: 'Seattle',
+  dal: 'Dallas',
+  chi: 'Chicago',
+  mia: 'Miami',
+  nyc: 'New York',
+  ny: 'New York',
+  ash: 'Ashburn',
+  ams: 'Amsterdam',
+  fra: 'Frankfurt',
+  lon: 'London',
+  par: 'Paris',
+  hkg: 'Hong Kong',
+  hk: 'Hong Kong',
+  sgp: 'Singapore',
+  sg: 'Singapore',
+  tyo: 'Tokyo',
+  jp: 'Tokyo',
+  nrt: 'Tokyo Narita',
+  icn: 'Seoul',
+  syd: 'Sydney',
+  lux: 'Luxembourg',
+  lu: 'Luxembourg',
+  buf: 'Buffalo',
+  lv: 'Las Vegas',
+  mi: 'Miami',
+  dc6: 'DC6 CN2 GIA-E',
+  dc9: 'DC9 CN2 GIA',
+};
+
+export const REGION_MAP: Record<string, string> = {
+  'Los Angeles': 'US West',
+  'San Jose': 'US West',
+  'Seattle': 'US West',
+  'Las Vegas': 'US West',
+  'Dallas': 'US Central',
+  'Chicago': 'US Central',
+  'Miami': 'US East',
+  'New York': 'US East',
+  'Ashburn': 'US East',
+  'Buffalo': 'US East',
+  'Amsterdam': 'Europe',
+  'Frankfurt': 'Europe',
+  'London': 'Europe',
+  'Paris': 'Europe',
+  'Luxembourg': 'Europe',
+  'Hong Kong': 'Asia',
+  'Singapore': 'Asia',
+  'Tokyo': 'Asia',
+  'Tokyo Narita': 'Asia',
+  'Seoul': 'Asia',
+  'Sydney': 'Oceania',
+  'DC6 CN2 GIA-E': 'US West',
+  'DC9 CN2 GIA': 'US West',
+};
