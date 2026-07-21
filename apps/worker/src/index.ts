@@ -3,6 +3,7 @@ import IORedis from 'ioredis';
 import pino from 'pino';
 import { registry } from '@vpsknow/providers';
 import { withJitter } from '@vpsknow/shared';
+import { processStockResults } from './stock-engine.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
@@ -52,17 +53,19 @@ async function bootstrap() {
         const results = await adapter.check();
         const duration = Date.now() - startTime;
 
+        const summary = await processStockResults(provider, results, logger);
+
         logger.info(
           {
             provider,
             durationMs: duration,
-            productsChecked: results.length,
-            inStock: results.filter((r) => r.inStock).length,
+            productsChecked: summary.checked,
+            restocked: summary.restocked,
+            soldOut: summary.soldOut,
+            errors: summary.errors,
           },
           'Stock check complete',
         );
-
-        // TODO (Task 1.4): Compare with DB state, detect transitions, fire events
       } catch (err) {
         const duration = Date.now() - startTime;
         logger.error(

@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 const PRICING_URLS = [
@@ -42,7 +43,7 @@ export class DmitAdapter implements ProviderAdapter {
         const text = card.text();
 
         // Detect product line and location
-        const { productLine, location } = this.detectProductLine(text, card, $);
+        const { productLine, location } = this.detectProductLine(text, card);
         if (!productLine) return;
 
         const planName = card.find('.plan-name, .product-title, h3, h4').first().text().trim()
@@ -117,8 +118,7 @@ export class DmitAdapter implements ProviderAdapter {
 
   private detectProductLine(
     text: string,
-    card: cheerio.Cheerio<cheerio.Element>,
-    $: cheerio.CheerioAPI,
+    card: cheerio.Cheerio<AnyNode>,
   ): { productLine: string; location: string } {
     // Check section headings above this card
     const sectionText = card.closest('section, [class*="section"]').text() || text;

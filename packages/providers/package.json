@@ -9,13 +9,14 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint ok'",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@vpsknow/shared": "workspace:*",
     "cheerio": "^1.0.0"
   },
   "devDependencies": {
+    "domhandler": "^5.0.3",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
   }

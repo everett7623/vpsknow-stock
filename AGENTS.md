@@ -129,18 +129,20 @@ docker compose down             # Stop all services
 - [x] Worker entry point with BullMQ job scheduling
 - [x] Telegram message formatter + sender
 - [x] Bot basic commands (/start, /providers, /help)
-- [x] Next.js web app with landing page
 - [x] Docker Compose for local PostgreSQL + Redis
 - [x] Environment variable template
+- [x] Stock engine: state comparison, consecutive confirm, cooldown dedup
+- [x] Stock engine: DB writes (stock_checks, stock_events, product upsert)
+- [x] Stock engine: Telegram push on confirmed restock
+- [x] Website: Homepage with provider summary + recent events timeline
+- [x] Website: Provider list page (`/providers`)
+- [x] Website: Provider detail page (`/provider/[slug]`) with stock table
+- [x] Web data layer (`lib/data.ts` — getProviders, getProviderBySlug, getStockSummary, getRecentStockEvents)
+- [x] GreenCloudVPS adapter (Phase 2 early implementation)
 
 ### Remaining Phase 1 Tasks
 - [ ] Run `pnpm approve-builds` to activate Prisma/esbuild
 - [ ] Run `pnpm build` — fix any type errors
-- [ ] Worker: Implement stock state comparison (detect transitions)
-- [ ] Worker: Save `stock_checks` and `stock_events` to DB
-- [ ] Worker: Trigger Telegram push on restock event
-- [ ] Website: Provider list page with live stock data
-- [ ] Website: Provider detail page
 - [ ] Production Docker Compose for worker/bot
 - [ ] 24h stability test run
 - [ ] End-to-end integration test
