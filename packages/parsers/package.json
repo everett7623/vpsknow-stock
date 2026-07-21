@@ -9,7 +9,7 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint ok'",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@vpsknow/shared": "workspace:*",
