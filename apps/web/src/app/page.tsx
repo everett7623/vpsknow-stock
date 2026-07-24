@@ -1,98 +1,134 @@
 import Link from 'next/link';
-import { getStockSummary, getRecentStockEvents } from '@/lib/data';
-import { formatDate } from '@/lib/utils';
+import {
+  getAffiliateUrl,
+  getLatestRestocks,
+  getRecentStockEvents,
+  getRecentlySoldOut,
+  getStockSummary,
+  type StockEventWithProduct,
+} from '@/lib/data';
+import { formatDate, formatPrice } from '@/lib/utils';
+
+function EventCard({ event, badge }: { event: StockEventWithProduct; badge: string }) {
+  return (
+    <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="rounded bg-gray-800 px-2 py-1 text-xs text-gray-300">{badge}</span>
+        <span className="text-xs text-gray-500">{event.product.provider.name}</span>
+      </div>
+      <h3 className="font-semibold text-white">{event.product.planName}</h3>
+      <p className="text-sm text-gray-400">
+        {event.product.location} - {formatPrice(event.product)}
+      </p>
+      {event.product.orderUrl && (
+        <a
+          href={getAffiliateUrl(event.product.orderUrl)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block text-sm text-emerald-400 hover:text-emerald-300"
+        >
+          Order
+        </a>
+      )}
+    </article>
+  );
+}
 
 export default async function HomePage() {
-  const [providers, recentEvents] = await Promise.all([
+  const [providers, restocks, soldOut, recentEvents] = await Promise.all([
     getStockSummary(),
+    getLatestRestocks(6),
+    getRecentlySoldOut(6),
     getRecentStockEvents(10),
   ]);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-gray-100 px-4 py-8">
-      <div className="max-w-5xl mx-auto space-y-10">
-        {/* Hero */}
-        <div className="text-center space-y-4 pt-8 pb-4">
-          <h1 className="text-4xl font-bold tracking-tight text-white">
-            VPSKnow Stock
-          </h1>
+    <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
+      <div className="mx-auto max-w-5xl space-y-10">
+        <header className="space-y-4 pb-4 pt-8 text-center">
+          <h1 className="text-4xl font-bold text-white">VPSKnow Stock</h1>
           <p className="text-lg text-gray-400">
-            Real-time VPS restock monitoring &amp; LowEndTalk offer alerts.
+            Real-time VPS restock monitoring and LowEndTalk offer alerts.
           </p>
-          <div className="flex gap-4 justify-center pt-2">
+          <div className="flex justify-center gap-4 pt-2">
             <a
               href="https://t.me/vpsknow_stock"
-              className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
+              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
             >
-              🟢 Restock Channel
+              Restock Channel
             </a>
             <a
               href="https://t.me/vpsknow_offers"
-              className="px-5 py-2 rounded-lg bg-[#12121a] border border-gray-700 hover:border-gray-500 text-white text-sm font-medium transition-colors"
+              className="rounded-lg border border-gray-700 bg-[#12121a] px-5 py-2 text-sm font-medium text-white transition-colors hover:border-gray-500"
             >
-              🔥 Offers Channel
+              Offers Channel
             </a>
           </div>
-        </div>
+        </header>
 
-        {/* Provider Stock Overview */}
         <section>
-          <div className="flex items-baseline justify-between mb-4">
+          <div className="mb-4 flex items-baseline justify-between">
             <h2 className="text-xl font-semibold text-white">Provider Status</h2>
             <Link href="/providers" className="text-sm text-emerald-400 hover:text-emerald-300">
-              View all →
+              View all
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {providers.map((p) => (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {providers.map((provider) => (
               <Link
-                key={p.id}
-                href={`/provider/${p.slug}`}
-                className="rounded-lg border border-gray-800 bg-[#12121a] p-4 hover:border-gray-600 transition-colors group"
+                key={provider.id}
+                href={`/provider/${provider.slug}`}
+                className="group rounded-lg border border-gray-800 bg-[#12121a] p-4 transition-colors hover:border-gray-600"
               >
-                <div className="flex items-baseline justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                    {p.name}
+                <div className="mb-2 flex items-baseline justify-between">
+                  <h3 className="text-lg font-semibold text-white transition-colors group-hover:text-emerald-400">
+                    {provider.name}
                   </h3>
-                  <span className="text-xs text-gray-500">{p.tier}-Tier</span>
+                  <span className="text-xs text-gray-500">{provider.tier}-Tier</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="text-emerald-400 font-mono">
-                    {p.inStockCount} in stock
-                  </span>
-                  <span className="text-gray-600">·</span>
-                  <span className="text-gray-500 font-mono">
-                    {p.totalProducts} products
-                  </span>
+                  <span className="font-mono text-emerald-400">{provider.inStockCount} in stock</span>
+                  <span className="font-mono text-gray-500">{provider.totalProducts} products</span>
                 </div>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* Recent Events Timeline */}
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-emerald-400">Latest Restocks</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {restocks.length > 0 ? restocks.map((event) => (
+              <EventCard key={event.id} event={event} badge="RESTOCK" />
+            )) : <p className="text-gray-500">No restocks yet.</p>}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-red-400">Recently Sold Out</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {soldOut.length > 0 ? soldOut.map((event) => (
+              <EventCard key={event.id} event={event} badge="SOLD OUT" />
+            )) : <p className="text-gray-500">No sold-out events yet.</p>}
+          </div>
+        </section>
+
         {recentEvents.length > 0 && (
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">Recent Events</h2>
+            <h2 className="mb-4 text-xl font-semibold text-white">Recent Events</h2>
             <div className="space-y-2">
               {recentEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center gap-4 rounded-lg bg-[#12121a] border border-gray-800/50 px-4 py-3 text-sm"
+                  className="flex gap-4 rounded-lg border border-gray-800/50 bg-[#12121a] px-4 py-3 text-sm"
                 >
                   <span className={event.eventType === 'restock' ? 'text-emerald-400' : 'text-red-400'}>
-                    {event.eventType === 'restock' ? '🟢' : '🔴'}
+                    {event.eventType === 'restock' ? 'RESTOCK' : 'SOLD OUT'}
                   </span>
-                  <span className="text-white font-medium">
-                    {event.product.provider.name}
-                  </span>
-                  <span className="text-gray-400">
-                    {event.product.planName}
-                  </span>
-                  <span className="text-gray-500">
-                    {event.product.location}
-                  </span>
-                  <span className="ml-auto text-gray-600 text-xs font-mono">
+                  <span className="font-medium text-white">{event.product.provider.name}</span>
+                  <span className="text-gray-400">{event.product.planName}</span>
+                  <span className="text-gray-500">{event.product.location}</span>
+                  <span className="ml-auto font-mono text-xs text-gray-600">
                     {formatDate(event.detectedAt)}
                   </span>
                 </div>
@@ -101,12 +137,8 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Footer */}
-        <footer className="text-center text-sm text-gray-600 py-8 border-t border-gray-800/50">
-          Powered by{' '}
-          <a href="https://vpsknow.com" className="text-gray-400 hover:text-white transition-colors">
-            VPSKnow
-          </a>
+        <footer className="border-t border-gray-800/50 py-8 text-center text-sm text-gray-600">
+          Powered by <a href="https://vpsknow.com" className="text-gray-400 hover:text-white">VPSKnow</a>
         </footer>
       </div>
     </main>

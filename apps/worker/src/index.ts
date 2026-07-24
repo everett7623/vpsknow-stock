@@ -13,17 +13,16 @@ const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 const QUEUE_NAME = 'stock-check';
 
 const PROVIDER_INTERVALS: Record<string, number> = {
-  bandwagonhost: 90_000, // 1.5 min
-  dmit: 150_000, // 2.5 min
-  buyvm: 90_000, // 1.5 min
+  bandwagonhost: 90_000,
+  dmit: 150_000,
+  buyvm: 90_000,
 };
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   logger.info('VPSKnow Stock Worker starting...');
 
   const queue = new Queue(QUEUE_NAME, { connection });
 
-  // Register repeatable jobs for each provider
   for (const [slug] of registry) {
     const interval = PROVIDER_INTERVALS[slug] || 180_000;
     const jittered = Math.round(withJitter(interval));
@@ -37,7 +36,6 @@ async function bootstrap() {
     logger.info({ provider: slug, intervalMs: jittered }, 'Registered job scheduler');
   }
 
-  // Process jobs
   const worker = new Worker(
     QUEUE_NAME,
     async (job) => {
@@ -52,7 +50,6 @@ async function bootstrap() {
       try {
         const results = await adapter.check();
         const duration = Date.now() - startTime;
-
         const summary = await processStockResults(provider, results, logger);
 
         logger.info(
@@ -68,17 +65,14 @@ async function bootstrap() {
         );
       } catch (err) {
         const duration = Date.now() - startTime;
-        logger.error(
-          { provider, durationMs: duration, err },
-          'Stock check failed',
-        );
-        throw err; // Let BullMQ handle retry
+        logger.error({ provider, durationMs: duration, err }, 'Stock check failed');
+        throw err;
       }
     },
     {
       connection,
       concurrency: 3,
-      limiter: { max: 1, duration: 5_000 }, // max 1 job per 5s globally
+      limiter: { max: 1, duration: 5_000 },
     },
   );
 
@@ -86,8 +80,7 @@ async function bootstrap() {
     logger.error({ jobId: job?.id, err: err.message }, 'Job failed');
   });
 
-  // Graceful shutdown
-  const shutdown = async () => {
+  const shutdown = async (): Promise<void> => {
     logger.info('Shutting down worker...');
     await worker.close();
     await queue.close();
@@ -101,7 +94,7 @@ async function bootstrap() {
   logger.info('Worker is running. Waiting for jobs...');
 }
 
-bootstrap().catch((err) => {
+bootstrap().catch((err: unknown) => {
   logger.fatal({ err }, 'Worker failed to start');
   process.exit(1);
 });

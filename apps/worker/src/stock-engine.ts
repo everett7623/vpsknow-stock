@@ -1,4 +1,5 @@
 import { prisma } from '@vpsknow/database';
+import type { Prisma } from '@vpsknow/database';
 import type { StockResult } from '@vpsknow/providers';
 import { sendChannelMessage } from '@vpsknow/telegram';
 import { formatRestockMessage } from '@vpsknow/telegram';
@@ -6,13 +7,36 @@ import { RESTOCK_COOLDOWN_MS, CONSECUTIVE_CONFIRMS_REQUIRED } from '@vpsknow/sha
 import type { Logger } from 'pino';
 
 const STOCK_CHANNEL_ID = process.env.TELEGRAM_STOCK_CHANNEL_ID || '@vpsknow_stock';
-const AFFILIATE_BASE_URL = process.env.AFFILIATE_BASE_URL || 'https://go.uukk.de';
 
 interface ProcessResult {
   checked: number;
   restocked: number;
   soldOut: number;
   errors: number;
+}
+
+function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
+  return {
+    result: {
+      provider: result.provider,
+      productId: result.productId,
+      planName: result.planName,
+      location: result.location,
+      category: result.category,
+      cpu: result.cpu,
+      ramMb: result.ramMb,
+      storageGb: result.storageGb,
+      storageType: result.storageType,
+      bandwidthTb: result.bandwidthTb,
+      ipv4: result.ipv4,
+      ipv6: result.ipv6,
+      price: result.price,
+      currency: result.currency,
+      billingCycle: result.billingCycle,
+      inStock: result.inStock,
+      orderUrl: result.orderUrl,
+    },
+  };
 }
 
 export async function processStockResults(
@@ -116,7 +140,7 @@ export async function processStockResults(
               data: {
                 productId: product.id,
                 eventType: 'restock',
-                metadata: { result },
+                metadata: toStockEventMetadata(result),
               },
             });
 
@@ -193,7 +217,7 @@ export async function processStockResults(
           data: {
             productId: product.id,
             eventType: 'sold_out',
-            metadata: { result },
+            metadata: toStockEventMetadata(result),
           },
         });
 

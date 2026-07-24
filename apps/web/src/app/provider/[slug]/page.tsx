@@ -1,7 +1,7 @@
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getProviderBySlug } from '@/lib/data';
-import { formatPrice, formatDate } from '@/lib/utils';
+import { notFound } from 'next/navigation';
+import { getAffiliateUrl, getProviderBySlug } from '@/lib/data';
+import { formatDate, formatPrice } from '@/lib/utils';
 
 export default async function ProviderDetailPage({
   params,
@@ -12,110 +12,83 @@ export default async function ProviderDetailPage({
   const provider = await getProviderBySlug(slug);
   if (!provider) notFound();
 
-  const inStockProducts = provider.products.filter((p) => p.inStock);
-  const oosProducts = provider.products.filter((p) => !p.inStock);
+  const inStockProducts = provider.products.filter((product) => product.inStock);
+  const outOfStockProducts = provider.products.filter((product) => !product.inStock);
+  const lastCheckedAt = provider.products.reduce<Date | null>((latest, product) => {
+    if (!product.lastCheckedAt) return latest;
+    return !latest || product.lastCheckedAt > latest ? product.lastCheckedAt : latest;
+  }, null);
+  const isStale = !lastCheckedAt || Date.now() - lastCheckedAt.getTime() > 30 * 60 * 1_000;
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-gray-100 px-4 py-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="/providers"
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            ← Providers
-          </Link>
-        </div>
+    <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
+      <div className="mx-auto max-w-5xl space-y-8">
+        <Link href="/providers" className="text-gray-400 transition-colors hover:text-white">
+          Providers
+        </Link>
 
-        <div className="flex items-baseline gap-4">
-          <h1 className="text-3xl font-bold text-white">{provider.name}</h1>
-          <a
-            href={provider.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-emerald-400 hover:text-emerald-300"
-          >
-            {provider.website} ↗
-          </a>
-        </div>
+        <header className="space-y-2">
+          <div className="flex items-baseline gap-4">
+            <h1 className="text-3xl font-bold text-white">{provider.name}</h1>
+            <a
+              href={provider.website}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-emerald-400 hover:text-emerald-300"
+            >
+              Official website
+            </a>
+          </div>
+          <p className="text-sm text-gray-400">
+            Last checked: {isStale ? 'Status Unknown' : formatDate(lastCheckedAt)}
+          </p>
+        </header>
 
-        {/* Stock Summary Bar */}
         <div className="flex gap-4">
-          <div className="rounded-lg bg-emerald-950/50 border border-emerald-800 px-4 py-2">
-            <span className="text-emerald-400 font-mono text-lg font-bold">
-              {inStockProducts.length}
-            </span>
-            <span className="text-emerald-400/70 text-sm ml-2">In Stock</span>
+          <div className="rounded-lg border border-emerald-800 bg-emerald-950/50 px-4 py-2">
+            <span className="font-mono text-lg font-bold text-emerald-400">{inStockProducts.length}</span>
+            <span className="ml-2 text-sm text-emerald-400/70">In Stock</span>
           </div>
-          <div className="rounded-lg bg-red-950/30 border border-red-900/50 px-4 py-2">
-            <span className="text-red-400 font-mono text-lg font-bold">
-              {oosProducts.length}
-            </span>
-            <span className="text-red-400/70 text-sm ml-2">Out of Stock</span>
+          <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-2">
+            <span className="font-mono text-lg font-bold text-red-400">{outOfStockProducts.length}</span>
+            <span className="ml-2 text-sm text-red-400/70">Out of Stock</span>
           </div>
         </div>
 
-        {/* In-Stock Products */}
-        {inStockProducts.length > 0 && (
-          <section>
-            <h2 className="text-xl font-semibold text-white mb-4">
-              🟢 Available Plans
-            </h2>
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-white">Available Plans</h2>
+          {inStockProducts.length === 0 ? <p className="text-gray-500">No in-stock plans.</p> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-left text-gray-400">
-                    <th className="pb-2 pr-4">Plan</th>
-                    <th className="pb-2 pr-4">Location</th>
-                    <th className="pb-2 pr-4">CPU</th>
-                    <th className="pb-2 pr-4">RAM</th>
-                    <th className="pb-2 pr-4">Storage</th>
-                    <th className="pb-2 pr-4">BW</th>
-                    <th className="pb-2 pr-4">Price</th>
-                    <th className="pb-2 pr-4">Last Checked</th>
-                    <th className="pb-2" />
+                    <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
+                    <th className="pb-2 pr-4">CPU</th><th className="pb-2 pr-4">RAM</th>
+                    <th className="pb-2 pr-4">Storage</th><th className="pb-2 pr-4">Price</th>
+                    <th className="pb-2 pr-4">Last Checked</th><th className="pb-2">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {inStockProducts.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-b border-gray-800/50 hover:bg-gray-800/20"
-                    >
-                      <td className="py-3 pr-4 font-medium text-white">
-                        {p.planName}
+                  {inStockProducts.map((product) => (
+                    <tr key={product.id} className="border-b border-gray-800/50">
+                      <td className="py-3 pr-4 font-medium text-white">{product.planName}</td>
+                      <td className="py-3 pr-4 text-gray-300">{product.location}</td>
+                      <td className="py-3 pr-4 font-mono text-xs text-gray-300">{product.cpu || 'N/A'}</td>
+                      <td className="py-3 pr-4 font-mono text-xs text-gray-300">
+                        {product.ramMb ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${product.ramMb >= 1024 ? 'GB' : 'MB'}` : 'N/A'}
                       </td>
-                      <td className="py-3 pr-4 text-gray-300">{p.location}</td>
-                      <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
-                        {p.cpu || '—'}
+                      <td className="py-3 pr-4 font-mono text-xs text-gray-300">
+                        {product.storageGb ? `${product.storageGb} GB ${product.storageType || ''}` : 'N/A'}
                       </td>
-                      <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
-                        {p.ramMb
-                          ? p.ramMb >= 1024
-                            ? `${(p.ramMb / 1024).toFixed(0)} GB`
-                            : `${p.ramMb} MB`
-                          : '—'}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
-                        {p.storageGb ? `${p.storageGb} GB ${p.storageType || ''}` : '—'}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
-                        {p.bandwidthTb ? `${p.bandwidthTb} TB` : '—'}
-                      </td>
-                      <td className="py-3 pr-4 text-emerald-400 font-mono">
-                        {formatPrice(p)}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-500 text-xs">
-                        {formatDate(p.lastCheckedAt)}
-                      </td>
+                      <td className="py-3 pr-4 font-mono text-emerald-400">{formatPrice(product)}</td>
+                      <td className="py-3 pr-4 text-xs text-gray-500">{formatDate(product.lastCheckedAt)}</td>
                       <td className="py-3">
-                        {p.orderUrl && (
+                        {product.orderUrl && (
                           <a
-                            href={p.orderUrl}
+                            href={getAffiliateUrl(product.orderUrl)}
                             target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
+                            rel="noreferrer"
+                            className="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
                           >
                             Order
                           </a>
@@ -126,46 +99,30 @@ export default async function ProviderDetailPage({
                 </tbody>
               </table>
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
-        {/* Out of Stock Products */}
-        {oosProducts.length > 0 && (
-          <section>
-            <h2 className="text-xl font-semibold text-gray-400 mb-4">
-              🔴 Out of Stock
-            </h2>
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-gray-400">Out of Stock</h2>
+          {outOfStockProducts.length === 0 ? <p className="text-gray-500">No sold-out plans.</p> : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm opacity-60">
-                <thead>
-                  <tr className="border-b border-gray-800 text-left text-gray-500">
-                    <th className="pb-2 pr-4">Plan</th>
-                    <th className="pb-2 pr-4">Location</th>
-                    <th className="pb-2 pr-4">Price</th>
-                    <th className="pb-2 pr-4">Last Checked</th>
+              <table className="w-full opacity-60 text-sm">
+                <thead><tr className="border-b border-gray-800 text-left text-gray-500">
+                  <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
+                  <th className="pb-2 pr-4">Price</th><th className="pb-2">Last Checked</th>
+                </tr></thead>
+                <tbody>{outOfStockProducts.map((product) => (
+                  <tr key={product.id} className="border-b border-gray-800/30">
+                    <td className="py-2 pr-4 text-gray-400">{product.planName}</td>
+                    <td className="py-2 pr-4 text-gray-500">{product.location}</td>
+                    <td className="py-2 pr-4 font-mono text-gray-500">{formatPrice(product)}</td>
+                    <td className="py-2 text-xs text-gray-600">{formatDate(product.lastCheckedAt)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {oosProducts.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-b border-gray-800/30"
-                    >
-                      <td className="py-2 pr-4 text-gray-400">{p.planName}</td>
-                      <td className="py-2 pr-4 text-gray-500">{p.location}</td>
-                      <td className="py-2 pr-4 text-gray-500 font-mono">
-                        {formatPrice(p)}
-                      </td>
-                      <td className="py-2 pr-4 text-gray-600 text-xs">
-                        {formatDate(p.lastCheckedAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                ))}</tbody>
               </table>
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </div>
     </main>
   );
