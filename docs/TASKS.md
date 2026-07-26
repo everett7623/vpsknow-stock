@@ -1273,6 +1273,8 @@ export interface ProviderAdapter {
 
 **Done when**: All 10 providers are running in the worker and stock_checks are accumulating.
 
+**Deployment note**: The production migration service applies the schema and idempotently seeds the provider registry before the worker and bot start. GreenCloudVPS uses a 3-minute scheduler; credential-free Phase 2 providers use their documented intervals.
+
 ---
 
 ### Task 2.2 — LowEndTalk Offer Engine

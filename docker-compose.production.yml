@@ -29,7 +29,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: pnpm --filter @vpsknow/database db:push
+    command:
+      - sh
+      - -c
+      - pnpm --filter @vpsknow/database db:push && pnpm --filter @vpsknow/database db:seed
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-vpsknow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vpsknow_stock}
     depends_on:

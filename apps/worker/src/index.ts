@@ -25,6 +25,7 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   bandwagonhost: 90_000,
   dmit: 150_000,
   buyvm: 90_000,
+  greencloudvps: 180_000,
   hosthatch: 150_000,
   spartanhost: 150_000,
   vmiss: 300_000,
