@@ -21,10 +21,34 @@ export const PROVIDERS = [
   ['akilecloud', 'AkileCloud'],
 ] as const;
 
+export const REGIONS = [
+  'Hong Kong',
+  'Tokyo',
+  'Singapore',
+  'Los Angeles',
+  'Seattle',
+  'Dallas',
+  'San Jose',
+  'New York',
+  'Amsterdam',
+  'Frankfurt',
+] as const;
+
+export const CATEGORIES = [
+  ['vps', 'VPS'],
+  ['storage', 'Storage'],
+  ['dedicated', 'Dedicated'],
+  ['nat_vps', 'NAT VPS'],
+] as const;
+
+export function toggleFilter(selected: string[], value: string): string[] {
+  return selected.includes(value)
+    ? selected.filter((item) => item !== value)
+    : [...selected, value];
+}
+
 export function toggleProvider(selected: string[], slug: string): string[] {
-  return selected.includes(slug)
-    ? selected.filter((provider) => provider !== slug)
-    : [...selected, slug];
+  return toggleFilter(selected, slug);
 }
 
 export function parseMuteHours(value: string): number | null {

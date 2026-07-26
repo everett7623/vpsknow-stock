@@ -1371,6 +1371,8 @@ Discovery pipeline (4 layers):
   - `/start` — Welcome + guide
   - `/subscribe` — Interactive event-type and provider whitelist setup (inline keyboards)
   - `/providers` — List monitored providers
+  - `/regions` — Interactive location whitelist
+  - `/categories` — Interactive product category whitelist
   - `/status` — Show current subscription filters
   - `/mute [hours]` — Temporarily mute
   - `/unmute` — Resume

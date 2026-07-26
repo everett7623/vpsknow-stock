@@ -3,7 +3,10 @@ import { prisma } from '@vpsknow/database';
 import {
   formatSubscriptionStatus,
   parseMuteHours,
+  CATEGORIES,
   PROVIDERS,
+  REGIONS,
+  toggleFilter,
   toggleProvider,
 } from './subscriptions.js';
 
@@ -24,6 +27,22 @@ function providerKeyboard(selected: string[]): InlineKeyboard {
     .text(selected.length === 0 ? '✓ All providers' : 'All providers', 'provider:all')
     .row()
     .text('Done', 'provider:done');
+}
+
+function filterKeyboard(
+  prefix: 'region' | 'category',
+  options: ReadonlyArray<readonly [string, string]>,
+  selected: string[],
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  options.forEach(([value, label], index) => {
+    keyboard.text(`${selected.includes(value) ? '✓ ' : ''}${label}`, `${prefix}:${value}`);
+    if (index % 2 === 1) keyboard.row();
+  });
+  return keyboard
+    .text(selected.length === 0 ? '✓ All' : 'All', `${prefix}:all`)
+    .row()
+    .text('Done', `${prefix}:done`);
 }
 
 bot.command('start', (ctx) =>
@@ -109,6 +128,7 @@ bot.callbackQuery(/^provider:(.+)$/, async (ctx) => {
       `Events: ${subscription.eventTypes.join(', ')}`,
       `Providers: ${subscription.providers.length > 0 ? subscription.providers.join(', ') : 'All'}`,
       '',
+      'Next: use /regions and /categories for optional filters.',
       'Use /status at any time to review your filters.',
     ].join('\n'));
     return;
@@ -128,6 +148,84 @@ bot.callbackQuery(/^provider:(.+)$/, async (ctx) => {
   });
   await ctx.answerCallbackQuery({ text: providers.length === 0 ? 'All providers enabled' : 'Filters updated' });
   await ctx.editMessageReplyMarkup({ reply_markup: providerKeyboard(providers) });
+});
+
+bot.command('regions', async (ctx) => {
+  if (!ctx.from) return;
+  const subscription = await prisma.subscription.findUnique({
+    where: { telegramUserId: BigInt(ctx.from.id) },
+  });
+  if (!subscription) {
+    await ctx.reply('Use /subscribe first.');
+    return;
+  }
+  const options = REGIONS.map((region) => [region, region] as const);
+  await ctx.reply('Select regions, or keep all regions enabled:', {
+    reply_markup: filterKeyboard('region', options, subscription.regions),
+  });
+});
+
+bot.callbackQuery(/^region:(.+)$/, async (ctx) => {
+  const action = ctx.match[1]!;
+  const telegramUserId = BigInt(ctx.from.id);
+  const subscription = await prisma.subscription.findUnique({ where: { telegramUserId } });
+  if (!subscription) {
+    await ctx.answerCallbackQuery({ text: 'Use /subscribe first', show_alert: true });
+    return;
+  }
+  if (action === 'done') {
+    await ctx.answerCallbackQuery({ text: 'Region filters saved' });
+    await ctx.editMessageText(`✅ Regions: ${subscription.regions.join(', ') || 'All'}`);
+    return;
+  }
+  if (action !== 'all' && !REGIONS.some((region) => region === action)) {
+    await ctx.answerCallbackQuery({ text: 'Unknown region', show_alert: true });
+    return;
+  }
+  const regions = action === 'all' ? [] : toggleFilter(subscription.regions, action);
+  await prisma.subscription.update({ where: { telegramUserId }, data: { regions } });
+  const options = REGIONS.map((region) => [region, region] as const);
+  await ctx.answerCallbackQuery({ text: regions.length === 0 ? 'All regions enabled' : 'Filters updated' });
+  await ctx.editMessageReplyMarkup({ reply_markup: filterKeyboard('region', options, regions) });
+});
+
+bot.command('categories', async (ctx) => {
+  if (!ctx.from) return;
+  const subscription = await prisma.subscription.findUnique({
+    where: { telegramUserId: BigInt(ctx.from.id) },
+  });
+  if (!subscription) {
+    await ctx.reply('Use /subscribe first.');
+    return;
+  }
+  await ctx.reply('Select product categories, or keep all categories enabled:', {
+    reply_markup: filterKeyboard('category', CATEGORIES, subscription.categories),
+  });
+});
+
+bot.callbackQuery(/^category:(.+)$/, async (ctx) => {
+  const action = ctx.match[1]!;
+  const telegramUserId = BigInt(ctx.from.id);
+  const subscription = await prisma.subscription.findUnique({ where: { telegramUserId } });
+  if (!subscription) {
+    await ctx.answerCallbackQuery({ text: 'Use /subscribe first', show_alert: true });
+    return;
+  }
+  if (action === 'done') {
+    await ctx.answerCallbackQuery({ text: 'Category filters saved' });
+    await ctx.editMessageText(`✅ Categories: ${subscription.categories.join(', ') || 'All'}`);
+    return;
+  }
+  if (action !== 'all' && !CATEGORIES.some(([category]) => category === action)) {
+    await ctx.answerCallbackQuery({ text: 'Unknown category', show_alert: true });
+    return;
+  }
+  const categories = action === 'all' ? [] : toggleFilter(subscription.categories, action);
+  await prisma.subscription.update({ where: { telegramUserId }, data: { categories } });
+  await ctx.answerCallbackQuery({ text: categories.length === 0 ? 'All categories enabled' : 'Filters updated' });
+  await ctx.editMessageReplyMarkup({
+    reply_markup: filterKeyboard('category', CATEGORIES, categories),
+  });
 });
 
 bot.command('status', async (ctx) => {
@@ -183,6 +281,8 @@ bot.command('help', (ctx) =>
     '/start — Welcome and setup guide',
     '/subscribe — Choose alert types',
     '/providers — List monitored providers',
+    '/regions — Choose region filters',
+    '/categories — Choose product categories',
     '/status — Show subscription filters',
     '/mute [hours] — Pause alerts (default: 8 hours)',
     '/unmute — Resume alerts',

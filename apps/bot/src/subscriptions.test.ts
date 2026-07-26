@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatSubscriptionStatus, parseMuteHours, toggleProvider } from './subscriptions.js';
+import {
+  formatSubscriptionStatus,
+  parseMuteHours,
+  toggleFilter,
+  toggleProvider,
+} from './subscriptions.js';
 
 describe('subscription helpers', () => {
   it('parses mute duration with an eight-hour default and safe bounds', () => {
@@ -40,5 +45,6 @@ describe('subscription helpers', () => {
   it('toggles provider whitelist entries without duplicates', () => {
     expect(toggleProvider([], 'buyvm')).toEqual(['buyvm']);
     expect(toggleProvider(['buyvm', 'dmit'], 'buyvm')).toEqual(['dmit']);
+    expect(toggleFilter(['Tokyo'], 'Singapore')).toEqual(['Tokyo', 'Singapore']);
   });
 });
