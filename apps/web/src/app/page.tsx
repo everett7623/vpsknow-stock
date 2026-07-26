@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import type { Offer } from '@vpsknow/database';
 import {
   getAffiliateUrl,
   getLatestRestocks,
-  getRecentOffers,
+  getLimitedOffers,
+  getRecentLetOffers,
   getRecentStockEvents,
   getRecentlySoldOut,
   getStockSummary,
@@ -35,11 +37,43 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
   );
 }
 
+function OfferCard({ offer }: { offer: Offer }) {
+  return (
+    <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-gray-500">{offer.provider || 'LowEndTalk'}</span>
+        {offer.isLimitedStock && (
+          <span className="rounded bg-orange-950 px-2 py-1 text-xs text-orange-300">LIMITED</span>
+        )}
+      </div>
+      <h3 className="mt-2 font-semibold text-white">{offer.title}</h3>
+      <p className="mt-1 text-sm text-gray-400">
+        {offer.locations.join(', ') || 'Unspecified'} - {offer.priceCents === null
+          ? 'Price unavailable'
+          : `${offer.currency || 'USD'} ${(offer.priceCents / 100).toFixed(2)}`}
+      </p>
+      <div className="mt-3 flex gap-3 text-sm">
+        {offer.orderUrl && (
+          <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">
+            Order
+          </a>
+        )}
+        {offer.threadUrl && (
+          <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">
+            Thread
+          </a>
+        )}
+      </div>
+    </article>
+  );
+}
+
 export default async function HomePage() {
-  const [providers, restocks, offers, soldOut, recentEvents] = await Promise.all([
+  const [providers, restocks, letOffers, limitedOffers, soldOut, recentEvents] = await Promise.all([
     getStockSummary(),
     getLatestRestocks(6),
-    getRecentOffers(4),
+    getRecentLetOffers(4),
+    getLimitedOffers(4),
     getRecentlySoldOut(6),
     getRecentStockEvents(10),
   ]);
@@ -108,30 +142,29 @@ export default async function HomePage() {
 
         <section>
           <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-xl font-semibold text-orange-400">Latest Offers</h2>
+            <h2 className="text-xl font-semibold text-orange-400">LowEndTalk New Offers</h2>
             <Link href="/offers" className="text-sm text-emerald-400 hover:text-emerald-300">
               View all
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {offers.length > 0 ? offers.map((offer) => (
-              <article key={offer.id} className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500">{offer.provider || 'LowEndTalk'}</span>
-                  {offer.isLimitedStock && (
-                    <span className="rounded bg-orange-950 px-2 py-1 text-xs text-orange-300">LIMITED</span>
-                  )}
-                </div>
-                <h3 className="mt-2 font-semibold text-white">{offer.title}</h3>
-                <p className="mt-1 text-sm text-gray-400">
-                  {offer.locations.join(', ') || 'Unspecified'} - {offer.priceCents === null ? 'Price unavailable' : `${offer.currency || 'USD'} ${(offer.priceCents / 100).toFixed(2)}`}
-                </p>
-                <div className="mt-3 flex gap-3 text-sm">
-                  {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}
-                  {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">Thread</a>}
-                </div>
-              </article>
-            )) : <p className="text-gray-500">No offers yet.</p>}
+            {letOffers.length > 0
+              ? letOffers.map((offer) => <OfferCard key={offer.id} offer={offer} />)
+              : <p className="text-gray-500">No new LowEndTalk offers yet.</p>}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-xl font-semibold text-amber-300">Limited Offers</h2>
+            <Link href="/offers" className="text-sm text-emerald-400 hover:text-emerald-300">
+              View all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {limitedOffers.length > 0
+              ? limitedOffers.map((offer) => <OfferCard key={offer.id} offer={offer} />)
+              : <p className="text-gray-500">No limited offers available.</p>}
           </div>
         </section>
 

@@ -99,11 +99,27 @@ export async function getRecentStockEvents(
   });
 }
 
-export async function getRecentOffers(limit = 30) {
+export async function getRecentLetOffers(limit = 30) {
   if (!hasDatabase) return [];
   return prisma.offer.findMany({
-    where: { confidence: { gte: 0.6 } },
-    orderBy: [{ isLimitedStock: 'desc' }, { postedAt: 'desc' }],
+    where: {
+      source: 'lowendtalk',
+      confidence: { gte: 0.6 },
+      isLimitedStock: false,
+    },
+    orderBy: { postedAt: 'desc' },
+    take: limit,
+  });
+}
+
+export async function getLimitedOffers(limit = 30) {
+  if (!hasDatabase) return [];
+  return prisma.offer.findMany({
+    where: {
+      confidence: { gte: 0.6 },
+      isLimitedStock: true,
+    },
+    orderBy: { postedAt: 'desc' },
     take: limit,
   });
 }

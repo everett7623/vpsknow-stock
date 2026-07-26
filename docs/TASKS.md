@@ -1348,7 +1348,7 @@ Discovery pipeline (4 layers):
 - [x] `/provider/[slug]/[plan]` — Plan detail: specs, price, stock timeline
 - [x] Filters: Provider, Category, Location, Billing, Price range, sorting
 - [ ] IPv4 filter (Offer schema and parser do not capture IPv4 yet)
-- [ ] Homepage add: "LowEndTalk New Offers" and "Limited Offers" sections
+- [x] Homepage add: "LowEndTalk New Offers" and "Limited Offers" sections
 
 **Done when**: Offers pages render with real data from DB, filters work.
 
