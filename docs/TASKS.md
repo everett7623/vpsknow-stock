@@ -1266,7 +1266,7 @@ export interface ProviderAdapter {
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
 - [ ] `akilecloud.ts`
 - [x] `vps.ts` (V.PS) — Parse HostBill product cards for Singapore and Tokyo availability
-- [ ] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
+- [x] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
 - [ ] Unit tests per adapter with HTML fixtures
 - [ ] Register all in adapter registry
 - [ ] Add BullMQ jobs with appropriate intervals

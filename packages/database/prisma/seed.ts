@@ -83,6 +83,17 @@ async function main() {
     },
   });
 
+  const saltyfish = await prisma.provider.upsert({
+    where: { slug: 'saltyfish' },
+    update: {},
+    create: {
+      slug: 'saltyfish',
+      name: 'SaltyFish',
+      website: 'https://portal.saltyfish.io',
+      tier: 'S',
+    },
+  });
+
   // Seed known products — BandwagonHost
   const bwgPlans = [
     { productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, billingCycle: 'annually' },
@@ -171,6 +182,7 @@ async function main() {
     { providerId: spartanhost.id, slug: 'spartanhost', targetUrl: 'https://billing.spartanhost.net', shortUrl: 'https://go.uukk.de/spartanhost' },
     { providerId: vmiss.id, slug: 'vmiss', targetUrl: 'https://app.vmiss.com', shortUrl: 'https://go.uukk.de/vmiss' },
     { providerId: vps.id, slug: 'vps', targetUrl: 'https://vps.hosting', shortUrl: 'https://go.uukk.de/vps' },
+    { providerId: saltyfish.id, slug: 'saltyfish', targetUrl: 'https://portal.saltyfish.io', shortUrl: 'https://go.uukk.de/saltyfish' },
   ];
 
   for (const link of affiliateLinks) {
@@ -182,7 +194,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 7`);
+  console.log(`  Providers: 8`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

@@ -9,6 +9,7 @@ import { HostHatchAdapter } from '../hosthatch.js';
 import { SpartanHostAdapter } from '../spartanhost.js';
 import { VmissAdapter } from '../vmiss.js';
 import { VpsAdapter } from '../vps.js';
+import { SaltyFishAdapter } from '../saltyfish.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -252,6 +253,41 @@ describe('provider adapters', () => {
       ramMb: 4096,
       price: 8495,
       inStock: false,
+    });
+  });
+
+  it('parses SaltyFish WHMCS quantity and network plans', () => {
+    const results = new SaltyFishAdapter().parse(fixture('saltyfish.html'), {
+      slug: 'sjc-elite',
+      location: 'San Jose',
+      url: 'https://portal.saltyfish.io/index.php?rp=/store/sjc-elite',
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'saltyfish',
+      productId: 'saltyfish-109',
+      planName: 'sjc.e1.mini',
+      location: 'San Jose',
+      cpu: '1 vCore',
+      ramMb: 1024,
+      storageGb: 10,
+      storageType: 'SSD',
+      bandwidthTb: 1.2,
+      price: 2250,
+      billingCycle: 'quarterly',
+      inStock: false,
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'saltyfish-137',
+      cpu: '2 vCores',
+      ramMb: 4096,
+      storageGb: 30,
+      bandwidthTb: 4,
+      price: 2900,
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl: 'https://portal.saltyfish.io/store/sjc-elite/e1medium',
     });
   });
 });
