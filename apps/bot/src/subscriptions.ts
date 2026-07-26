@@ -8,6 +8,25 @@ interface SubscriptionStatus {
   mutedUntil: Date | null;
 }
 
+export const PROVIDERS = [
+  ['bandwagonhost', 'BandwagonHost'],
+  ['dmit', 'DMIT'],
+  ['buyvm', 'BuyVM'],
+  ['greencloudvps', 'GreenCloudVPS'],
+  ['hosthatch', 'HostHatch'],
+  ['spartanhost', 'SpartanHost'],
+  ['vmiss', 'VMISS'],
+  ['vps', 'V.PS'],
+  ['saltyfish', 'SaltyFish'],
+  ['akilecloud', 'AkileCloud'],
+] as const;
+
+export function toggleProvider(selected: string[], slug: string): string[] {
+  return selected.includes(slug)
+    ? selected.filter((provider) => provider !== slug)
+    : [...selected, slug];
+}
+
 export function parseMuteHours(value: string): number | null {
   const normalized = value.trim();
   if (!normalized) return 8;

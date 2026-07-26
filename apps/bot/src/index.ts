@@ -1,6 +1,11 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import { prisma } from '@vpsknow/database';
-import { formatSubscriptionStatus, parseMuteHours } from './subscriptions.js';
+import {
+  formatSubscriptionStatus,
+  parseMuteHours,
+  PROVIDERS,
+  toggleProvider,
+} from './subscriptions.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -9,18 +14,17 @@ if (!token) {
 
 const bot = new Bot(token);
 
-const providerNames = [
-  'BandwagonHost',
-  'DMIT',
-  'BuyVM',
-  'GreenCloudVPS',
-  'HostHatch',
-  'SpartanHost',
-  'VMISS',
-  'V.PS',
-  'SaltyFish',
-  'AkileCloud',
-];
+function providerKeyboard(selected: string[]): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  PROVIDERS.forEach(([slug, name], index) => {
+    keyboard.text(`${selected.includes(slug) ? '✓ ' : ''}${name}`, `provider:${slug}`);
+    if (index % 2 === 1) keyboard.row();
+  });
+  return keyboard
+    .text(selected.length === 0 ? '✓ All providers' : 'All providers', 'provider:all')
+    .row()
+    .text('Done', 'provider:done');
+}
 
 bot.command('start', (ctx) =>
   ctx.reply([
@@ -39,7 +43,7 @@ bot.command('providers', (ctx) =>
   ctx.reply([
     '📋 Currently monitored providers:',
     '',
-    ...providerNames.map((name, index) => `${index + 1}. ${name}`),
+    ...PROVIDERS.map(([, name], index) => `${index + 1}. ${name}`),
     '',
     'Netcup is offers-only and is not monitored for stock.',
   ].join('\n')),
@@ -84,8 +88,46 @@ bot.callbackQuery(/^events:(both|restock|offers)$/, async (ctx) => {
 
   await ctx.answerCallbackQuery({ text: 'Subscription saved' });
   await ctx.editMessageText(
-    `✅ Subscribed to ${selection === 'both' ? 'restocks and offers' : selection}. All providers and regions are enabled.`,
+    `Subscribed to ${selection === 'both' ? 'restocks and offers' : selection}.\n\nSelect provider filters, or keep all providers enabled:`,
+    { reply_markup: providerKeyboard([]) },
   );
+});
+
+bot.callbackQuery(/^provider:(.+)$/, async (ctx) => {
+  const action = ctx.match[1]!;
+  const telegramUserId = BigInt(ctx.from.id);
+  const subscription = await prisma.subscription.findUnique({ where: { telegramUserId } });
+  if (!subscription) {
+    await ctx.answerCallbackQuery({ text: 'Use /subscribe first', show_alert: true });
+    return;
+  }
+
+  if (action === 'done') {
+    await ctx.answerCallbackQuery({ text: 'Provider filters saved' });
+    await ctx.editMessageText([
+      '✅ Subscription saved.',
+      `Events: ${subscription.eventTypes.join(', ')}`,
+      `Providers: ${subscription.providers.length > 0 ? subscription.providers.join(', ') : 'All'}`,
+      '',
+      'Use /status at any time to review your filters.',
+    ].join('\n'));
+    return;
+  }
+
+  if (action !== 'all' && !PROVIDERS.some(([slug]) => slug === action)) {
+    await ctx.answerCallbackQuery({ text: 'Unknown provider', show_alert: true });
+    return;
+  }
+
+  const providers = action === 'all'
+    ? []
+    : toggleProvider(subscription.providers, action);
+  await prisma.subscription.update({
+    where: { telegramUserId },
+    data: { providers },
+  });
+  await ctx.answerCallbackQuery({ text: providers.length === 0 ? 'All providers enabled' : 'Filters updated' });
+  await ctx.editMessageReplyMarkup({ reply_markup: providerKeyboard(providers) });
 });
 
 bot.command('status', async (ctx) => {

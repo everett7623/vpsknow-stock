@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatSubscriptionStatus, parseMuteHours } from './subscriptions.js';
+import { formatSubscriptionStatus, parseMuteHours, toggleProvider } from './subscriptions.js';
 
 describe('subscription helpers', () => {
   it('parses mute duration with an eight-hour default and safe bounds', () => {
@@ -35,5 +35,10 @@ describe('subscription helpers', () => {
       mutedUntil: new Date('2026-07-27T08:00:00.000Z'),
     })).toContain('Muted until 2026-07-27T08:00:00.000Z');
     vi.useRealTimers();
+  });
+
+  it('toggles provider whitelist entries without duplicates', () => {
+    expect(toggleProvider([], 'buyvm')).toEqual(['buyvm']);
+    expect(toggleProvider(['buyvm', 'dmit'], 'buyvm')).toEqual(['dmit']);
   });
 });

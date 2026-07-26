@@ -1369,7 +1369,7 @@ Discovery pipeline (4 layers):
 - [x] grammy bot in `apps/bot`
 - [x] Commands:
   - `/start` — Welcome + guide
-  - `/subscribe` — Interactive event-type setup (inline keyboards)
+  - `/subscribe` — Interactive event-type and provider whitelist setup (inline keyboards)
   - `/providers` — List monitored providers
   - `/status` — Show current subscription filters
   - `/mute [hours]` — Temporarily mute
