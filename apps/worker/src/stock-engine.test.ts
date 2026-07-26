@@ -17,6 +17,9 @@ const telegramMocks = vi.hoisted(() => ({
   formatRestockMessage: vi.fn(),
   sendChannelMessage: vi.fn(),
 }));
+const subscriberMocks = vi.hoisted(() => ({
+  notifyRestockSubscribers: vi.fn(),
+}));
 
 vi.mock('@vpsknow/database', () => ({
   prisma: {
@@ -38,6 +41,7 @@ vi.mock('@vpsknow/telegram', () => ({
   formatRestockMessage: telegramMocks.formatRestockMessage,
   sendChannelMessage: telegramMocks.sendChannelMessage,
 }));
+vi.mock('./subscriber-notifications.js', () => subscriberMocks);
 
 const stockResult: StockResult = {
   provider: 'BuyVM',
@@ -89,6 +93,7 @@ describe('processStockResults', () => {
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'telegram-1' });
     telegramMocks.formatRestockMessage.mockReturnValue('formatted restock message');
     telegramMocks.sendChannelMessage.mockResolvedValue(321);
+    subscriberMocks.notifyRestockSubscribers.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -221,6 +226,11 @@ describe('processStockResults', () => {
         content: 'formatted restock message',
       },
     });
+    expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledWith(
+      inStockResult,
+      'https://go.uukk.de/buyvm',
+      logger,
+    );
   });
 
   it('suppresses a restock within the cooldown while updating product state', async () => {

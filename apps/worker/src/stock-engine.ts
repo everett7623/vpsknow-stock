@@ -5,6 +5,7 @@ import { sendChannelMessage } from '@vpsknow/telegram';
 import { formatRestockMessage } from '@vpsknow/telegram';
 import { RESTOCK_COOLDOWN_MS, CONSECUTIVE_CONFIRMS_REQUIRED } from '@vpsknow/shared';
 import type { Logger } from 'pino';
+import { notifyRestockSubscribers } from './subscriber-notifications.js';
 
 const STOCK_CHANNEL_ID = process.env.TELEGRAM_STOCK_CHANNEL_ID || '@vpsknow_stock';
 
@@ -180,6 +181,7 @@ export async function processStockResults(
               );
             }
 
+            await notifyRestockSubscribers(result, affiliateLink?.shortUrl, logger);
             summary.restocked++;
           } else {
             logger.debug(
