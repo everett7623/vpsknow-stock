@@ -7,6 +7,7 @@ import { DmitAdapter } from '../dmit.js';
 import { GreenCloudVPSAdapter } from '../greencloudvps.js';
 import { HostHatchAdapter } from '../hosthatch.js';
 import { SpartanHostAdapter } from '../spartanhost.js';
+import { VmissAdapter } from '../vmiss.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -184,6 +185,44 @@ describe('provider adapters', () => {
       cpu: '2 vCores',
       price: 1000,
       inStock: true,
+    });
+  });
+
+  it('parses VMISS WHMCS quantity as authoritative stock state', () => {
+    const results = new VmissAdapter().parse(fixture('vmiss.html'), {
+      slug: 'la-cmin2',
+      location: 'Los Angeles',
+      url: 'https://app.vmiss.com/store/us-los-angeles-cmin2',
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'vmiss',
+      productId: 'vmiss-101',
+      planName: 'US.LA.CMIN2.Basic',
+      location: 'Los Angeles',
+      cpu: '1 Core',
+      ramMb: 1024,
+      storageGb: 10,
+      storageType: 'SSD',
+      bandwidthTb: 0.4,
+      ipv4: true,
+      ipv6: false,
+      price: 500,
+      currency: 'CAD',
+      inStock: false,
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'vmiss-102',
+      planName: 'US.LA.CMIN2.Elite',
+      cpu: '2 Cores',
+      ramMb: 4096,
+      storageGb: 40,
+      bandwidthTb: 2,
+      ipv6: true,
+      price: 3000,
+      inStock: true,
+      orderUrl: 'https://app.vmiss.com/cart.php?a=add&pid=102',
     });
   });
 });
