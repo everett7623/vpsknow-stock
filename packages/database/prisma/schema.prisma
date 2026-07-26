@@ -54,6 +54,8 @@ model Product {
   @@unique([providerId, productId])
   @@index([inStock])
   @@index([providerId, inStock])
+  @@index([providerId, priceCents])
+  @@index([providerId, lastCheckedAt])
   @@map("products")
 }
 
@@ -70,6 +72,7 @@ model StockCheck {
   product Product @relation(fields: [productId], references: [id])
 
   @@index([productId, checkedAt])
+  @@index([checkedAt])
   @@map("stock_checks")
 }
 
@@ -86,6 +89,7 @@ model StockEvent {
 
   @@index([productId, detectedAt])
   @@index([eventType, detectedAt])
+  @@index([detectedAt])
   @@map("stock_events")
 }
 
@@ -114,6 +118,7 @@ model TelegramMessage {
   stockEvent StockEvent? @relation(fields: [stockEventId], references: [id])
 
   @@index([channelId, sentAt])
+  @@index([sentAt])
   @@map("telegram_messages")
 }
 
@@ -145,6 +150,11 @@ model Offer {
   @@index([source, discoveredAt])
   @@index([pushed, confidence])
   @@index([ipv4])
+  @@index([confidence, postedAt])
+  @@index([provider, postedAt])
+  @@index([category, postedAt])
+  @@index([isLimitedStock, postedAt])
+  @@index([priceCents])
   @@map("offers")
 }
 
@@ -163,5 +173,7 @@ model Subscription {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([isActive, mutedUntil])
+  @@index([lastNotifiedAt])
   @@map("subscriptions")
 }

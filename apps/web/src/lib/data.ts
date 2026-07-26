@@ -188,17 +188,35 @@ export async function getOfferFilterOptions(): Promise<OfferFilterOptions> {
     return { providers: [], categories: [], locations: [], billingCycles: [] };
   }
 
-  const offers = await prisma.offer.findMany({
-    where: { confidence: { gte: 0.6 } },
-    select: { provider: true, category: true, locations: true, billingCycle: true },
-  });
+  const eligible = { confidence: { gte: 0.6 } };
+  const [providerRows, categoryRows, locationRows, billingRows] = await Promise.all([
+    prisma.offer.findMany({
+      where: { ...eligible, provider: { not: null } },
+      select: { provider: true },
+      distinct: ['provider'],
+    }),
+    prisma.offer.findMany({
+      where: { ...eligible, category: { not: null } },
+      select: { category: true },
+      distinct: ['category'],
+    }),
+    prisma.offer.findMany({
+      where: eligible,
+      select: { locations: true },
+    }),
+    prisma.offer.findMany({
+      where: { ...eligible, billingCycle: { not: null } },
+      select: { billingCycle: true },
+      distinct: ['billingCycle'],
+    }),
+  ]);
   const values = <T>(items: T[]): T[] => [...new Set(items)].sort();
 
   return {
-    providers: values(offers.flatMap((offer) => offer.provider ? [offer.provider] : [])),
-    categories: values(offers.flatMap((offer) => offer.category ? [offer.category] : [])),
-    locations: values(offers.flatMap((offer) => offer.locations)),
-    billingCycles: values(offers.flatMap((offer) => offer.billingCycle ? [offer.billingCycle] : [])),
+    providers: values(providerRows.flatMap((offer) => offer.provider ? [offer.provider] : [])),
+    categories: values(categoryRows.flatMap((offer) => offer.category ? [offer.category] : [])),
+    locations: values(locationRows.flatMap((offer) => offer.locations)),
+    billingCycles: values(billingRows.flatMap((offer) => offer.billingCycle ? [offer.billingCycle] : [])),
   };
 }
 
@@ -213,15 +231,37 @@ export async function getStockSummary(): Promise<
     inStockCount: number;
   }>
 > {
-  const providers = await getProviders();
+  if (!hasDatabase) return [];
+  const [providers, inStockGroups] = await Promise.all([
+    prisma.provider.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        website: true,
+        tier: true,
+        _count: { select: { products: true } },
+      },
+    }),
+    prisma.product.groupBy({
+      by: ['providerId'],
+      where: { inStock: true, provider: { isActive: true } },
+      _count: { _all: true },
+    }),
+  ]);
+  const inStockByProvider = new Map(
+    inStockGroups.map((group) => [group.providerId, group._count._all]),
+  );
   return providers.map((provider) => ({
     id: provider.id,
     slug: provider.slug,
     name: provider.name,
     website: provider.website,
     tier: provider.tier,
-    totalProducts: provider.products.length,
-    inStockCount: provider.products.filter((product) => product.inStock).length,
+    totalProducts: provider._count.products,
+    inStockCount: inStockByProvider.get(provider.id) ?? 0,
   }));
 }
 

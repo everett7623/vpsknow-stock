@@ -1405,7 +1405,9 @@ Discovery pipeline (4 layers):
 - [x] SEO: meta tags, structured data, sitemap
 - [x] Mobile-responsive refinement
 - [ ] Hetzner Server Auction monitor (special case)
-- [ ] Performance: DB indexes, query optimization, cache layer
+- [ ] Performance hardening
+  - [x] DB indexes and query optimization
+  - [ ] Cache layer (defer policy tuning until live traffic data is available)
 
 ---
 
