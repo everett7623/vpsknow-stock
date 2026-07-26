@@ -26,6 +26,7 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   dmit: 150_000,
   buyvm: 90_000,
   hosthatch: 150_000,
+  spartanhost: 150_000,
 };
 
 async function bootstrap(): Promise<void> {

@@ -6,6 +6,7 @@ import { BuyVMAdapter } from '../buyvm.js';
 import { DmitAdapter } from '../dmit.js';
 import { GreenCloudVPSAdapter } from '../greencloudvps.js';
 import { HostHatchAdapter } from '../hosthatch.js';
+import { SpartanHostAdapter } from '../spartanhost.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -150,6 +151,39 @@ describe('provider adapters', () => {
       storageType: 'HDD',
       bandwidthTb: 2.441,
       price: 500,
+    });
+  });
+
+  it('parses SpartanHost plans as independent per-location stock results', () => {
+    const results = new SpartanHostAdapter().parse(fixture('spartanhost.html'));
+
+    expect(results).toHaveLength(3);
+    expect(results[0]).toMatchObject({
+      provider: 'spartanhost',
+      productId: 'spartan-premium-kvm-1024mb-seattle',
+      planName: 'Premium KVM 1024MB',
+      location: 'Seattle',
+      cpu: '1 vCore',
+      ramMb: 1024,
+      storageGb: 25,
+      storageType: 'NVMe',
+      bandwidthTb: 2,
+      price: 600,
+      inStock: false,
+      orderUrl: 'https://spartanhost.org/vps',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'spartan-1024mb-dalkvm',
+      location: 'Dallas',
+      inStock: true,
+    });
+    expect(results[2]).toMatchObject({
+      productId: 'spartan-2048mb-seabkvm',
+      planName: 'E5 KVM 2048MB',
+      location: 'Seattle',
+      cpu: '2 vCores',
+      price: 1000,
+      inStock: true,
     });
   });
 });

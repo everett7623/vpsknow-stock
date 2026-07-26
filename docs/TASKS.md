@@ -1269,7 +1269,7 @@ export interface ProviderAdapter {
 
 - [x] `hosthatch.ts` — Use the authenticated products API for per-location availability; activates when `HOSTHATCH_API_TOKEN` is configured
 - [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
-- [ ] `spartanhost.ts`
+- [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [ ] `vmiss.ts`
 - [ ] `netcup.ts`
 - [ ] `akilecloud.ts`

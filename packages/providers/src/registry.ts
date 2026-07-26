@@ -4,12 +4,14 @@ import { DmitAdapter } from './adapters/dmit.js';
 import { BuyVMAdapter } from './adapters/buyvm.js';
 import { GreenCloudVPSAdapter } from './adapters/greencloudvps.js';
 import { HostHatchAdapter } from './adapters/hosthatch.js';
+import { SpartanHostAdapter } from './adapters/spartanhost.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
   new DmitAdapter(),
   new BuyVMAdapter(),
   new GreenCloudVPSAdapter(),
+  new SpartanHostAdapter(),
 ];
 
 if (process.env.HOSTHATCH_API_TOKEN) {

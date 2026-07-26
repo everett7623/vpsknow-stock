@@ -50,6 +50,17 @@ async function main() {
     },
   });
 
+  const spartanhost = await prisma.provider.upsert({
+    where: { slug: 'spartanhost' },
+    update: {},
+    create: {
+      slug: 'spartanhost',
+      name: 'SpartanHost',
+      website: 'https://spartanhost.org',
+      tier: 'S',
+    },
+  });
+
   // Seed known products — BandwagonHost
   const bwgPlans = [
     { productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, billingCycle: 'annually' },
@@ -135,6 +146,7 @@ async function main() {
     { providerId: dmit.id, slug: 'dmit', targetUrl: 'https://www.dmit.io/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/dmit' },
     { providerId: buyvm.id, slug: 'buyvm', targetUrl: 'https://my.frantech.ca/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/buyvm' },
     { providerId: hosthatch.id, slug: 'hosthatch', targetUrl: 'https://cloud.hosthatch.com/signup', shortUrl: 'https://go.uukk.de/hosthatch' },
+    { providerId: spartanhost.id, slug: 'spartanhost', targetUrl: 'https://billing.spartanhost.net', shortUrl: 'https://go.uukk.de/spartanhost' },
   ];
 
   for (const link of affiliateLinks) {
@@ -146,7 +158,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 4`);
+  console.log(`  Providers: 5`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }
