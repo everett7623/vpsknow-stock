@@ -26,6 +26,7 @@ function offerFilters(searchParams: SearchParams): OfferFilters {
     category: firstValue(searchParams.category),
     location: firstValue(searchParams.location),
     billingCycle: firstValue(searchParams.billing),
+    ipv4: firstValue(searchParams.ipv4) === '1' ? true : undefined,
     minPriceCents: priceCents(firstValue(searchParams.minPrice)),
     maxPriceCents: priceCents(firstValue(searchParams.maxPrice)),
     sort: sort === 'price_asc' || sort === 'price_desc' || sort === 'newest' ? sort : 'newest',
@@ -73,7 +74,7 @@ export default async function OffersPage({
           </div>
         </header>
 
-        <form method="get" className="grid gap-3 border-y border-gray-800 py-5 sm:grid-cols-2 lg:grid-cols-7">
+        <form method="get" className="grid gap-3 border-y border-gray-800 py-5 sm:grid-cols-2 lg:grid-cols-8">
           <label className="grid gap-1 text-xs text-gray-400">
             Provider
             <select name="provider" defaultValue={filters.provider || ''} className="h-10 border border-gray-700 bg-[#12121a] px-3 text-sm text-white outline-none focus:border-emerald-500">
@@ -103,6 +104,13 @@ export default async function OffersPage({
             </select>
           </label>
           <label className="grid gap-1 text-xs text-gray-400">
+            Network
+            <select name="ipv4" defaultValue={filters.ipv4 ? '1' : ''} className="h-10 border border-gray-700 bg-[#12121a] px-3 text-sm text-white outline-none focus:border-emerald-500">
+              <option value="">Any network</option>
+              <option value="1">IPv4 included</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-gray-400">
             Min price (USD)
             <input name="minPrice" type="number" min="0" max={maxPrice || undefined} step="0.01" defaultValue={minPrice} placeholder="Any" className="h-10 min-w-0 border border-gray-700 bg-[#12121a] px-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-emerald-500" />
           </label>
@@ -118,7 +126,7 @@ export default async function OffersPage({
               <option value="price_desc">Price: high to low</option>
             </select>
           </label>
-          <div className="flex items-end gap-3 sm:col-span-2 lg:col-span-7">
+          <div className="flex items-end gap-3 sm:col-span-2 lg:col-span-8">
             <button type="submit" className="h-10 bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-500">
               Apply filters
             </button>
@@ -151,6 +159,12 @@ export default async function OffersPage({
                   <div>
                     <p className="text-xs text-gray-500">Locations</p>
                     <p className="text-gray-300">{offer.locations.join(', ') || 'Unspecified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">IPv4</p>
+                    <p className="text-gray-300">
+                      {offer.ipv4 === true ? 'Included' : offer.ipv4 === false ? 'Not included' : 'Unspecified'}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3 text-sm">

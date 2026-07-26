@@ -131,6 +131,7 @@ export interface OfferFilters {
   category?: string;
   location?: string;
   billingCycle?: string;
+  ipv4?: boolean;
   minPriceCents?: number;
   maxPriceCents?: number;
   sort?: OfferSort;
@@ -152,6 +153,7 @@ function offerWhere(filters: OfferFilters): Prisma.OfferWhereInput {
     ...(filters.category ? { category: filters.category } : {}),
     ...(filters.location ? { locations: { has: filters.location } } : {}),
     ...(filters.billingCycle ? { billingCycle: filters.billingCycle } : {}),
+    ...(filters.ipv4 === true ? { ipv4: true } : {}),
     ...(hasPriceFilter ? {
       priceCents: {
         ...(filters.minPriceCents !== undefined ? { gte: filters.minPriceCents } : {}),

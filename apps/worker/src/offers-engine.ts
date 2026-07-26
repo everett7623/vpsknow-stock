@@ -213,6 +213,7 @@ export async function discoverLetOffers(
         couponCode: offer.couponCode,
         orderUrl: offer.orderUrl,
         threadUrl: discussion.url,
+        ipv4: offer.ipv4,
         isLimitedStock: offer.isLimitedStock,
         isRecurring: offer.isRecurring,
         isPreorder: offer.isPreorder,

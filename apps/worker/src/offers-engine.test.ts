@@ -41,7 +41,7 @@ const parsedOffer = {
   provider: 'ExampleHost', title: discussion.title, body: '2 GB VPS $12.00 annual', category: 'vps',
   locations: ['Los Angeles'], priceCents: 1200, currency: 'USD', billingCycle: 'annually',
   couponCode: 'FLASH26', orderUrl: 'https://example.com/order', isLimitedStock: true,
-  isRecurring: false, isPreorder: false, confidence: 1,
+  ipv4: true, isRecurring: false, isPreorder: false, confidence: 1,
 };
 
 const storedOffer = {
@@ -111,7 +111,12 @@ describe('discoverLetOffers', () => {
       discovered: 1, stored: 1, pushed: 0, skipped: 0, initialized: false,
     });
     expect(databaseMocks.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ source: 'lowendtalk', sourceId: '12345', threadUrl: discussion.url }),
+      data: expect.objectContaining({
+        source: 'lowendtalk',
+        sourceId: '12345',
+        threadUrl: discussion.url,
+        ipv4: true,
+      }),
     });
   });
 

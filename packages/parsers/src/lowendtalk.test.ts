@@ -60,7 +60,7 @@ describe('LowEndTalk parsers', () => {
     const offer = parseLetOffer(
       'ExampleHost Limited VPS Flash Sale',
       `<article>
-        <p>2 GB RAM KVM VPS in Los Angeles. $12.00 / annual.</p>
+        <p>2 GB RAM KVM VPS in Los Angeles. $12.00 / annual. 1 IPv4 included.</p>
         <p>Use coupon code: FLASH26</p>
         <a href="https://example.com/billing/cart.php?a=add&pid=1">Order now</a>
       </article>`,
@@ -77,6 +77,7 @@ describe('LowEndTalk parsers', () => {
       billingCycle: 'annually',
       couponCode: 'FLASH26',
       orderUrl: 'https://example.com/billing/cart.php?a=add&pid=1',
+      ipv4: true,
       isLimitedStock: true,
       isRecurring: false,
       isPreorder: false,
@@ -96,7 +97,15 @@ describe('LowEndTalk parsers', () => {
       billingCycle: null,
       couponCode: null,
       orderUrl: null,
+      ipv4: null,
       confidence: 0,
     });
+  });
+
+  it('distinguishes IPv6-only offers from posts with unknown IP details', () => {
+    expect(parseLetOffer('IPv6 VPS', '<article>IPv6 only, no IPv4.</article>', 'Host').ipv4)
+      .toBe(false);
+    expect(parseLetOffer('VPS offer', '<article>Network details on order page.</article>', 'Host').ipv4)
+      .toBeNull();
   });
 });

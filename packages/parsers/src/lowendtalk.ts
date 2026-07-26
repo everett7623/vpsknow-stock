@@ -20,6 +20,7 @@ export interface ParsedLetOffer {
   billingCycle: BillingCycle | null;
   couponCode: string | null;
   orderUrl: string | null;
+  ipv4: boolean | null;
   isLimitedStock: boolean;
   isRecurring: boolean;
   isPreorder: boolean;
@@ -110,6 +111,11 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
   const priceCents = priceMatch ? Math.round(Number.parseFloat(priceMatch[1]!) * 100) : null;
   const provider = author || null;
   const confidence = [provider, category, priceCents, billingCycle, orderUrl].filter(Boolean).length / 5;
+  const ipv4 = /\b(?:no\s+ipv4|without\s+ipv4|ipv6[\s-]+only)\b/i.test(combined)
+    ? false
+    : /\b(?:dedicated\s+ipv4|ipv4\s*(?:included|available|[:=-]\s*(?:yes|[1-9]))|[1-9]\s*(?:x\s*)?ipv4)\b/i.test(combined)
+      ? true
+      : null;
 
   return {
     provider,
@@ -122,6 +128,7 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
     billingCycle,
     couponCode: couponMatch?.[1] ?? null,
     orderUrl,
+    ipv4,
     isLimitedStock: /\b(limited|flash|restock|stock)\b/i.test(combined),
     isRecurring: /\b(recurring|renewal)\b/i.test(combined),
     isPreorder: /\b(pre[ -]?order)\b/i.test(combined),
