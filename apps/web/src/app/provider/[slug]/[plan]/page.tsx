@@ -1,8 +1,28 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { getAffiliateUrl, getProductDetail } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { PriceHistory } from './price-history';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; plan: string }>;
+}): Promise<Metadata> {
+  const { slug, plan } = await params;
+  const product = await getProductDetail(slug, decodeURIComponent(plan));
+  if (!product) return { title: 'Plan Not Found' };
+  const description = `${product.planName} by ${product.provider.name} in ${product.location}: ${formatPrice(product)}, ${product.inStock ? 'currently in stock' : 'currently out of stock'}.`;
+  return {
+    title: `${product.planName} — ${product.provider.name}`,
+    description,
+    alternates: {
+      canonical: `/provider/${product.provider.slug}/${encodeURIComponent(product.productId)}`,
+    },
+    openGraph: { title: product.planName, description },
+  };
+}
 
 function formatRam(ramMb: number | null): string {
   if (!ramMb) return 'N/A';
@@ -31,9 +51,30 @@ export default async function ProductDetailPage({
     ['Category', product.category.toUpperCase()],
     ['Billing', product.billingCycle],
   ];
+  const productUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://stock.vpsknow.com'}/provider/${product.provider.slug}/${encodeURIComponent(product.productId)}`;
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.planName,
+    description: `${product.cpu || 'VPS'}, ${formatRam(product.ramMb)}, ${product.location}`,
+    brand: { '@type': 'Brand', name: product.provider.name },
+    offers: {
+      '@type': 'Offer',
+      url: productUrl,
+      priceCurrency: product.currency,
+      price: (product.priceCents / 100).toFixed(2),
+      availability: product.inStock
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+    },
+  };
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
+      />
       <div className="mx-auto max-w-4xl space-y-8">
         <nav className="flex items-center gap-2 text-sm text-gray-400">
           <Link href="/providers" className="hover:text-white">Providers</Link>

@@ -1402,7 +1402,7 @@ Discovery pipeline (4 layers):
 - [ ] Proxy rotation for CF-protected providers
 - [ ] Playwright integration for JS-rendered pages
 - [ ] Error alerting (dead adapters, API changes → admin notification)
-- [ ] SEO: meta tags, structured data, sitemap
+- [x] SEO: meta tags, structured data, sitemap
 - [ ] Mobile-responsive refinement
 - [ ] Hetzner Server Auction monitor (special case)
 - [ ] Performance: DB indexes, query optimization, cache layer

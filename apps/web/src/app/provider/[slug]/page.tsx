@@ -1,7 +1,26 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { getAffiliateUrl, getProviderBySlug } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const provider = await getProviderBySlug(slug);
+  if (!provider) return { title: 'Provider Not Found' };
+  const inStock = provider.products.filter((product) => product.inStock).length;
+  const description = `${provider.name} VPS stock status, plans, prices, and recent availability. ${inStock} plans currently in stock.`;
+  return {
+    title: `${provider.name} VPS Stock`,
+    description,
+    alternates: { canonical: `/provider/${provider.slug}` },
+    openGraph: { title: `${provider.name} VPS Stock`, description },
+  };
+}
 
 export default async function ProviderDetailPage({
   params,
