@@ -1373,11 +1373,12 @@ Discovery pipeline (4 layers):
   - `/providers` — List monitored providers
   - `/regions` — Interactive location whitelist
   - `/categories` — Interactive product category whitelist
+  - `/maxprice [amount|off]` — Set or clear maximum USD price
   - `/status` — Show current subscription filters
   - `/mute [hours]` — Temporarily mute
   - `/unmute` — Resume
   - `/help` — Reference
-- [ ] Subscription filters stored in `subscriptions` table:
+- [x] Subscription filters stored in `subscriptions` table:
   - Provider whitelist
   - Location whitelist
   - Category whitelist

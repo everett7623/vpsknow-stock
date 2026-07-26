@@ -2,6 +2,7 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { prisma } from '@vpsknow/database';
 import {
   formatSubscriptionStatus,
+  parseMaxPriceCents,
   parseMuteHours,
   CATEGORIES,
   PROVIDERS,
@@ -228,6 +229,26 @@ bot.callbackQuery(/^category:(.+)$/, async (ctx) => {
   });
 });
 
+bot.command('maxprice', async (ctx) => {
+  if (!ctx.from) return;
+  const maxPriceCents = parseMaxPriceCents(ctx.match);
+  if (maxPriceCents === undefined) {
+    await ctx.reply('Usage: /maxprice [USD amount|off]. Examples: /maxprice 12.50 or /maxprice off');
+    return;
+  }
+  const result = await prisma.subscription.updateMany({
+    where: { telegramUserId: BigInt(ctx.from.id) },
+    data: { maxPriceCents },
+  });
+  if (result.count === 0) {
+    await ctx.reply('You do not have a subscription yet. Use /subscribe first.');
+    return;
+  }
+  await ctx.reply(maxPriceCents === null
+    ? '✅ Price limit removed.'
+    : `✅ Maximum price set to USD ${(maxPriceCents / 100).toFixed(2)}.`);
+});
+
 bot.command('status', async (ctx) => {
   if (!ctx.from) return;
   const subscription = await prisma.subscription.findUnique({
@@ -283,6 +304,7 @@ bot.command('help', (ctx) =>
     '/providers — List monitored providers',
     '/regions — Choose region filters',
     '/categories — Choose product categories',
+    '/maxprice [amount|off] — Set or clear maximum USD price',
     '/status — Show subscription filters',
     '/mute [hours] — Pause alerts (default: 8 hours)',
     '/unmute — Resume alerts',

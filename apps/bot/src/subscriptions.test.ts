@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   formatSubscriptionStatus,
+  parseMaxPriceCents,
   parseMuteHours,
   toggleFilter,
   toggleProvider,
@@ -13,6 +14,13 @@ describe('subscription helpers', () => {
     expect(parseMuteHours('0')).toBeNull();
     expect(parseMuteHours('169')).toBeNull();
     expect(parseMuteHours('eight')).toBeNull();
+  });
+
+  it('parses a maximum USD price and explicit limit removal', () => {
+    expect(parseMaxPriceCents('12.50')).toBe(1250);
+    expect(parseMaxPriceCents('off')).toBeNull();
+    expect(parseMaxPriceCents('0')).toBeUndefined();
+    expect(parseMaxPriceCents('12.999')).toBeUndefined();
   });
 
   it('formats active filters and preserves all-provider defaults', () => {
