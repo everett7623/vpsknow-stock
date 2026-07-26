@@ -1403,7 +1403,7 @@ Discovery pipeline (4 layers):
 - [ ] Playwright integration for JS-rendered pages
 - [x] Error alerting (dead adapters, possible API changes, and recovery → admin notification)
 - [x] SEO: meta tags, structured data, sitemap
-- [ ] Mobile-responsive refinement
+- [x] Mobile-responsive refinement
 - [ ] Hetzner Server Auction monitor (special case)
 - [ ] Performance: DB indexes, query optimization, cache layer
 

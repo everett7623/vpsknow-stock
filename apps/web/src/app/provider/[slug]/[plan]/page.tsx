@@ -76,14 +76,14 @@ export default async function ProductDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
       />
       <div className="mx-auto max-w-4xl space-y-8">
-        <nav className="flex items-center gap-2 text-sm text-gray-400">
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
           <Link href="/providers" className="hover:text-white">Providers</Link>
           <span>/</span>
           <Link href={`/provider/${product.provider.slug}`} className="hover:text-white">
             {product.provider.name}
           </Link>
           <span>/</span>
-          <span className="text-gray-200">{product.planName}</span>
+          <span className="min-w-0 break-words text-gray-200">{product.planName}</span>
         </nav>
 
         <header className="rounded-xl border border-gray-800 bg-[#12121a] p-6">
@@ -95,7 +95,7 @@ export default async function ProductDetailPage({
                   {product.inStock ? 'In Stock' : 'Out of Stock'}
                 </span>
               </div>
-              <h1 className="text-3xl font-bold text-white">{product.planName}</h1>
+              <h1 className="break-words text-2xl font-bold text-white sm:text-3xl">{product.planName}</h1>
               <p className="mt-2 text-gray-400">{product.location} · {product.provider.name}</p>
             </div>
             <div className="sm:text-right">
@@ -116,7 +116,7 @@ export default async function ProductDetailPage({
 
         <section>
           <h2 className="mb-4 text-xl font-semibold text-white">Specifications</h2>
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-800 bg-gray-800 sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-gray-800 bg-gray-800 sm:grid-cols-2 lg:grid-cols-3">
             {specs.map(([label, value]) => (
               <div key={label} className="bg-[#12121a] p-4">
                 <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
@@ -143,12 +143,12 @@ export default async function ProductDetailPage({
               {product.stockEvents.map((event) => {
                 const restock = event.eventType === 'restock';
                 return (
-                  <li key={event.id} className="flex items-center gap-4 rounded-lg border border-gray-800 bg-[#12121a] px-4 py-3">
+                  <li key={event.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-gray-800 bg-[#12121a] px-4 py-3">
                     <span className={`h-2.5 w-2.5 rounded-full ${restock ? 'bg-emerald-400' : 'bg-red-400'}`} />
                     <span className={restock ? 'text-emerald-400' : 'text-red-400'}>
                       {restock ? 'Restocked' : 'Sold Out'}
                     </span>
-                    <time className="ml-auto font-mono text-xs text-gray-500">
+                    <time className="w-full font-mono text-xs text-gray-500 sm:ml-auto sm:w-auto">
                       {formatDate(event.detectedAt)}
                     </time>
                   </li>

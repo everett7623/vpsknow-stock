@@ -126,14 +126,14 @@ export default async function OffersPage({
               <option value="price_desc">Price: high to low</option>
             </select>
           </label>
-          <div className="flex items-end gap-3 sm:col-span-2 lg:col-span-8">
+          <div className="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-8">
             <button type="submit" className="h-10 bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-500">
               Apply filters
             </button>
             <Link href="/offers" className="h-10 px-3 py-2 text-sm text-gray-400 transition-colors hover:text-white">
               Reset
             </Link>
-            <span className="ml-auto py-2 text-sm text-gray-500">{offers.length} offers</span>
+            <span className="w-full py-2 text-sm text-gray-500 sm:ml-auto sm:w-auto">{offers.length} offers</span>
           </div>
         </form>
 
@@ -151,7 +151,7 @@ export default async function OffersPage({
                 </div>
                 <h2 className="text-lg font-semibold text-white">{offer.title}</h2>
                 <p className="mt-2 line-clamp-3 text-sm text-gray-400">{offer.body || 'Offer details available in the discussion.'}</p>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-800 pt-4 text-sm">
+                <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-800 pt-4 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-gray-500">Price</p>
                     <p className="font-mono text-emerald-400">{formatPrice(offer.priceCents, offer.currency, offer.billingCycle)}</p>
@@ -167,7 +167,7 @@ export default async function OffersPage({
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
                   <span className="text-gray-500">{formatPostedAt(offer.postedAt)}</span>
                   <div className="flex gap-3">
                     {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}

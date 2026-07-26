@@ -86,7 +86,7 @@ export default async function HomePage() {
           <p className="text-lg text-gray-400">
             Real-time VPS restock monitoring and LowEndTalk offer alerts.
           </p>
-          <div className="flex justify-center gap-4 pt-2">
+          <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row sm:gap-4">
             <a
               href="https://t.me/vpsknow_stock"
               className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
@@ -182,14 +182,14 @@ export default async function HomePage() {
             <h2 className="mb-4 text-xl font-semibold text-white">Recent Events</h2>
             <div className="space-y-2">
               {recentEvents.map((event) => (
-                <div key={event.id} className="flex gap-4 rounded-lg border border-gray-800/50 bg-[#12121a] px-4 py-3 text-sm">
+                <div key={event.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-gray-800/50 bg-[#12121a] px-4 py-3 text-sm">
                   <span className={event.eventType === 'restock' ? 'text-emerald-400' : 'text-red-400'}>
                     {event.eventType === 'restock' ? 'RESTOCK' : 'SOLD OUT'}
                   </span>
                   <span className="font-medium text-white">{event.product.provider.name}</span>
                   <span className="text-gray-400">{event.product.planName}</span>
                   <span className="text-gray-500">{event.product.location}</span>
-                  <span className="ml-auto font-mono text-xs text-gray-600">{formatDate(event.detectedAt)}</span>
+                  <span className="w-full font-mono text-xs text-gray-600 sm:ml-auto sm:w-auto">{formatDate(event.detectedAt)}</span>
                 </div>
               ))}
             </div>

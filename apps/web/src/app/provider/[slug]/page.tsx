@@ -47,8 +47,8 @@ export default async function ProviderDetailPage({
         </Link>
 
         <header className="space-y-2">
-          <div className="flex items-baseline gap-4">
-            <h1 className="text-3xl font-bold text-white">{provider.name}</h1>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-4">
+            <h1 className="text-2xl font-bold text-white sm:text-3xl">{provider.name}</h1>
             <a
               href={provider.website}
               target="_blank"
@@ -63,7 +63,7 @@ export default async function ProviderDetailPage({
           </p>
         </header>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-3 sm:gap-4">
           <div className="rounded-lg border border-emerald-800 bg-emerald-950/50 px-4 py-2">
             <span className="font-mono text-lg font-bold text-emerald-400">{inStockProducts.length}</span>
             <span className="ml-2 text-sm text-emerald-400/70">In Stock</span>
@@ -78,7 +78,7 @@ export default async function ProviderDetailPage({
           <h2 className="mb-4 text-xl font-semibold text-white">Available Plans</h2>
           {inStockProducts.length === 0 ? <p className="text-gray-500">No in-stock plans.</p> : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-[900px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-left text-gray-400">
                     <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
@@ -132,7 +132,7 @@ export default async function ProviderDetailPage({
           <h2 className="mb-4 text-xl font-semibold text-gray-400">Out of Stock</h2>
           {outOfStockProducts.length === 0 ? <p className="text-gray-500">No sold-out plans.</p> : (
             <div className="overflow-x-auto">
-              <table className="w-full opacity-60 text-sm">
+              <table className="min-w-[560px] w-full text-sm opacity-60">
                 <thead><tr className="border-b border-gray-800 text-left text-gray-500">
                   <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
                   <th className="pb-2 pr-4">Price</th><th className="pb-2">Last Checked</th>
