@@ -2,26 +2,47 @@ import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import pino from 'pino';
 import { registry } from '@vpsknow/providers';
-import { withJitter } from '@vpsknow/shared';
+import {
+  ADAPTER_DEGRADED_THRESHOLD,
+  ADAPTER_PAUSED_THRESHOLD,
+  withJitter,
+} from '@vpsknow/shared';
+import { sendChannelMessage } from '@vpsknow/telegram';
+import { isProviderPaused, recordProviderFailure, recordProviderSuccess } from './provider-health.js';
+import { discoverLetOffers } from './offers-engine.js';
 import { processStockResults } from './stock-engine.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 
 const QUEUE_NAME = 'stock-check';
+const OFFER_QUEUE_NAME = 'offer-discovery';
 
 const PROVIDER_INTERVALS: Record<string, number> = {
   bandwagonhost: 90_000,
   dmit: 150_000,
   buyvm: 90_000,
+  hosthatch: 150_000,
 };
 
 async function bootstrap(): Promise<void> {
   logger.info('VPSKnow Stock Worker starting...');
 
   const queue = new Queue(QUEUE_NAME, { connection });
+  const offerQueue = new Queue(OFFER_QUEUE_NAME, { connection });
+
+  await offerQueue.upsertJobScheduler(
+    'discover-lowendtalk-offers',
+    { every: Math.round(withJitter(150_000)) },
+    {
+      name: 'discover-lowendtalk-offers',
+      data: {},
+      opts: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+    },
+  );
 
   for (const [slug] of registry) {
     const interval = PROVIDER_INTERVALS[slug] || 180_000;
@@ -30,7 +51,11 @@ async function bootstrap(): Promise<void> {
     await queue.upsertJobScheduler(
       `check-${slug}`,
       { every: jittered },
-      { name: `check-${slug}`, data: { provider: slug } },
+      {
+        name: `check-${slug}`,
+        data: { provider: slug },
+        opts: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+      },
     );
 
     logger.info({ provider: slug, intervalMs: jittered }, 'Registered job scheduler');
@@ -46,11 +71,17 @@ async function bootstrap(): Promise<void> {
         return;
       }
 
+      if (await isProviderPaused(connection, provider)) {
+        logger.warn({ provider }, 'Provider is paused after repeated failures');
+        return;
+      }
+
       const startTime = Date.now();
       try {
         const results = await adapter.check();
         const duration = Date.now() - startTime;
         const summary = await processStockResults(provider, results, logger);
+        await recordProviderSuccess(connection, provider);
 
         logger.info(
           {
@@ -65,7 +96,32 @@ async function bootstrap(): Promise<void> {
         );
       } catch (err) {
         const duration = Date.now() - startTime;
-        logger.error({ provider, durationMs: duration, err }, 'Stock check failed');
+        const failureState = await recordProviderFailure(connection, provider);
+
+        logger.error(
+          { provider, durationMs: duration, failures: failureState.failures, err },
+          'Stock check failed',
+        );
+
+        if (failureState.degraded && failureState.failures === ADAPTER_DEGRADED_THRESHOLD) {
+          logger.warn({ provider }, 'Provider marked degraded after repeated failures');
+        }
+
+        if (failureState.paused && failureState.failures === ADAPTER_PAUSED_THRESHOLD) {
+          logger.error({ provider }, 'Provider paused for five minutes after repeated failures');
+
+          if (ADMIN_CHAT_ID) {
+            try {
+              await sendChannelMessage(
+                ADMIN_CHAT_ID,
+                `Provider ${provider} was paused for 5 minutes after ${failureState.failures} consecutive failures.`,
+              );
+            } catch (notificationError) {
+              logger.error({ provider, err: notificationError }, 'Failed to send provider pause alert');
+            }
+          }
+        }
+
         throw err;
       }
     },
@@ -76,6 +132,15 @@ async function bootstrap(): Promise<void> {
     },
   );
 
+  const offerWorker = new Worker(
+    OFFER_QUEUE_NAME,
+    async () => {
+      const summary = await discoverLetOffers(connection);
+      logger.info(summary, 'LowEndTalk offer discovery complete');
+    },
+    { connection, concurrency: 1 },
+  );
+
   worker.on('failed', (job, err) => {
     logger.error({ jobId: job?.id, err: err.message }, 'Job failed');
   });
@@ -83,7 +148,9 @@ async function bootstrap(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     logger.info('Shutting down worker...');
     await worker.close();
+    await offerWorker.close();
     await queue.close();
+    await offerQueue.close();
     await connection.quit();
     process.exit(0);
   };

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   getAffiliateUrl,
   getLatestRestocks,
+  getRecentOffers,
   getRecentStockEvents,
   getRecentlySoldOut,
   getStockSummary,
@@ -35,9 +36,10 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
 }
 
 export default async function HomePage() {
-  const [providers, restocks, soldOut, recentEvents] = await Promise.all([
+  const [providers, restocks, offers, soldOut, recentEvents] = await Promise.all([
     getStockSummary(),
     getLatestRestocks(6),
+    getRecentOffers(4),
     getRecentlySoldOut(6),
     getRecentStockEvents(10),
   ]);
@@ -105,6 +107,35 @@ export default async function HomePage() {
         </section>
 
         <section>
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-xl font-semibold text-orange-400">Latest Offers</h2>
+            <Link href="/offers" className="text-sm text-emerald-400 hover:text-emerald-300">
+              View all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {offers.length > 0 ? offers.map((offer) => (
+              <article key={offer.id} className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500">{offer.provider || 'LowEndTalk'}</span>
+                  {offer.isLimitedStock && (
+                    <span className="rounded bg-orange-950 px-2 py-1 text-xs text-orange-300">LIMITED</span>
+                  )}
+                </div>
+                <h3 className="mt-2 font-semibold text-white">{offer.title}</h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {offer.locations.join(', ') || 'Unspecified'} - {offer.priceCents === null ? 'Price unavailable' : `${offer.currency || 'USD'} ${(offer.priceCents / 100).toFixed(2)}`}
+                </p>
+                <div className="mt-3 flex gap-3 text-sm">
+                  {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}
+                  {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">Thread</a>}
+                </div>
+              </article>
+            )) : <p className="text-gray-500">No offers yet.</p>}
+          </div>
+        </section>
+
+        <section>
           <h2 className="mb-4 text-xl font-semibold text-red-400">Recently Sold Out</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {soldOut.length > 0 ? soldOut.map((event) => (
@@ -118,19 +149,14 @@ export default async function HomePage() {
             <h2 className="mb-4 text-xl font-semibold text-white">Recent Events</h2>
             <div className="space-y-2">
               {recentEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex gap-4 rounded-lg border border-gray-800/50 bg-[#12121a] px-4 py-3 text-sm"
-                >
+                <div key={event.id} className="flex gap-4 rounded-lg border border-gray-800/50 bg-[#12121a] px-4 py-3 text-sm">
                   <span className={event.eventType === 'restock' ? 'text-emerald-400' : 'text-red-400'}>
                     {event.eventType === 'restock' ? 'RESTOCK' : 'SOLD OUT'}
                   </span>
                   <span className="font-medium text-white">{event.product.provider.name}</span>
                   <span className="text-gray-400">{event.product.planName}</span>
                   <span className="text-gray-500">{event.product.location}</span>
-                  <span className="ml-auto font-mono text-xs text-gray-600">
-                    {formatDate(event.detectedAt)}
-                  </span>
+                  <span className="ml-auto font-mono text-xs text-gray-600">{formatDate(event.detectedAt)}</span>
                 </div>
               ))}
             </div>

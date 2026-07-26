@@ -2,5 +2,15 @@
   "name": "@vpsknow/config",
   "version": "0.1.0",
   "private": true,
-  "files": ["tsconfig.base.json", "tsconfig.node.json", "tsconfig.next.json", "eslint.config.mjs"]
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.node.json",
+    "tsconfig.next.json",
+    "eslint.cjs"
+  ],
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/parser": "^8.64.0",
+    "eslint": "^8.57.0"
+  }
 }

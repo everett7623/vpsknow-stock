@@ -8,7 +8,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'lint ok'",
+    "lint": "eslint src prisma --ext .ts --config ../config/eslint.cjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

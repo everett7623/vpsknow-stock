@@ -1,5 +1,5 @@
 {
-  "extends": "@vpsknow/config/tsconfig.next.json",
+  "extends": "../../packages/config/tsconfig.next.json",
   "compilerOptions": {
     "outDir": "./dist",
     "paths": {

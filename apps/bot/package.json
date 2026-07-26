@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'lint ok'"
+    "lint": "eslint src --ext .ts --config ../../packages/config/eslint.cjs"
   },
   "dependencies": {
     "@vpsknow/database": "workspace:*",

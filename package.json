@@ -13,7 +13,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/parser": "^8.64.0",
     "@vpsknow/config": "workspace:*",
+    "eslint": "^8.57.0",
     "prettier": "^3.5.0",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"

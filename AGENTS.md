@@ -137,13 +137,16 @@ docker compose down             # Stop all services
 - [x] Website: Homepage with provider summary + recent events timeline
 - [x] Website: Provider list page (`/providers`)
 - [x] Website: Provider detail page (`/provider/[slug]`) with stock table
+- [x] Website: Filterable offers page (`/offers`) with URL-backed filters and sorting
 - [x] Web data layer (`lib/data.ts` — getProviders, getProviderBySlug, getStockSummary, getRecentStockEvents)
 - [x] GreenCloudVPS adapter (Phase 2 early implementation)
+- [x] LET offer discovery, filtering, and Telegram push implementation
 
 ### Remaining Phase 1 Tasks
-- [ ] Run `pnpm approve-builds` to activate Prisma/esbuild
-- [ ] Run `pnpm build` — fix any type errors
-- [ ] Production Docker Compose for worker/bot
+- [x] Activate Prisma/esbuild build scripts and generate Prisma Client
+- [x] Run `pnpm build` with no type errors
+- [x] Add production Docker Compose for worker/bot
+- [ ] Validate production Docker Compose on a Docker-enabled host
 - [ ] 24h stability test run
 - [ ] End-to-end integration test
 
@@ -227,6 +230,7 @@ TELEGRAM_ADMIN_CHAT_ID      # Admin notifications
 AFFILIATE_BASE_URL          # https://go.uukk.de
 NODE_ENV              # development | production
 LOG_LEVEL             # info | debug | warn | error
+HOSTHATCH_API_TOKEN   # Optional; enables the authenticated HostHatch stock adapter
 ```
 
 ---

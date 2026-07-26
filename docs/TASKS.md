@@ -1,7 +1,7 @@
 # VPSKnow Stock — Complete Development Document
 
-> Last updated: 2026-07-20
-> Status: Phase 1 — Not Started
+> Last updated: 2026-07-25
+> Status: Phase 1 — Acceptance Testing; Phase 2 — In Progress
 
 ---
 
@@ -1057,6 +1057,8 @@ Use `@vercel/og` or `satori` for generation.
 **Goal**: 3 providers monitored (BandwagonHost, DMIT, BuyVM), restock push to Telegram, minimal website.
 **Duration**: 4–6 weeks.
 
+**Verified 2026-07-25**: 31 unit tests, full TypeScript check, lint, production build, and Prisma Client generation pass. Docker runtime, live PostgreSQL/Redis, real Telegram delivery, and long-running stability validation remain pending because the current environment has no Docker installation or configured secrets.
+
 ### Task 1.1 — Monorepo Scaffold
 
 | Item | Detail |
@@ -1064,14 +1066,14 @@ Use `@vercel/og` or `satori` for generation.
 | Priority | P0 |
 | Depends on | — |
 
-- [ ] Init Turborepo + pnpm workspace
-- [ ] Create `apps/web`, `apps/worker`, `apps/bot` stubs
-- [ ] Create `packages/database`, `packages/providers`, `packages/parsers`, `packages/telegram`, `packages/shared`, `packages/config`
-- [ ] Root `turbo.json` with `build`, `dev`, `lint`, `typecheck` pipelines
-- [ ] Shared `tsconfig.json` base in `packages/config`
-- [ ] ESLint + Prettier config in `packages/config`
-- [ ] Root `docker-compose.yml` with PostgreSQL + Redis services
-- [ ] `.env.example` with all required env vars
+- [x] Init Turborepo + pnpm workspace
+- [x] Create `apps/web`, `apps/worker`, `apps/bot` stubs
+- [x] Create `packages/database`, `packages/providers`, `packages/parsers`, `packages/telegram`, `packages/shared`, `packages/config`
+- [x] Root `turbo.json` with `build`, `dev`, `lint`, `typecheck` pipelines
+- [x] Shared `tsconfig.json` base in `packages/config`
+- [x] ESLint + Prettier config in `packages/config`
+- [x] Root `docker-compose.yml` with PostgreSQL + Redis services
+- [x] `.env.example` with all required env vars
 
 **Done when**: `pnpm install && pnpm build` passes from root with no errors.
 
@@ -1084,10 +1086,10 @@ Use `@vercel/og` or `satori` for generation.
 | Priority | P0 |
 | Depends on | 1.1 |
 
-- [ ] Prisma schema in `packages/database/prisma/schema.prisma`
-- [ ] Tables: `providers`, `products`, `stock_checks`, `stock_events`, `affiliate_links`, `telegram_messages`
-- [ ] Seed script: 3 providers (BandwagonHost, DMIT, BuyVM) with known products
-- [ ] `packages/database` exports generated Prisma client
+- [x] Prisma schema in `packages/database/prisma/schema.prisma`
+- [x] Tables: `providers`, `products`, `stock_checks`, `stock_events`, `affiliate_links`, `telegram_messages`
+- [x] Seed script: 3 providers (BandwagonHost, DMIT, BuyVM) with known products
+- [x] `packages/database` exports generated Prisma client
 - [ ] Migration runs clean against local Docker PostgreSQL
 
 **Done when**: `pnpm --filter database db:push && pnpm --filter database db:seed` succeeds, tables visible in psql.
@@ -1101,14 +1103,14 @@ Use `@vercel/og` or `satori` for generation.
 | Priority | P0 |
 | Depends on | 1.1 |
 
-- [ ] Define `StockResult` and `ProviderAdapter` interfaces in `packages/providers/src/types.ts`
-- [ ] Implement adapter registry: `getAdapter(slug) → ProviderAdapter`
-- [ ] Implement 3 adapters:
+- [x] Define `StockResult` and `ProviderAdapter` interfaces in `packages/providers/src/types.ts`
+- [x] Implement adapter registry: `getAdapter(slug) → ProviderAdapter`
+- [x] Implement 3 adapters:
   - `bandwagonhost.ts` — Parse plan table + direct URLs, detect limited plan availability
   - `dmit.ts` — Parse pricing page sections, detect per-product-line stock status
   - `buyvm.ts` — Parse order page, detect slice availability by location
-- [ ] Each adapter returns `StockResult[]`
-- [ ] Unit tests per adapter with mocked HTML fixtures
+- [x] Each adapter returns `StockResult[]`
+- [x] Unit tests per adapter with mocked HTML fixtures
 
 **Adapter interface**:
 
@@ -1144,26 +1146,26 @@ export interface ProviderAdapter {
 | Priority | P0 |
 | Depends on | 1.2, 1.3 |
 
-- [ ] BullMQ queue: `stock-check` with per-provider repeatable jobs
-- [ ] Job processor: call adapter → compare with DB → detect state transitions
-- [ ] Restock detection logic:
+- [x] BullMQ queue: `stock-check` with per-provider repeatable jobs
+- [x] Job processor: call adapter → compare with DB → detect state transitions
+- [x] Restock detection logic:
   - Require ≥2 consecutive `inStock: true` checks
   - Reject error pages, CF challenges, login walls
   - Dedup: same product not re-notified within 60 min
-- [ ] Write `stock_checks` row per check
-- [ ] Write `stock_events` row on state transition
-- [ ] Update `products.in_stock` and `products.last_stock_change_at`
-- [ ] Check intervals:
+- [x] Write `stock_checks` row per check
+- [x] Write `stock_events` row on state transition
+- [x] Update `products.in_stock` and `products.last_stock_change_at`
+- [x] Check intervals:
   - BandwagonHost: 1–2 min (limited plans sell fast)
   - DMIT: 2–3 min
   - BuyVM: 1–2 min
   - All with ±20% random jitter
-- [ ] Error handling:
-  - 5 consecutive failures → mark "degraded"
-  - 20 consecutive failures → pause job, log alert
+- [x] Error handling:
+  - 5 consecutive failures → mark "degraded", open the circuit for 5 min, and alert admin
+  - First check after the 5 min pause is half-open; a successful check closes the circuit
   - Exponential backoff on retries
-- [ ] Max 1 concurrent request per provider domain
-- [ ] Graceful shutdown on SIGTERM
+- [x] Max 1 concurrent request per provider domain
+- [x] Graceful shutdown on SIGTERM
 
 **Done when**: Worker runs in Docker, checks BandwagonHost + DMIT + BuyVM on schedule, correctly logs stock_checks and fires stock_events on simulated state changes.
 
@@ -1176,8 +1178,8 @@ export interface ProviderAdapter {
 | Priority | P0 |
 | Depends on | 1.4 |
 
-- [ ] `packages/telegram` module: message formatter + send client (grammy)
-- [ ] Restock message template:
+- [x] `packages/telegram` module: message formatter + send client (grammy)
+- [x] Restock message template:
   ```
   🟢 RESTOCK — {provider}
 
@@ -1191,10 +1193,10 @@ export interface ProviderAdapter {
   ⏱ Detected: {timestamp} UTC
   🔗 Order: {affiliateUrl}
   ```
-- [ ] On `stock_events.event_type = restock` → format + send to `@vpsknow_stock`
-- [ ] Record `telegram_messages` row with message_id
-- [ ] Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_STOCK_CHANNEL_ID`
-- [ ] Retry on Telegram API failure (3 attempts, 5s backoff)
+- [x] On `stock_events.event_type = restock` → format + send to `@vpsknow_stock`
+- [x] Record `telegram_messages` row with message_id
+- [x] Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_STOCK_CHANNEL_ID`
+- [x] Retry on Telegram API failure (3 attempts, 5s backoff)
 
 **Done when**: A simulated restock event sends a correctly formatted message to a test Telegram channel.
 
@@ -1207,12 +1209,12 @@ export interface ProviderAdapter {
 | Priority | P1 |
 | Depends on | 1.2 |
 
-- [ ] Next.js App Router in `apps/web`
-- [ ] Pages:
+- [x] Next.js App Router in `apps/web`
+- [x] Pages:
   - `/` — Homepage: latest restocks, provider list
   - `/providers` — Provider directory
   - `/provider/[slug]` — Provider detail: current stock, plans, last check time
-- [ ] Homepage sections:
+- [x] Homepage sections:
   - Latest Restocks (from `stock_events`)
   - Popular Providers (static for v1)
   - Recently Sold Out
@@ -1222,10 +1224,10 @@ export interface ProviderAdapter {
   - Last check timestamp
   - Order link (affiliate)
   - Telegram subscribe button
-- [ ] Responsive, dark theme, clean developer-tool aesthetic
-- [ ] All order links go through `go.uukk.de`
-- [ ] "Last checked" timestamp visible per provider
-- [ ] If adapter stale >30 min → show "Status Unknown"
+- [x] Responsive, dark theme, clean developer-tool aesthetic
+- [x] All order links go through `go.uukk.de`
+- [x] "Last checked" timestamp visible per provider
+- [x] If adapter stale >30 min → show "Status Unknown"
 
 **Done when**: `pnpm --filter web build` succeeds, pages render with real DB data.
 
@@ -1243,8 +1245,8 @@ export interface ProviderAdapter {
   - `redis` (Redis 7)
   - `worker` (apps/worker)
   - `bot` (apps/bot, placeholder for Phase 3)
-- [ ] Dockerfiles for worker and bot
-- [ ] `.env.example` with all required vars
+- [x] Dockerfiles for worker and bot
+- [x] `.env.example` with all required vars
 - [ ] `docker compose up` starts full local stack
 - [ ] Vercel project setup for `apps/web` → `stock.vpsknow.com`
 - [ ] VPS deployment script or guide for worker stack
@@ -1265,8 +1267,8 @@ export interface ProviderAdapter {
 |------|--------|
 | Priority | P0 |
 
-- [ ] `hosthatch.ts` — Parse product/pricing pages for active plans
-- [ ] `greencloud.ts` — Parse WHMCS store pages, detect stock per location
+- [x] `hosthatch.ts` — Use the authenticated products API for per-location availability; activates when `HOSTHATCH_API_TOKEN` is configured
+- [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
 - [ ] `spartanhost.ts`
 - [ ] `vmiss.ts`
 - [ ] `netcup.ts`
@@ -1288,9 +1290,9 @@ export interface ProviderAdapter {
 
 Discovery pipeline (4 layers):
 
-- [ ] **Layer 1 — RSS**: Poll `https://lowendtalk.com/categories/offers/feeds.rss` every 2–3 min. Extract discussion ID, title, author, timestamp, URL.
-- [ ] **Layer 2 — HTML Fallback**: Scrape `https://lowendtalk.com/categories/offers` page. Same fields. Dedup by discussion ID. Catches RSS outages.
-- [ ] **Layer 3 — Post Detail**: For new discussion IDs, fetch post body. Extract:
+- [x] **Layer 1 — RSS**: Poll `https://lowendtalk.com/categories/offers/feeds.rss` every 2–3 min. Extract discussion ID, title, author, timestamp, URL.
+- [x] **Layer 2 — HTML Fallback**: Scrape `https://lowendtalk.com/categories/offers` page. Same fields. Dedup by discussion ID. Catches RSS outages.
+- [x] **Layer 3 — Post Detail**: For new discussion IDs, fetch post body. Extract:
   - Provider name
   - Category (VPS / VDS / Dedicated / NAT VPS / Storage)
   - Price + billing cycle
@@ -1299,12 +1301,12 @@ Discovery pipeline (4 layers):
   - Coupon code
   - Order URL
   - Flags: `is_limited_stock`, `is_recurring`, `is_preorder`
-- [ ] **Layer 4 — Filter Rules**:
+- [x] **Layer 4 — Filter Rules**:
   - **Include**: VPS/VDS/NAT VPS/Dedicated + has pricing + (whitelisted provider OR title matches `Limited|Flash|Restock|Stock|LET Special`)
   - **Exclude**: Shared Hosting, Domain, Email, SSL, Service Transfers, WTB, free proxy/VPN, no-price posts
-- [ ] Write to `offers` table
-- [ ] Dedup key: LET Discussion ID only (NEVER use "last reply time")
-- [ ] Only process discussions created after worker's first-run timestamp
+- [x] Write to `offers` table
+- [x] Dedup key: LET Discussion ID only (NEVER use "last reply time")
+- [x] Only process discussions created after worker's first-run timestamp
 
 **Done when**: Worker discovers and parses LET Offers, writes to DB, filters correctly.
 
@@ -1317,7 +1319,7 @@ Discovery pipeline (4 layers):
 | Priority | P0 |
 | Depends on | 2.2 |
 
-- [ ] Offer message template:
+- [x] Offer message template:
   ```
   🔥 NEW OFFER — {provider}
 
@@ -1333,8 +1335,8 @@ Discovery pipeline (4 layers):
   🔗 Order: {affiliateUrl}
   🔗 Thread: {letUrl}
   ```
-- [ ] Push filtered offers to `@vpsknow_offers`
-- [ ] Record in `telegram_messages`
+- [x] Push filtered offers to `@vpsknow_offers`
+- [x] Record in `telegram_messages`
 
 **Done when**: New LET offers appear in test Telegram channel with correct formatting.
 
@@ -1347,9 +1349,10 @@ Discovery pipeline (4 layers):
 | Priority | P1 |
 | Depends on | 2.2 |
 
-- [ ] `/offers` — All offers, filterable
+- [x] `/offers` — All offers, filterable
 - [ ] `/provider/[slug]/[plan]` — Plan detail: specs, price, stock timeline
-- [ ] Filters: Provider, Category, Location, Billing, Price range, IPv4
+- [x] Filters: Provider, Category, Location, Billing, Price range, sorting
+- [ ] IPv4 filter (Offer schema and parser do not capture IPv4 yet)
 - [ ] Homepage add: "LowEndTalk New Offers" and "Limited Offers" sections
 
 **Done when**: Offers pages render with real data from DB, filters work.
@@ -1475,14 +1478,14 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 ### Phase 1 MVP — Ready When
 
 - [ ] 3 providers (BandwagonHost, DMIT, BuyVM) checked on schedule
-- [ ] Restock correctly detected (consecutive confirmation, dedup)
+- [x] Restock correctly detected (consecutive confirmation, dedup)
 - [ ] Telegram restock message sent to channel with correct format
 - [ ] Website shows homepage, provider list, provider detail with live data
 - [ ] Docker Compose runs full local stack
 - [ ] Worker runs >24h without crash or memory leak
 - [ ] False positive rate <5% over 48h test run
-- [ ] `pnpm build` passes all apps
-- [ ] `pnpm lint && pnpm typecheck` clean
+- [x] `pnpm build` passes all apps
+- [x] `pnpm lint && pnpm typecheck` clean
 
 ### Phase 1 Success Metrics
 

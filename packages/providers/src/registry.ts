@@ -3,6 +3,7 @@ import { BandwagonHostAdapter } from './adapters/bandwagonhost.js';
 import { DmitAdapter } from './adapters/dmit.js';
 import { BuyVMAdapter } from './adapters/buyvm.js';
 import { GreenCloudVPSAdapter } from './adapters/greencloudvps.js';
+import { HostHatchAdapter } from './adapters/hosthatch.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -10,6 +11,10 @@ const adapters: ProviderAdapter[] = [
   new BuyVMAdapter(),
   new GreenCloudVPSAdapter(),
 ];
+
+if (process.env.HOSTHATCH_API_TOKEN) {
+  adapters.push(new HostHatchAdapter());
+}
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(
   adapters.map((a) => [a.slug, a]),

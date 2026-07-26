@@ -538,8 +538,8 @@ These providers are always in stock; they appear in the provider directory and c
 ### 10.4 Error Handling
 
 - Failed checks increment a per-provider error counter.
-- After 5 consecutive failures: mark provider as "degraded" in admin.
-- After 20 consecutive failures: pause monitoring, alert admin.
+- After 5 consecutive failures: mark provider as "degraded", open the circuit for 5 minutes, and alert admin.
+- After the 5-minute pause, allow one half-open check; a successful check resets the failure counter.
 - All errors are logged with timestamp, provider, HTTP status, and error message.
 - Cloudflare challenges or CAPTCHAs: log and escalate to admin (may need Playwright or manual intervention).
 

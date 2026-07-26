@@ -124,7 +124,7 @@ export class GreenCloudVPSAdapter implements ProviderAdapter {
       const storageGb = parseStorageGb(features["hard drive"] || features["storage"] || "");
       const bandwidthTb = parseBandwidthTb(features["bandwidth"] || "");
       const location = features["location"] || "Unknown";
-      const ipv4 = parseInt((features["ipv4"] || "0").match(/\d+/)?.[1] || "0") > 0;
+      const ipv4 = parseInt((features["ipv4"] || "0").match(/\d+/)?.[0] || "0") > 0;
       const ipv6 = features["ipv6"] ? features["ipv6"].toLowerCase() !== "n/a" && features["ipv6"].toLowerCase() !== "no" : false;
 
       const priceText = card.find(".product-pricing").text();

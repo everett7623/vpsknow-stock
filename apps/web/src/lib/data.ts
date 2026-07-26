@@ -73,6 +73,86 @@ export async function getRecentStockEvents(
   });
 }
 
+export async function getRecentOffers(limit = 30) {
+  if (!hasDatabase) return [];
+  return prisma.offer.findMany({
+    where: { confidence: { gte: 0.6 } },
+    orderBy: [{ isLimitedStock: 'desc' }, { postedAt: 'desc' }],
+    take: limit,
+  });
+}
+
+export type OfferSort = 'newest' | 'price_asc' | 'price_desc';
+
+export interface OfferFilters {
+  provider?: string;
+  category?: string;
+  location?: string;
+  billingCycle?: string;
+  minPriceCents?: number;
+  maxPriceCents?: number;
+  sort?: OfferSort;
+}
+
+export interface OfferFilterOptions {
+  providers: string[];
+  categories: string[];
+  locations: string[];
+  billingCycles: string[];
+}
+
+function offerWhere(filters: OfferFilters): Prisma.OfferWhereInput {
+  const hasPriceFilter = filters.minPriceCents !== undefined || filters.maxPriceCents !== undefined;
+
+  return {
+    confidence: { gte: 0.6 },
+    ...(filters.provider ? { provider: filters.provider } : {}),
+    ...(filters.category ? { category: filters.category } : {}),
+    ...(filters.location ? { locations: { has: filters.location } } : {}),
+    ...(filters.billingCycle ? { billingCycle: filters.billingCycle } : {}),
+    ...(hasPriceFilter ? {
+      priceCents: {
+        ...(filters.minPriceCents !== undefined ? { gte: filters.minPriceCents } : {}),
+        ...(filters.maxPriceCents !== undefined ? { lte: filters.maxPriceCents } : {}),
+      },
+    } : {}),
+  };
+}
+
+function offerOrderBy(sort: OfferSort | undefined): Prisma.OfferOrderByWithRelationInput {
+  if (sort === 'price_asc') return { priceCents: 'asc' };
+  if (sort === 'price_desc') return { priceCents: 'desc' };
+  return { postedAt: 'desc' };
+}
+
+export async function getOffers(filters: OfferFilters = {}, limit = 60) {
+  if (!hasDatabase) return [];
+  return prisma.offer.findMany({
+    where: offerWhere(filters),
+    orderBy: offerOrderBy(filters.sort),
+    take: limit,
+  });
+}
+
+export async function getOfferFilterOptions(): Promise<OfferFilterOptions> {
+  if (!hasDatabase) {
+    return { providers: [], categories: [], locations: [], billingCycles: [] };
+  }
+
+  const offers = await prisma.offer.findMany({
+    where: { confidence: { gte: 0.6 } },
+    select: { provider: true, category: true, locations: true, billingCycle: true },
+  });
+  const values = <T>(items: T[]): T[] => [...new Set(items)].sort();
+
+  return {
+    providers: values(offers.flatMap((offer) => offer.provider ? [offer.provider] : [])),
+    categories: values(offers.flatMap((offer) => offer.category ? [offer.category] : [])),
+    locations: values(offers.flatMap((offer) => offer.locations)),
+    billingCycles: values(offers.flatMap((offer) => offer.billingCycle ? [offer.billingCycle] : [])),
+  };
+}
+
 export async function getStockSummary(): Promise<
   Array<{
     id: string;

@@ -1,7 +1,7 @@
 export const RESTOCK_COOLDOWN_MS = 60 * 60 * 1000; // 60 min
 export const CONSECUTIVE_CONFIRMS_REQUIRED = 2;
 export const ADAPTER_DEGRADED_THRESHOLD = 5;
-export const ADAPTER_PAUSED_THRESHOLD = 20;
+export const ADAPTER_PAUSED_THRESHOLD = ADAPTER_DEGRADED_THRESHOLD;
 export const STALE_ADAPTER_MS = 30 * 60 * 1000; // 30 min
 export const JITTER_FACTOR = 0.2; // ±20%
 
