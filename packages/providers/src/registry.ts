@@ -6,6 +6,7 @@ import { GreenCloudVPSAdapter } from './adapters/greencloudvps.js';
 import { HostHatchAdapter } from './adapters/hosthatch.js';
 import { SpartanHostAdapter } from './adapters/spartanhost.js';
 import { VmissAdapter } from './adapters/vmiss.js';
+import { VpsAdapter } from './adapters/vps.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -14,6 +15,7 @@ const adapters: ProviderAdapter[] = [
   new GreenCloudVPSAdapter(),
   new SpartanHostAdapter(),
   new VmissAdapter(),
+  new VpsAdapter(),
 ];
 
 if (process.env.HOSTHATCH_API_TOKEN) {

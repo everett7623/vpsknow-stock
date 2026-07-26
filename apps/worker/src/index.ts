@@ -28,6 +28,7 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   hosthatch: 150_000,
   spartanhost: 150_000,
   vmiss: 300_000,
+  vps: 300_000,
 };
 
 async function bootstrap(): Promise<void> {

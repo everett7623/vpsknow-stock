@@ -1265,7 +1265,7 @@ export interface ProviderAdapter {
 - [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
 - [ ] `akilecloud.ts`
-- [ ] `vps.ts` (V.PS)
+- [x] `vps.ts` (V.PS) — Parse HostBill product cards for Singapore and Tokyo availability
 - [ ] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
 - [ ] Unit tests per adapter with HTML fixtures
 - [ ] Register all in adapter registry

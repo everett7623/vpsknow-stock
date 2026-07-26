@@ -8,6 +8,7 @@ import { GreenCloudVPSAdapter } from '../greencloudvps.js';
 import { HostHatchAdapter } from '../hosthatch.js';
 import { SpartanHostAdapter } from '../spartanhost.js';
 import { VmissAdapter } from '../vmiss.js';
+import { VpsAdapter } from '../vps.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -223,6 +224,34 @@ describe('provider adapters', () => {
       price: 3000,
       inStock: true,
       orderUrl: 'https://app.vmiss.com/cart.php?a=add&pid=102',
+    });
+  });
+
+  it('parses V.PS HostBill products and out-of-stock class', () => {
+    const results = new VpsAdapter().parse(fixture('vps.html'), 'Singapore');
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'vps',
+      productId: 'vps-235',
+      planName: 'Singapore EPYC Explorer',
+      location: 'Singapore',
+      cpu: '2 Cores',
+      ramMb: 2048,
+      storageGb: 30,
+      storageType: 'NVMe',
+      bandwidthTb: 1,
+      ipv4: true,
+      ipv6: true,
+      price: 4695,
+      currency: 'EUR',
+      inStock: true,
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'vps-236',
+      ramMb: 4096,
+      price: 8495,
+      inStock: false,
     });
   });
 });
