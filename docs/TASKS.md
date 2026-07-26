@@ -1345,7 +1345,7 @@ Discovery pipeline (4 layers):
 | Depends on | 2.2 |
 
 - [x] `/offers` — All offers, filterable
-- [ ] `/provider/[slug]/[plan]` — Plan detail: specs, price, stock timeline
+- [x] `/provider/[slug]/[plan]` — Plan detail: specs, price, stock timeline
 - [x] Filters: Provider, Category, Location, Billing, Price range, sorting
 - [ ] IPv4 filter (Offer schema and parser do not capture IPv4 yet)
 - [ ] Homepage add: "LowEndTalk New Offers" and "Limited Offers" sections

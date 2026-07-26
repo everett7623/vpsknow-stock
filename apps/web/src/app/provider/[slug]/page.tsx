@@ -71,7 +71,14 @@ export default async function ProviderDetailPage({
                 <tbody>
                   {inStockProducts.map((product) => (
                     <tr key={product.id} className="border-b border-gray-800/50">
-                      <td className="py-3 pr-4 font-medium text-white">{product.planName}</td>
+                      <td className="py-3 pr-4 font-medium text-white">
+                        <Link
+                          href={`/provider/${provider.slug}/${encodeURIComponent(product.productId)}`}
+                          className="hover:text-emerald-300"
+                        >
+                          {product.planName}
+                        </Link>
+                      </td>
                       <td className="py-3 pr-4 text-gray-300">{product.location}</td>
                       <td className="py-3 pr-4 font-mono text-xs text-gray-300">{product.cpu || 'N/A'}</td>
                       <td className="py-3 pr-4 font-mono text-xs text-gray-300">
@@ -113,7 +120,14 @@ export default async function ProviderDetailPage({
                 </tr></thead>
                 <tbody>{outOfStockProducts.map((product) => (
                   <tr key={product.id} className="border-b border-gray-800/30">
-                    <td className="py-2 pr-4 text-gray-400">{product.planName}</td>
+                    <td className="py-2 pr-4 text-gray-400">
+                      <Link
+                        href={`/provider/${provider.slug}/${encodeURIComponent(product.productId)}`}
+                        className="hover:text-white"
+                      >
+                        {product.planName}
+                      </Link>
+                    </td>
                     <td className="py-2 pr-4 text-gray-500">{product.location}</td>
                     <td className="py-2 pr-4 font-mono text-gray-500">{formatPrice(product)}</td>
                     <td className="py-2 text-xs text-gray-600">{formatDate(product.lastCheckedAt)}</td>

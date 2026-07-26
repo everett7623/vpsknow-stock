@@ -16,6 +16,18 @@ export type StockEventWithProduct = Prisma.StockEventGetPayload<{
   include: typeof stockEventInclude;
 }>;
 
+const productDetailInclude = {
+  provider: true,
+  stockEvents: {
+    orderBy: { detectedAt: 'desc' as const },
+    take: 50,
+  },
+} as const;
+
+export type ProductDetail = Prisma.ProductGetPayload<{
+  include: typeof productDetailInclude;
+}>;
+
 const AFFILIATE_BASE = process.env.AFFILIATE_BASE_URL || 'https://go.uukk.de';
 const hasDatabase = Boolean(process.env.DATABASE_URL);
 
@@ -35,6 +47,20 @@ export async function getProviderBySlug(
   return prisma.provider.findUnique({
     where: { slug },
     include: providerInclude,
+  });
+}
+
+export async function getProductDetail(
+  providerSlug: string,
+  productId: string,
+): Promise<ProductDetail | null> {
+  if (!hasDatabase) return null;
+  return prisma.product.findFirst({
+    where: {
+      productId,
+      provider: { slug: providerSlug, isActive: true },
+    },
+    include: productDetailInclude,
   });
 }
 
