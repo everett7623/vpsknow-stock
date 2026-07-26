@@ -179,7 +179,7 @@ affiliate_links
 
 ## 4. Provider Monitoring
 
-### 4.1 First Batch — 10 Providers (S-Tier)
+### 4.1 First Batch — 9 Providers (S-Tier)
 
 | # | Provider | Focus |
 |---|----------|-------|
@@ -190,9 +190,8 @@ affiliate_links
 | 5 | BandwagonHost | Limited plans, DC6/DC9, restocks |
 | 6 | DMIT | PVM, Premium, Eyeball, by location |
 | 7 | VMISS | CN2, BGP, HK, JP, LA |
-| 8 | Netcup | VPS/RS specials, limited promos |
-| 9 | AkileCloud | HK, JP, SG, optimized routing |
-| 10 | V.PS | JP, SG, EU limited plans |
+| 8 | AkileCloud | HK, JP, SG, optimized routing |
+| 9 | V.PS | JP, SG, EU limited plans |
 
 ### 4.2 Provider Adapter Interface
 
@@ -232,7 +231,6 @@ packages/providers/src/
 ├── bandwagonhost.ts
 ├── dmit.ts
 ├── vmiss.ts
-├── netcup.ts
 ├── akilecloud.ts
 └── vps.ts
 ```
@@ -483,7 +481,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 ### Phase 2 — LET + Full First Batch (2–3 weeks)
 
-- [ ] Remaining 7 S-tier provider adapters
+- [ ] Remaining 6 first-batch provider adapters
 - [ ] LowEndTalk RSS + HTML scraper
 - [ ] LET post parser (structured field extraction)
 - [ ] Filter engine for LET offers
@@ -563,7 +561,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 | Metric | Target |
 |--------|--------|
-| Providers monitored | 10 |
+| Providers monitored | 9 |
 | Check uptime | >99% |
 | Restock detection latency | <3 min from actual restock |
 | False positive rate | <5% |

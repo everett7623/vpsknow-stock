@@ -416,17 +416,10 @@ A vertical timeline showing state transitions:
   - Eyeball plans
 - **Detection signal**: "Deploy Now" button active vs "Sold Out" or "Waitlist" state
 
-#### Netcup
+#### Netcup (Offers Only — No Stock Monitoring)
 
-- **URL**: `https://www.netcup.de/vserver/` + special pages
-- **Method**: HTTP GET → parse product listing
-- **Challenge**: German language site; special offers on separate anniversary/event pages
-- **Products to monitor**:
-  - VPS (piko, nano, mikro, etc.)
-  - Root Server (RS series)
-  - Special offers (appear periodically)
-- **Detection signal**: "Bestellen" (Order) button vs "ausverkauft" (sold out)
-- **Note**: Netcup specials appear on `netcup.de/sonderangebote/` — separate scraper target
+- **Source**: LET/provider promotions may still appear in the Offers pipeline
+- **Note**: Do not create or schedule a Netcup stock adapter.
 
 ### Adapter Testing Strategy
 
@@ -460,8 +453,7 @@ Each adapter needs:
 | BandwagonHost | Moderate | Rotate UA, respect rate |
 | DMIT | Cloudflare (sometimes) | Playwright fallback |
 | SpartanHost | None | Direct HTTP |
-| VMISS | Light | Standard HTTP |
-| Netcup | Regional blocking possible | EU proxy if needed |
+| VMISS | Cloudflare Managed Challenge | Direct HTTP when permitted; reject challenge pages and validate in dry-run |
 | AkileCloud | None | Direct HTTP |
 | V.PS | None | Direct HTTP |
 
@@ -1257,11 +1249,11 @@ export interface ProviderAdapter {
 
 ## Phase 2 — LET + Full First Batch
 
-**Goal**: All 10 S-tier providers + LowEndTalk Offer engine.
+**Goal**: All 9 first-batch providers + LowEndTalk Offer engine.
 **Duration**: 2–3 weeks.
 **Depends on**: Phase 1 complete.
 
-### Task 2.1 — Remaining 7 Provider Adapters
+### Task 2.1 — Remaining 6 Provider Adapters
 
 | Item | Detail |
 |------|--------|
@@ -1271,14 +1263,13 @@ export interface ProviderAdapter {
 - [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
 - [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
-- [ ] `netcup.ts`
 - [ ] `akilecloud.ts`
 - [ ] `vps.ts` (V.PS)
 - [ ] Unit tests per adapter with HTML fixtures
 - [ ] Register all in adapter registry
 - [ ] Add BullMQ jobs with appropriate intervals
 
-**Done when**: All 10 providers running in worker, stock_checks accumulating.
+**Done when**: All 9 providers are running in the worker and stock_checks are accumulating.
 
 ---
 
@@ -1424,9 +1415,8 @@ Discovery pipeline (4 layers):
 | 5 | GreenCloudVPS | Tokyo, SG, HK, Storage, annual | 2–3 min | Phase 2 |
 | 6 | SpartanHost | Seattle, Dallas, AMD, routing | 2–3 min | Phase 2 |
 | 7 | VMISS | CN2, BGP, HK, JP, LA | 5 min | Phase 2 |
-| 8 | Netcup | VPS/RS specials, limited promos | 5 min | Phase 2 |
-| 9 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
-| 10 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
+| 8 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
+| 9 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
 
 ### A-Tier — Phase 4 (Offers + Limited Stock)
 
@@ -1491,7 +1481,7 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 | Metric | Target |
 |--------|--------|
-| Providers monitored | 10 (by end of Phase 2) |
+| Providers monitored | 9 (by end of Phase 2) |
 | Check uptime | >99% |
 | Restock detection latency | <3 min |
 | False positive rate | <5% |
