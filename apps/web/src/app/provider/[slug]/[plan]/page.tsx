@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAffiliateUrl, getProductDetail } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
+import { PriceHistory } from './price-history';
 
 function formatRam(ramMb: number | null): string {
   if (!ramMb) return 'N/A';
@@ -83,6 +84,11 @@ export default async function ProductDetailPage({
             ))}
           </dl>
           <p className="mt-3 text-xs text-gray-500">Last checked: {formatDate(product.lastCheckedAt)}</p>
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-white">Price History</h2>
+          <PriceHistory points={product.stockChecks} currency={product.currency} />
         </section>
 
         <section>

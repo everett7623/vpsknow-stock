@@ -61,6 +61,7 @@ model StockCheck {
   id         String   @id @default(cuid())
   productId  String
   inStock    Boolean
+  priceCents Int?
   responseMs Int?
   error      String?
   raw        Json?

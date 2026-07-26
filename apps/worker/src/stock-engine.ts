@@ -113,6 +113,7 @@ export async function processStockResults(
         data: {
           productId: product.id,
           inStock: result.inStock,
+          priceCents: result.price,
         },
       });
 

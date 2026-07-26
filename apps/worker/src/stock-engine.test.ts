@@ -132,7 +132,7 @@ describe('processStockResults', () => {
 
     expect(databaseMocks.productUpsert).toHaveBeenCalledOnce();
     expect(databaseMocks.stockCheckCreate).toHaveBeenCalledWith({
-      data: { productId: 'product-1', inStock: false },
+      data: { productId: 'product-1', inStock: false, priceCents: 350 },
     });
     expect(databaseMocks.stockEventCreate).not.toHaveBeenCalled();
     expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();

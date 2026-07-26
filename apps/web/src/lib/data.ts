@@ -22,6 +22,11 @@ const productDetailInclude = {
     orderBy: { detectedAt: 'desc' as const },
     take: 50,
   },
+  stockChecks: {
+    where: { priceCents: { not: null } },
+    orderBy: { checkedAt: 'desc' as const },
+    take: 100,
+  },
 } as const;
 
 export type ProductDetail = Prisma.ProductGetPayload<{
