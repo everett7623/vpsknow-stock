@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { StockResult } from '@vpsknow/providers';
-import { matchesRestockSubscription } from './subscriber-notifications.js';
+import {
+  matchesOfferSubscription,
+  matchesRestockSubscription,
+} from './subscriber-notifications.js';
 
 const result: StockResult = {
   provider: 'buyvm',
@@ -54,5 +57,35 @@ describe('subscriber notification matching', () => {
       categories: [],
       maxPriceCents: 10_000,
     }, { ...result, currency: 'EUR' })).toBe(false);
+  });
+
+  it('matches offers using normalized providers and any overlapping region', () => {
+    expect(matchesOfferSubscription({
+      providers: ['greencloudvps'],
+      regions: ['Tokyo', 'Singapore'],
+      categories: ['vps'],
+      maxPriceCents: 2500,
+    }, {
+      provider: 'GreenCloudVPS',
+      locations: ['Hong Kong', 'Tokyo'],
+      category: 'vps',
+      priceCents: 2400,
+      currency: 'USD',
+    })).toBe(true);
+  });
+
+  it('rejects offers with unknown prices when a maximum is configured', () => {
+    expect(matchesOfferSubscription({
+      providers: [],
+      regions: [],
+      categories: [],
+      maxPriceCents: 2500,
+    }, {
+      provider: 'ExampleHost',
+      locations: [],
+      category: 'vps',
+      priceCents: null,
+      currency: null,
+    })).toBe(false);
   });
 });

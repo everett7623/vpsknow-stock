@@ -16,6 +16,9 @@ const parserMocks = vi.hoisted(() => ({
   parseLetRss: vi.fn(),
   parseLetOffer: vi.fn(),
 }));
+const subscriberMocks = vi.hoisted(() => ({
+  notifyOfferSubscribers: vi.fn(),
+}));
 
 vi.mock('@vpsknow/database', () => ({
   prisma: {
@@ -29,6 +32,7 @@ vi.mock('@vpsknow/database', () => ({
   },
 }));
 vi.mock('@vpsknow/parsers', () => parserMocks);
+vi.mock('./subscriber-notifications.js', () => subscriberMocks);
 
 const discussion = {
   discussionId: '12345',
@@ -75,6 +79,7 @@ describe('discoverLetOffers', () => {
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'message-1' });
     databaseMocks.transaction.mockImplementation(async (operations: Promise<unknown>[]) => Promise.all(operations));
     sendMessage.mockResolvedValue(1001);
+    subscriberMocks.notifyOfferSubscribers.mockResolvedValue(undefined);
     parserMocks.parseLetListing.mockReturnValue([discussion]);
     parserMocks.parseLetRss.mockReturnValue([discussion]);
     parserMocks.parseLetOffer.mockReturnValue(parsedOffer);
@@ -118,6 +123,7 @@ describe('discoverLetOffers', () => {
         ipv4: true,
       }),
     });
+    expect(subscriberMocks.notifyOfferSubscribers).toHaveBeenCalledOnce();
   });
 
   it('skips offers without a category or price', async () => {

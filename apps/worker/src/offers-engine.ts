@@ -1,10 +1,13 @@
 import { prisma } from '@vpsknow/database';
 import { parseLetListing, parseLetOffer, parseLetRss } from '@vpsknow/parsers';
 import { formatOfferMessage, sendChannelMessage } from '@vpsknow/telegram';
+import pino from 'pino';
+import { notifyOfferSubscribers } from './subscriber-notifications.js';
 
 const RSS_URL = 'https://lowendtalk.com/categories/offers/feeds.rss';
 const LISTING_URL = 'https://lowendtalk.com/categories/offers';
 const FIRST_RUN_KEY = 'let:first-run-at';
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 interface RedisConnection {
   get(key: string): Promise<string | null>;
@@ -98,8 +101,9 @@ function priceSummary(offer: PushableOffer): string {
 async function pushOffer(
   offer: PushableOffer,
   dependencies: OfferDiscoveryDependencies,
+  notifySubscribers = false,
 ): Promise<boolean> {
-  if (offer.pushed || !dependencies.offersChannelId) return false;
+  if (offer.pushed) return false;
 
   const message = formatOfferMessage({
     provider: offer.provider || 'LowEndTalk',
@@ -113,26 +117,39 @@ async function pushOffer(
     orderUrl: affiliateUrl(offer.orderUrl),
     threadUrl: offer.threadUrl || 'Not provided',
   });
-  const messageId = await dependencies.sendMessage(dependencies.offersChannelId, message, {
-    disableWebPagePreview: true,
-  });
+  let channelPushed = false;
+  let channelError: unknown;
+  if (dependencies.offersChannelId) {
+    try {
+      const messageId = await dependencies.sendMessage(dependencies.offersChannelId, message, {
+        disableWebPagePreview: true,
+      });
 
-  await prisma.$transaction([
-    prisma.telegramMessage.create({
-      data: {
-        channelId: dependencies.offersChannelId,
-        messageId,
-        content: message,
-        status: 'sent',
-      },
-    }),
-    prisma.offer.update({
-      where: { id: offer.id },
-      data: { pushed: true },
-    }),
-  ]);
+      await prisma.$transaction([
+        prisma.telegramMessage.create({
+          data: {
+            channelId: dependencies.offersChannelId,
+            messageId,
+            content: message,
+            status: 'sent',
+          },
+        }),
+        prisma.offer.update({
+          where: { id: offer.id },
+          data: { pushed: true },
+        }),
+      ]);
+      channelPushed = true;
+    } catch (error) {
+      channelError = error;
+    }
+  }
 
-  return true;
+  if (notifySubscribers) {
+    await notifyOfferSubscribers(offer, message, logger);
+  }
+  if (channelError) throw channelError;
+  return channelPushed;
 }
 
 export async function discoverLetOffers(
@@ -223,7 +240,7 @@ export async function discoverLetOffers(
     });
     summary.stored++;
 
-    if (await pushOffer(storedOffer, dependencies)) summary.pushed++;
+    if (await pushOffer(storedOffer, dependencies, true)) summary.pushed++;
   }
 
   return summary;

@@ -1384,8 +1384,8 @@ Discovery pipeline (4 layers):
   - Category whitelist
   - Max price
   - Event types (restocks, offers, both)
-- [ ] On restock/offer event → check all subscriptions → send matching users (restock complete; offers pending)
-- [ ] Rate limit: max 1 message per user per 30 seconds (atomic restock limiter complete; offers pending)
+- [x] On restock/offer event → check all subscriptions → send matching users
+- [x] Rate limit: max 1 message per user per 30 seconds
 
 **Done when**: Bot responds to commands, stores filters, delivers personalized notifications.
 
