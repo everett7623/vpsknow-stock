@@ -1401,7 +1401,7 @@ Discovery pipeline (4 layers):
 - [ ] Admin dashboard: provider management, manual stock override, adapter health
 - [ ] Proxy rotation for CF-protected providers
 - [ ] Playwright integration for JS-rendered pages
-- [ ] Error alerting (dead adapters, API changes → admin notification)
+- [x] Error alerting (dead adapters, possible API changes, and recovery → admin notification)
 - [x] SEO: meta tags, structured data, sitemap
 - [ ] Mobile-responsive refinement
 - [ ] Hetzner Server Auction monitor (special case)

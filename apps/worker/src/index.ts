@@ -8,7 +8,13 @@ import {
   withJitter,
 } from '@vpsknow/shared';
 import { sendChannelMessage } from '@vpsknow/telegram';
-import { isProviderPaused, recordProviderFailure, recordProviderSuccess } from './provider-health.js';
+import {
+  formatProviderFailureAlert,
+  formatProviderRecoveryAlert,
+  isProviderPaused,
+  recordProviderFailure,
+  recordProviderSuccess,
+} from './provider-health.js';
 import { discoverLetOffers } from './offers-engine.js';
 import { processStockResults } from './stock-engine.js';
 
@@ -87,7 +93,18 @@ async function bootstrap(): Promise<void> {
         const results = await adapter.check();
         const duration = Date.now() - startTime;
         const summary = await processStockResults(provider, results, logger);
-        await recordProviderSuccess(connection, provider);
+        const previousFailures = await recordProviderSuccess(connection, provider);
+
+        if (previousFailures >= ADAPTER_DEGRADED_THRESHOLD && ADMIN_CHAT_ID) {
+          try {
+            await sendChannelMessage(
+              ADMIN_CHAT_ID,
+              formatProviderRecoveryAlert(provider, previousFailures),
+            );
+          } catch (notificationError) {
+            logger.error({ provider, err: notificationError }, 'Failed to send provider recovery alert');
+          }
+        }
 
         logger.info(
           {
@@ -120,7 +137,7 @@ async function bootstrap(): Promise<void> {
             try {
               await sendChannelMessage(
                 ADMIN_CHAT_ID,
-                `Provider ${provider} was paused for 5 minutes after ${failureState.failures} consecutive failures.`,
+                formatProviderFailureAlert(provider, failureState, duration, err),
               );
             } catch (notificationError) {
               logger.error({ provider, err: notificationError }, 'Failed to send provider pause alert');

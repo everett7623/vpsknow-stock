@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   isProviderPaused,
+  formatProviderFailureAlert,
+  formatProviderRecoveryAlert,
   recordProviderFailure,
   recordProviderSuccess,
   type ProviderHealthConnection,
@@ -9,12 +11,14 @@ import {
 function createConnection(incrementedFailures = 0): ProviderHealthConnection & {
   del: ReturnType<typeof vi.fn>;
   exists: ReturnType<typeof vi.fn>;
+  get: ReturnType<typeof vi.fn>;
   incr: ReturnType<typeof vi.fn>;
   set: ReturnType<typeof vi.fn>;
 } {
   return {
     del: vi.fn().mockResolvedValue(2),
     exists: vi.fn().mockResolvedValue(0),
+    get: vi.fn().mockResolvedValue(null),
     incr: vi.fn().mockResolvedValue(incrementedFailures),
     set: vi.fn().mockResolvedValue('OK'),
   };
@@ -35,8 +39,10 @@ describe('provider health', () => {
 
   it('clears failure and pause state after a successful check', async () => {
     const connection = createConnection();
+    connection.get.mockResolvedValue('5');
 
-    await expect(recordProviderSuccess(connection, 'buyvm')).resolves.toBeUndefined();
+    await expect(recordProviderSuccess(connection, 'buyvm')).resolves.toBe(5);
+    expect(connection.get).toHaveBeenCalledWith('provider-failures:buyvm');
     expect(connection.del).toHaveBeenCalledWith('provider-failures:buyvm', 'provider-paused:buyvm');
   });
 
@@ -49,5 +55,15 @@ describe('provider health', () => {
       paused: true,
     });
     expect(connection.set).toHaveBeenCalledWith('provider-paused:buyvm', '5', 'EX', 300);
+  });
+
+  it('formats actionable failure and recovery alerts', () => {
+    expect(formatProviderFailureAlert(
+      'buyvm',
+      { failures: 5, degraded: true, paused: true },
+      1234,
+      new Error('No parseable products'),
+    )).toContain('Possible provider page or API change');
+    expect(formatProviderRecoveryAlert('buyvm', 5)).toContain('Previous failures: 5');
   });
 });

@@ -13,6 +13,7 @@ export interface ProviderFailureState {
 export interface ProviderHealthConnection {
   del(...keys: string[]): Promise<number>;
   exists(key: string): Promise<number>;
+  get(key: string): Promise<string | null>;
   incr(key: string): Promise<number>;
   set(key: string, value: string, mode: 'EX', durationSeconds: number): Promise<string | null>;
 }
@@ -29,8 +30,13 @@ export async function isProviderPaused(connection: ProviderHealthConnection, pro
   return (await connection.exists(pauseKey(provider))) === 1;
 }
 
-export async function recordProviderSuccess(connection: ProviderHealthConnection, provider: string): Promise<void> {
+export async function recordProviderSuccess(
+  connection: ProviderHealthConnection,
+  provider: string,
+): Promise<number> {
+  const previousFailures = Number.parseInt(await connection.get(failureKey(provider)) ?? '0', 10);
   await connection.del(failureKey(provider), pauseKey(provider));
+  return Number.isFinite(previousFailures) ? previousFailures : 0;
 }
 
 export async function recordProviderFailure(
@@ -49,4 +55,32 @@ export async function recordProviderFailure(
     degraded: failures >= ADAPTER_DEGRADED_THRESHOLD,
     paused,
   };
+}
+
+export function formatProviderFailureAlert(
+  provider: string,
+  state: ProviderFailureState,
+  durationMs: number,
+  error: unknown,
+): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  return [
+    '🚨 Provider adapter paused',
+    `Provider: ${provider}`,
+    `Failures: ${state.failures}`,
+    `Pause: 5 minutes`,
+    `Last request: ${durationMs} ms`,
+    `Error: ${detail.slice(0, 300)}`,
+    '',
+    'Possible provider page or API change. Review the adapter before re-enabling notifications.',
+  ].join('\n');
+}
+
+export function formatProviderRecoveryAlert(provider: string, previousFailures: number): string {
+  return [
+    '✅ Provider adapter recovered',
+    `Provider: ${provider}`,
+    `Previous failures: ${previousFailures}`,
+    'Stock checks are succeeding again.',
+  ].join('\n');
 }
