@@ -8,6 +8,7 @@ import {
   withJitter,
 } from '@vpsknow/shared';
 import { sendChannelMessage } from '@vpsknow/telegram';
+import { prisma } from '@vpsknow/database';
 import {
   formatProviderFailureAlert,
   formatProviderRecoveryAlert,
@@ -80,6 +81,15 @@ async function bootstrap(): Promise<void> {
       const adapter = registry.get(provider);
       if (!adapter) {
         logger.warn({ provider }, 'Unknown provider, skipping');
+        return;
+      }
+
+      const providerConfig = await prisma.provider.findUnique({
+        where: { slug: provider },
+        select: { isActive: true },
+      });
+      if (!providerConfig?.isActive) {
+        logger.info({ provider }, 'Provider monitoring is disabled');
         return;
       }
 

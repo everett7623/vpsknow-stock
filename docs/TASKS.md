@@ -1398,7 +1398,7 @@ Discovery pipeline (4 layers):
 
 - [ ] Second batch provider adapters (9 Tier A + 3 Tier B)
 - [x] Price history charts on provider/plan pages
-- [ ] Admin dashboard: provider management, manual stock override, adapter health
+- [x] Admin dashboard: provider management, manual stock override, adapter health
 - [ ] Proxy rotation for CF-protected providers
 - [ ] Playwright integration for JS-rendered pages
 - [x] Error alerting (dead adapters, possible API changes, and recovery → admin notification)

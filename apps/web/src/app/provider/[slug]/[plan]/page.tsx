@@ -142,11 +142,12 @@ export default async function ProductDetailPage({
             <ol className="space-y-3">
               {product.stockEvents.map((event) => {
                 const restock = event.eventType === 'restock';
+                const manual = event.eventType === 'manual_override';
                 return (
                   <li key={event.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-gray-800 bg-[#12121a] px-4 py-3">
                     <span className={`h-2.5 w-2.5 rounded-full ${restock ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                    <span className={restock ? 'text-emerald-400' : 'text-red-400'}>
-                      {restock ? 'Restocked' : 'Sold Out'}
+                    <span className={restock ? 'text-emerald-400' : manual ? 'text-amber-300' : 'text-red-400'}>
+                      {restock ? 'Restocked' : manual ? 'Manual Override' : 'Sold Out'}
                     </span>
                     <time className="w-full font-mono text-xs text-gray-500 sm:ml-auto sm:w-auto">
                       {formatDate(event.detectedAt)}
