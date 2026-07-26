@@ -456,6 +456,7 @@ Each adapter needs:
 | VMISS | Cloudflare Managed Challenge | Direct HTTP when permitted; reject challenge pages and validate in dry-run |
 | AkileCloud | None | Direct HTTP |
 | V.PS | None | Direct HTTP |
+| SaltyFish | WHMCS default | Standard HTTP; reject challenge and error pages |
 
 ### Adapter Health Metrics (per provider)
 
@@ -1249,11 +1250,11 @@ export interface ProviderAdapter {
 
 ## Phase 2 — LET + Full First Batch
 
-**Goal**: All 9 first-batch providers + LowEndTalk Offer engine.
+**Goal**: All 10 first-batch providers + LowEndTalk Offer engine.
 **Duration**: 2–3 weeks.
 **Depends on**: Phase 1 complete.
 
-### Task 2.1 — Remaining 6 Provider Adapters
+### Task 2.1 — Remaining 7 Provider Adapters
 
 | Item | Detail |
 |------|--------|
@@ -1265,11 +1266,12 @@ export interface ProviderAdapter {
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
 - [ ] `akilecloud.ts`
 - [ ] `vps.ts` (V.PS)
+- [ ] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
 - [ ] Unit tests per adapter with HTML fixtures
 - [ ] Register all in adapter registry
 - [ ] Add BullMQ jobs with appropriate intervals
 
-**Done when**: All 9 providers are running in the worker and stock_checks are accumulating.
+**Done when**: All 10 providers are running in the worker and stock_checks are accumulating.
 
 ---
 
@@ -1417,6 +1419,7 @@ Discovery pipeline (4 layers):
 | 7 | VMISS | CN2, BGP, HK, JP, LA | 5 min | Phase 2 |
 | 8 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
 | 9 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
+| 10 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes | 5 min | Phase 2 |
 
 ### A-Tier — Phase 4 (Offers + Limited Stock)
 
@@ -1481,7 +1484,7 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 | Metric | Target |
 |--------|--------|
-| Providers monitored | 9 (by end of Phase 2) |
+| Providers monitored | 10 (by end of Phase 2) |
 | Check uptime | >99% |
 | Restock detection latency | <3 min |
 | False positive rate | <5% |

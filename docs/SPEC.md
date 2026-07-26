@@ -179,7 +179,7 @@ affiliate_links
 
 ## 4. Provider Monitoring
 
-### 4.1 First Batch — 9 Providers (S-Tier)
+### 4.1 First Batch — 10 Providers (S-Tier)
 
 | # | Provider | Focus |
 |---|----------|-------|
@@ -192,6 +192,7 @@ affiliate_links
 | 7 | VMISS | CN2, BGP, HK, JP, LA |
 | 8 | AkileCloud | HK, JP, SG, optimized routing |
 | 9 | V.PS | JP, SG, EU limited plans |
+| 10 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes |
 
 ### 4.2 Provider Adapter Interface
 
@@ -232,7 +233,8 @@ packages/providers/src/
 ├── dmit.ts
 ├── vmiss.ts
 ├── akilecloud.ts
-└── vps.ts
+├── vps.ts
+└── saltyfish.ts
 ```
 
 ### 4.3 Check Frequency
@@ -481,7 +483,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 ### Phase 2 — LET + Full First Batch (2–3 weeks)
 
-- [ ] Remaining 6 first-batch provider adapters
+- [ ] Remaining 7 first-batch provider adapters
 - [ ] LowEndTalk RSS + HTML scraper
 - [ ] LET post parser (structured field extraction)
 - [ ] Filter engine for LET offers
@@ -561,7 +563,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 | Metric | Target |
 |--------|--------|
-| Providers monitored | 9 |
+| Providers monitored | 10 |
 | Check uptime | >99% |
 | Restock detection latency | <3 min from actual restock |
 | False positive rate | <5% |
