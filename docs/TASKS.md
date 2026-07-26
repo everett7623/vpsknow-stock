@@ -1264,12 +1264,12 @@ export interface ProviderAdapter {
 - [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
 - [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
-- [ ] `akilecloud.ts`
+- [x] `akilecloud.ts` — Parse server shop cards for stock, CNY pricing, and HK/JP/SG locations
 - [x] `vps.ts` (V.PS) — Parse HostBill product cards for Singapore and Tokyo availability
 - [x] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
-- [ ] Unit tests per adapter with HTML fixtures
-- [ ] Register all in adapter registry
-- [ ] Add BullMQ jobs with appropriate intervals
+- [x] Unit tests per adapter with HTML fixtures
+- [x] Register all in adapter registry
+- [x] Add BullMQ jobs with appropriate intervals
 
 **Done when**: All 10 providers are running in the worker and stock_checks are accumulating.
 

@@ -30,6 +30,7 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   vmiss: 300_000,
   vps: 300_000,
   saltyfish: 300_000,
+  akilecloud: 300_000,
 };
 
 async function bootstrap(): Promise<void> {

@@ -10,6 +10,7 @@ import { SpartanHostAdapter } from '../spartanhost.js';
 import { VmissAdapter } from '../vmiss.js';
 import { VpsAdapter } from '../vps.js';
 import { SaltyFishAdapter } from '../saltyfish.js';
+import { AkileCloudAdapter } from '../akilecloud.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -288,6 +289,40 @@ describe('provider adapters', () => {
       billingCycle: 'monthly',
       inStock: true,
       orderUrl: 'https://portal.saltyfish.io/store/sjc-elite/e1medium',
+    });
+  });
+
+  it('parses AkileCloud shop stock, specs, location, and CNY pricing', () => {
+    const results = new AkileCloudAdapter().parse(fixture('akilecloud.html'));
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'akilecloud',
+      productId: 'akilecloud-molite-a',
+      planName: 'MOLite-高级竞技A',
+      location: 'Hong Kong',
+      cpu: '1 Core',
+      ramMb: 1024,
+      storageGb: 10,
+      storageType: 'NVMe',
+      bandwidthTb: 0,
+      ipv4: true,
+      ipv6: true,
+      price: 5000,
+      currency: 'CNY',
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl: 'https://next.akile.io/shop/order/molite-a',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'akilecloud-jp-lite',
+      location: 'Tokyo',
+      ramMb: 2048,
+      bandwidthTb: 2,
+      price: 12000,
+      billingCycle: 'annually',
+      inStock: false,
+      orderUrl: 'https://next.akile.io/shop/server/',
     });
   });
 });

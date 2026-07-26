@@ -8,6 +8,7 @@ import { SpartanHostAdapter } from './adapters/spartanhost.js';
 import { VmissAdapter } from './adapters/vmiss.js';
 import { VpsAdapter } from './adapters/vps.js';
 import { SaltyFishAdapter } from './adapters/saltyfish.js';
+import { AkileCloudAdapter } from './adapters/akilecloud.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -18,6 +19,7 @@ const adapters: ProviderAdapter[] = [
   new VmissAdapter(),
   new VpsAdapter(),
   new SaltyFishAdapter(),
+  new AkileCloudAdapter(),
 ];
 
 if (process.env.HOSTHATCH_API_TOKEN) {
