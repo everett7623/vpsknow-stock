@@ -59,6 +59,7 @@ cp .env.example .env
 # NEXT_PUBLIC_SITE_URL, and ADMIN_DASHBOARD_TOKEN in .env.
 docker compose -f docker-compose.production.yml up -d --build
 docker compose -f docker-compose.production.yml logs -f worker
+./scripts/verify-production.sh
 ```
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for first deployment and updates.

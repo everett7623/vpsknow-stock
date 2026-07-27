@@ -51,6 +51,7 @@ Start the stack:
 docker compose -f docker-compose.production.yml up -d --build
 docker compose -f docker-compose.production.yml ps
 docker compose -f docker-compose.production.yml logs --tail=100 migrate
+./scripts/verify-production.sh
 ```
 
 The `migrate` service applies versioned Prisma migrations and seeds providers before Web,
@@ -59,6 +60,10 @@ already points to the VPS.
 
 After startup, verify `https://$SITE_DOMAIN`, the worker health state, and the
 Telegram bot before enabling production channel notifications.
+
+The smoke script validates Compose syntax and checks PostgreSQL, Redis, Worker
+dependencies, and the public Web database health endpoint. A real Telegram
+message to a test chat remains a manual deployment acceptance step.
 
 ## Updates
 
