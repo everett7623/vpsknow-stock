@@ -18,6 +18,7 @@ import {
 } from './provider-health.js';
 import { discoverLetOffers } from './offers-engine.js';
 import { processStockResults } from './stock-engine.js';
+import { runDataRetention } from './maintenance.js';
 import { startHealthServer, type HealthCheckResult } from './health.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
@@ -28,6 +29,7 @@ const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 
 const QUEUE_NAME = 'stock-check';
 const OFFER_QUEUE_NAME = 'offer-discovery';
+const MAINTENANCE_QUEUE_NAME = 'maintenance';
 const HEALTH_PORT = Number.parseInt(process.env.HEALTH_PORT || '3001', 10);
 
 const PROVIDER_INTERVALS: Record<string, number> = {
@@ -48,6 +50,17 @@ async function bootstrap(): Promise<void> {
 
   const queue = new Queue(QUEUE_NAME, { connection });
   const offerQueue = new Queue(OFFER_QUEUE_NAME, { connection });
+  const maintenanceQueue = new Queue(MAINTENANCE_QUEUE_NAME, { connection });
+
+  await maintenanceQueue.upsertJobScheduler(
+    'delete-expired-stock-checks',
+    { every: 24 * 60 * 60 * 1_000 },
+    {
+      name: 'delete-expired-stock-checks',
+      data: {},
+      opts: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 } },
+    },
+  );
 
   await offerQueue.upsertJobScheduler(
     'discover-lowendtalk-offers',
@@ -176,6 +189,15 @@ async function bootstrap(): Promise<void> {
     { connection, concurrency: 1 },
   );
 
+  const maintenanceWorker = new Worker(
+    MAINTENANCE_QUEUE_NAME,
+    async () => {
+      const summary = await runDataRetention();
+      logger.info(summary, 'Data retention complete');
+    },
+    { connection, concurrency: 1 },
+  );
+
   const healthServer = await startHealthServer({
     port: HEALTH_PORT,
     check: async (): Promise<HealthCheckResult> => {
@@ -208,16 +230,24 @@ async function bootstrap(): Promise<void> {
   worker.on('failed', (job, err) => {
     logger.error({ jobId: job?.id, err: err.message }, 'Job failed');
   });
+  offerWorker.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, err: err.message }, 'Offer discovery job failed');
+  });
+  maintenanceWorker.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, err: err.message }, 'Maintenance job failed');
+  });
 
   const shutdown = async (): Promise<void> => {
     logger.info('Shutting down worker...');
     await worker.close();
     await offerWorker.close();
+    await maintenanceWorker.close();
     await new Promise<void>((resolve, reject) => {
       healthServer.close((error) => (error ? reject(error) : resolve()));
     });
     await queue.close();
     await offerQueue.close();
+    await maintenanceQueue.close();
     await connection.quit();
     process.exit(0);
   };

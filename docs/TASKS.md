@@ -1544,7 +1544,7 @@ LOG_LEVEL=info
 | Timeout | HTTP: 15s, Playwright: 30s, TG API: 10s |
 | Graceful degradation | Website shows cached data if DB is slow; "Last updated X ago" |
 | Dead letter queue | Failed TG messages go to DLQ for manual retry |
-| Data retention | `stock_checks` older than 30 days → archive to cold storage or delete |
+| Data retention | Daily BullMQ job deletes `stock_checks` older than 30 days |
 | Backup | PostgreSQL daily pg_dump to object storage |
 
 ### Deployment Safety
