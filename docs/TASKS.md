@@ -1158,6 +1158,7 @@ export interface ProviderAdapter {
   - Exponential backoff on retries
 - [x] Max 1 concurrent request per provider domain
 - [x] Graceful shutdown on SIGTERM
+- [x] Fixture-to-adapter-to-stock-engine integration test for confirmed restock delivery
 
 **Done when**: Worker runs in Docker, checks BandwagonHost + DMIT + BuyVM on schedule, correctly logs stock_checks and fires stock_events on simulated state changes.
 
