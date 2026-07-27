@@ -53,7 +53,7 @@ docker compose -f docker-compose.production.yml ps
 docker compose -f docker-compose.production.yml logs --tail=100 migrate
 ```
 
-The `migrate` service applies the Prisma schema and seeds providers before Web,
+The `migrate` service applies versioned Prisma migrations and seeds providers before Web,
 Worker, and Bot start. Caddy obtains and renews the TLS certificate when DNS
 already points to the VPS.
 

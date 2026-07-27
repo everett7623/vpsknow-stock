@@ -1082,7 +1082,7 @@ Use `@vercel/og` or `satori` for generation.
 - [x] Tables: `providers`, `products`, `stock_checks`, `stock_events`, `affiliate_links`, `telegram_messages`
 - [x] Seed script: 3 providers (BandwagonHost, DMIT, BuyVM) with known products
 - [x] `packages/database` exports generated Prisma client
-- [ ] Migration runs clean against local Docker PostgreSQL
+- [ ] Baseline migration runs clean against Docker PostgreSQL
 
 **Done when**: `pnpm --filter database db:push && pnpm --filter database db:seed` succeeds, tables visible in psql.
 

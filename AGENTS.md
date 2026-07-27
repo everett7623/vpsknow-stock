@@ -79,6 +79,7 @@ pnpm --filter providers test    # Test adapters only
 # Database
 pnpm --filter database db:generate  # Generate Prisma client
 pnpm --filter database db:push      # Apply schema to DB
+pnpm --filter database db:deploy    # Apply versioned migrations in production
 pnpm --filter database db:seed      # Seed initial data (3 providers)
 pnpm --filter database studio       # Open Prisma Studio
 

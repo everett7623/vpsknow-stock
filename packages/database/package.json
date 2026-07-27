@@ -11,6 +11,7 @@
     "lint": "eslint src prisma --ext .ts --config ../config/eslint.cjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "studio": "prisma studio"
