@@ -14,6 +14,7 @@ out/
 
 # Database
 prisma/*.db
+backups/
 
 # IDE
 .vscode/

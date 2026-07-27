@@ -84,3 +84,29 @@ docker compose -f docker-compose.production.yml down
 
 Do not remove the named volumes unless the PostgreSQL and Redis data is
 backed up first.
+
+## Database backups
+
+Create a compressed PostgreSQL backup and checksum:
+
+```bash
+./scripts/backup-postgres.sh
+```
+
+Backups remain under `backups/` for 14 days by default. Copy this directory to
+separate storage; a backup kept only on the application VPS does not protect
+against disk or VPS loss. Example daily cron entry:
+
+```cron
+0 3 * * * cd /opt/vpsknow-stock && ./scripts/backup-postgres.sh >> /var/log/vpsknow-backup.log 2>&1
+```
+
+Test restoration during a maintenance window:
+
+```bash
+RESTORE_CONFIRM=YES ./scripts/restore-postgres.sh backups/postgres-TIMESTAMP.dump
+./scripts/verify-production.sh
+```
+
+The restore script stops Web, Worker, and Bot before replacing database
+objects, verifies the checksum when present, and restarts the services.

@@ -1545,7 +1545,7 @@ LOG_LEVEL=info
 | Graceful degradation | Website shows cached data if DB is slow; "Last updated X ago" |
 | Dead letter queue | Failed TG messages go to DLQ for manual retry |
 | Data retention | Daily BullMQ job deletes `stock_checks` older than 30 days |
-| Backup | PostgreSQL daily pg_dump to object storage |
+| Backup | Versioned scripts for daily `pg_dump`, checksum, retention, and restore; copy backups off-VPS |
 
 ### Deployment Safety
 
