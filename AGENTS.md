@@ -30,7 +30,7 @@
 | Scraping | cheerio (HTML parsing), Playwright (CF-protected only) |
 | Logging | pino |
 | Testing | vitest |
-| Deployment | Vercel (web), VPS Docker Compose (worker/bot/DB/Redis) |
+| Deployment | VPS Docker Compose (Caddy/web/worker/bot/DB/Redis) |
 | Node.js | >=22 |
 
 ---
@@ -145,7 +145,7 @@ docker compose down             # Stop all services
 ### Remaining Phase 1 Tasks
 - [x] Activate Prisma/esbuild build scripts and generate Prisma Client
 - [x] Run `pnpm build` with no type errors
-- [x] Add production Docker Compose for worker/bot
+- [x] Add production Docker Compose for the complete stack
 - [ ] Validate production Docker Compose on a Docker-enabled host
 - [ ] 24h stability test run
 - [ ] End-to-end integration test
@@ -304,6 +304,6 @@ pnpm dev                    # Start all services
 ```
 
 ### Production
-- **Website**: Push to `main` → Vercel auto-deploys
-- **Worker/Bot**: Docker Compose on VPS with `restart: unless-stopped`
+- **Complete stack**: Caddy, website, worker, bot, PostgreSQL, and Redis run through `docker-compose.production.yml` on the VPS
+- **Public ports**: Only Caddy exposes 80/443; PostgreSQL and Redis stay on the private Docker network
 - **New adapter**: Run in "dry-run" mode for 24h before activating push

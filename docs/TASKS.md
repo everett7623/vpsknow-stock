@@ -52,8 +52,7 @@
 | Queue | Redis + BullMQ | Job scheduling, retry, dedup |
 | Telegram | grammy | Channel push + bot |
 | Browser | Playwright | Only for Cloudflare-protected pages |
-| Deployment (web) | Vercel | `stock.vpsknow.com` |
-| Deployment (worker/bot) | VPS + Docker Compose | Independently restartable |
+| Deployment | VPS + Docker Compose | Caddy, web, worker, bot, PostgreSQL, and Redis |
 | Node.js | >=22 | |
 
 ### Monorepo Layout
@@ -1233,18 +1232,20 @@ export interface ProviderAdapter {
 | Priority | P1 |
 | Depends on | 1.4, 1.5, 1.6 |
 
-- [ ] `docker-compose.yml`:
-  - `postgres` (PostgreSQL 16)
+- [x] `docker-compose.production.yml`:
+  - `postgres` (PostgreSQL 17)
   - `redis` (Redis 7)
   - `worker` (apps/worker)
-  - `bot` (apps/bot, placeholder for Phase 3)
-- [x] Dockerfiles for worker and bot
+  - `bot` (apps/bot)
+  - `web` (apps/web)
+  - `caddy` (HTTPS reverse proxy)
+- [x] Dockerfile builds worker, bot, and web
 - [x] `.env.example` with all required vars
-- [ ] `docker compose up` starts full local stack
-- [ ] Vercel project setup for `apps/web` → `stock.vpsknow.com`
-- [ ] VPS deployment script or guide for worker stack
+- [ ] Production Compose starts the full stack on a Docker-enabled host
+- [x] Caddy HTTPS reverse proxy for `stock.vpsknow.com`
+- [x] VPS deployment guide for the complete stack
 
-**Done when**: Full stack runs locally via `docker compose up`. Website accessible at localhost. Worker checks providers and sends test Telegram messages.
+**Done when**: Full stack runs through `docker-compose.production.yml`, the website is accessible over HTTPS, and Worker/Bot pass live integration checks.
 
 ---
 

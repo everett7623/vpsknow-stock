@@ -39,7 +39,7 @@ packages/
 - **ORM**: Prisma
 - **Telegram**: grammy
 - **Monorepo**: Turborepo + pnpm
-- **Deployment**: Vercel (web) + VPS Docker (workers/bot)
+- **Deployment**: Full VPS Docker Compose (web, worker, bot, PostgreSQL, Redis, Caddy)
 
 ## Development
 
@@ -47,6 +47,21 @@ packages/
 pnpm install
 pnpm dev
 ```
+
+## Production on a VPS
+
+The complete stack runs on one VPS. Caddy terminates HTTPS, while Web, Worker,
+Bot, PostgreSQL, and Redis remain on the private Docker network.
+
+```bash
+cp .env.example .env
+# Set POSTGRES_PASSWORD, TELEGRAM_* secrets, SITE_DOMAIN,
+# NEXT_PUBLIC_SITE_URL, and ADMIN_DASHBOARD_TOKEN in .env.
+docker compose -f docker-compose.production.yml up -d --build
+docker compose -f docker-compose.production.yml logs -f worker
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for first deployment and updates.
 
 ## License
 

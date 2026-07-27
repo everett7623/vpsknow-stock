@@ -12,6 +12,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @vpsknow/database db:generate
 RUN pnpm --filter @vpsknow/worker... build
 RUN pnpm --filter @vpsknow/bot... build
+RUN pnpm --filter @vpsknow/web build
 
 FROM node:22-alpine AS runtime
 
