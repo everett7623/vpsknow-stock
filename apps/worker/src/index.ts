@@ -18,6 +18,7 @@ import {
 } from './provider-health.js';
 import { discoverLetOffers } from './offers-engine.js';
 import { processStockResults } from './stock-engine.js';
+import { startHealthServer, type HealthCheckResult } from './health.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
@@ -27,6 +28,7 @@ const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 
 const QUEUE_NAME = 'stock-check';
 const OFFER_QUEUE_NAME = 'offer-discovery';
+const HEALTH_PORT = Number.parseInt(process.env.HEALTH_PORT || '3001', 10);
 
 const PROVIDER_INTERVALS: Record<string, number> = {
   bandwagonhost: 90_000,
@@ -174,6 +176,35 @@ async function bootstrap(): Promise<void> {
     { connection, concurrency: 1 },
   );
 
+  const healthServer = await startHealthServer({
+    port: HEALTH_PORT,
+    check: async (): Promise<HealthCheckResult> => {
+      const dependencies: HealthCheckResult['dependencies'] = {
+        database: 'healthy',
+        redis: 'healthy',
+      };
+
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+      } catch {
+        dependencies.database = 'unhealthy';
+      }
+
+      try {
+        await connection.ping();
+      } catch {
+        dependencies.redis = 'unhealthy';
+      }
+
+      return {
+        status: Object.values(dependencies).every((status) => status === 'healthy')
+          ? 'healthy'
+          : 'unhealthy',
+        dependencies,
+      };
+    },
+  });
+
   worker.on('failed', (job, err) => {
     logger.error({ jobId: job?.id, err: err.message }, 'Job failed');
   });
@@ -182,6 +213,9 @@ async function bootstrap(): Promise<void> {
     logger.info('Shutting down worker...');
     await worker.close();
     await offerWorker.close();
+    await new Promise<void>((resolve, reject) => {
+      healthServer.close((error) => (error ? reject(error) : resolve()));
+    });
     await queue.close();
     await offerQueue.close();
     await connection.quit();
