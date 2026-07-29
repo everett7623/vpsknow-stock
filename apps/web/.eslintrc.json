@@ -1,6 +1,15 @@
 {
   "extends": [
+    "../../packages/config/eslint.cjs",
     "next/core-web-vitals",
     "next/typescript"
-  ]
+  ],
+  "ignorePatterns": [
+    "next-env.d.ts",
+    ".next/**"
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/ban-ts-comment": "error"
+  }
 }

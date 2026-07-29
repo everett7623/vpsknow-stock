@@ -36,6 +36,9 @@ npm-debug.log*
 # Coverage
 coverage/
 
+# ESLint
+.eslintcache
+
 # Playwright
 playwright-report/
 test-results/
