@@ -116,6 +116,140 @@ async function main() {
     },
   });
 
+  // Phase 4 — A-Tier providers
+  const racknerd = await prisma.provider.upsert({
+    where: { slug: 'racknerd' },
+    update: {},
+    create: {
+      slug: 'racknerd',
+      name: 'RackNerd',
+      website: 'https://racknerd.com',
+      tier: 'A',
+    },
+  });
+
+  const clouvider = await prisma.provider.upsert({
+    where: { slug: 'clouvider' },
+    update: {},
+    create: {
+      slug: 'clouvider',
+      name: 'Clouvider',
+      website: 'https://www.clouvider.com',
+      tier: 'A',
+    },
+  });
+
+  const liteserver = await prisma.provider.upsert({
+    where: { slug: 'liteserver' },
+    update: {},
+    create: {
+      slug: 'liteserver',
+      name: 'LiteServer',
+      website: 'https://liteserver.nl',
+      tier: 'A',
+    },
+  });
+
+  const crunchbits = await prisma.provider.upsert({
+    where: { slug: 'crunchbits' },
+    update: {},
+    create: {
+      slug: 'crunchbits',
+      name: 'Crunchbits',
+      website: 'https://crunchbits.com',
+      tier: 'A',
+    },
+  });
+
+  const servarica = await prisma.provider.upsert({
+    where: { slug: 'servarica' },
+    update: {},
+    create: {
+      slug: 'servarica',
+      name: 'ServaRICA',
+      website: 'https://servarica.com',
+      tier: 'A',
+    },
+  });
+
+  const evoxt = await prisma.provider.upsert({
+    where: { slug: 'evoxt' },
+    update: {},
+    create: {
+      slug: 'evoxt',
+      name: 'Evoxt',
+      website: 'https://evoxt.com',
+      tier: 'A',
+    },
+  });
+
+  const alwyzon = await prisma.provider.upsert({
+    where: { slug: 'alwyzon' },
+    update: {},
+    create: {
+      slug: 'alwyzon',
+      name: 'Alwyzon',
+      website: 'https://alwyzon.com',
+      tier: 'A',
+    },
+  });
+
+  const dedirock = await prisma.provider.upsert({
+    where: { slug: 'dedirock' },
+    update: {},
+    create: {
+      slug: 'dedirock',
+      name: 'DediRock',
+      website: 'https://dedirock.com',
+      tier: 'A',
+    },
+  });
+
+  const onidel = await prisma.provider.upsert({
+    where: { slug: 'onidel' },
+    update: {},
+    create: {
+      slug: 'onidel',
+      name: 'Onidel',
+      website: 'https://onidel.com',
+      tier: 'A',
+    },
+  });
+
+  // Phase 4 — B-Tier providers
+  const tierhive = await prisma.provider.upsert({
+    where: { slug: 'tierhive' },
+    update: {},
+    create: {
+      slug: 'tierhive',
+      name: 'TierHive',
+      website: 'https://tierhive.com',
+      tier: 'B',
+    },
+  });
+
+  const gullos = await prisma.provider.upsert({
+    where: { slug: 'gullos' },
+    update: {},
+    create: {
+      slug: 'gullos',
+      name: 'Gullos',
+      website: 'https://gullos.com',
+      tier: 'B',
+    },
+  });
+
+  const webhorizon = await prisma.provider.upsert({
+    where: { slug: 'webhorizon' },
+    update: {},
+    create: {
+      slug: 'webhorizon',
+      name: 'WebHorizon',
+      website: 'https://webhorizon.in',
+      tier: 'B',
+    },
+  });
+
   // Seed known products — BandwagonHost
   const bwgPlans = [
     { productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, billingCycle: 'annually' },
@@ -207,6 +341,20 @@ async function main() {
     { providerId: saltyfish.id, slug: 'saltyfish', targetUrl: 'https://portal.saltyfish.io', shortUrl: 'https://go.uukk.de/saltyfish' },
     { providerId: greencloudvps.id, slug: 'greencloudvps', targetUrl: 'https://greencloudvps.com', shortUrl: 'https://go.uukk.de/greencloudvps' },
     { providerId: akilecloud.id, slug: 'akilecloud', targetUrl: 'https://next.akile.io/shop/server/', shortUrl: 'https://go.uukk.de/akilecloud' },
+    // Phase 4 A-Tier
+    { providerId: racknerd.id, slug: 'racknerd', targetUrl: 'https://my.racknerd.com', shortUrl: 'https://go.uukk.de/racknerd' },
+    { providerId: clouvider.id, slug: 'clouvider', targetUrl: 'https://www.clouvider.com', shortUrl: 'https://go.uukk.de/clouvider' },
+    { providerId: liteserver.id, slug: 'liteserver', targetUrl: 'https://liteserver.nl', shortUrl: 'https://go.uukk.de/liteserver' },
+    { providerId: crunchbits.id, slug: 'crunchbits', targetUrl: 'https://crunchbits.com', shortUrl: 'https://go.uukk.de/crunchbits' },
+    { providerId: servarica.id, slug: 'servarica', targetUrl: 'https://servarica.com', shortUrl: 'https://go.uukk.de/servarica' },
+    { providerId: evoxt.id, slug: 'evoxt', targetUrl: 'https://evoxt.com', shortUrl: 'https://go.uukk.de/evoxt' },
+    { providerId: alwyzon.id, slug: 'alwyzon', targetUrl: 'https://alwyzon.com', shortUrl: 'https://go.uukk.de/alwyzon' },
+    { providerId: dedirock.id, slug: 'dedirock', targetUrl: 'https://dedirock.com', shortUrl: 'https://go.uukk.de/dedirock' },
+    { providerId: onidel.id, slug: 'onidel', targetUrl: 'https://onidel.com', shortUrl: 'https://go.uukk.de/onidel' },
+    // Phase 4 B-Tier
+    { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com', shortUrl: 'https://go.uukk.de/tierhive' },
+    { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://gullos.com', shortUrl: 'https://go.uukk.de/gullos' },
+    { providerId: webhorizon.id, slug: 'webhorizon', targetUrl: 'https://webhorizon.in', shortUrl: 'https://go.uukk.de/webhorizon' },
   ];
 
   for (const link of affiliateLinks) {
@@ -218,7 +366,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 10`);
+  console.log(`  Providers: 22`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

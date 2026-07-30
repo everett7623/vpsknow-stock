@@ -11,6 +11,20 @@ const REQUIRED_PROVIDERS = [
   'vps',
   'saltyfish',
   'akilecloud',
+  // Phase 4 A-Tier
+  'racknerd',
+  'clouvider',
+  'liteserver',
+  'crunchbits',
+  'servarica',
+  'evoxt',
+  'alwyzon',
+  'dedirock',
+  'onidel',
+  // Phase 4 B-Tier
+  'tierhive',
+  'gullos',
+  'webhorizon',
 ] as const;
 
 describe('provider registry', () => {

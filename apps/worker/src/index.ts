@@ -33,6 +33,7 @@ const MAINTENANCE_QUEUE_NAME = 'maintenance';
 const HEALTH_PORT = Number.parseInt(process.env.HEALTH_PORT || '3001', 10);
 
 const PROVIDER_INTERVALS: Record<string, number> = {
+  // S-Tier
   bandwagonhost: 90_000,
   dmit: 150_000,
   buyvm: 90_000,
@@ -43,6 +44,20 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   vps: 300_000,
   saltyfish: 300_000,
   akilecloud: 300_000,
+  // A-Tier
+  racknerd: 180_000,
+  clouvider: 180_000,
+  liteserver: 180_000,
+  crunchbits: 180_000,
+  servarica: 180_000,
+  evoxt: 180_000,
+  alwyzon: 180_000,
+  dedirock: 180_000,
+  onidel: 180_000,
+  // B-Tier
+  tierhive: 300_000,
+  gullos: 300_000,
+  webhorizon: 300_000,
 };
 
 async function bootstrap(): Promise<void> {

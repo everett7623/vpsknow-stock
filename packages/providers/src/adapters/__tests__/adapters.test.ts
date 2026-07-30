@@ -11,6 +11,19 @@ import { VmissAdapter } from '../vmiss.js';
 import { VpsAdapter } from '../vps.js';
 import { SaltyFishAdapter } from '../saltyfish.js';
 import { AkileCloudAdapter } from '../akilecloud.js';
+// Phase 4 adapters
+import { RackNerdAdapter } from '../racknerd.js';
+import { ClouviderAdapter } from '../clouvider.js';
+import { LiteServerAdapter } from '../liteserver.js';
+import { CrunchbitsAdapter } from '../crunchbits.js';
+import { ServaRICAAdapter } from '../servarica.js';
+import { EvoxtAdapter } from '../evoxt.js';
+import { AlwyzonAdapter } from '../alwyzon.js';
+import { DediRockAdapter } from '../dedirock.js';
+import { OnidelAdapter } from '../onidel.js';
+import { TierHiveAdapter } from '../tierhive.js';
+import { GullosAdapter } from '../gullos.js';
+import { WebHorizonAdapter } from '../webhorizon.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -324,5 +337,124 @@ describe('provider adapters', () => {
       inStock: false,
       orderUrl: 'https://next.akile.io/shop/server/',
     });
+  });
+
+  // Phase 4 A-Tier tests
+  it('parses RackNerd WHMCS plans with multiple locations', () => {
+    const category = { slug: 'kvm-los-angeles', location: 'Los Angeles', url: 'https://my.racknerd.com/index.php?rp=/store/kvm-vps' };
+    const results = new RackNerdAdapter().parse(fixture('racknerd.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'racknerd');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('location', 'Los Angeles');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses Clouvider products with pricing and availability', () => {
+    const category = { slug: 'cloud-us', location: 'United States', url: 'https://www.clouvider.com/cloud-servers/usa/' };
+    const results = new ClouviderAdapter().parse(fixture('clouvider.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'clouvider');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses LiteServer Netherlands VPS offerings', () => {
+    const category = { slug: 'vps-nl', location: 'Netherlands', url: 'https://liteserver.nl/en/vps/' };
+    const results = new LiteServerAdapter().parse(fixture('liteserver.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'liteserver');
+    expect(results[0]).toHaveProperty('location', 'Netherlands');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses Crunchbits stock and plan details', () => {
+    const category = { slug: 'vps-us', location: 'United States', url: 'https://crunchbits.com/vps/' };
+    const results = new CrunchbitsAdapter().parse(fixture('crunchbits.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'crunchbits');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses ServaRICA product availability', () => {
+    const category = { slug: 'vps-ca', location: 'Canada', url: 'https://servarica.com/vps/' };
+    const results = new ServaRICAAdapter().parse(fixture('servarica.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'servarica');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses Evoxt VPS plans and stock state', () => {
+    const category = { slug: 'vps-us', location: 'United States', url: 'https://evoxt.com/vps/' };
+    const results = new EvoxtAdapter().parse(fixture('evoxt.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'evoxt');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses Alwyzon product catalog', () => {
+    const category = { slug: 'vps-de', location: 'Germany', url: 'https://alwyzon.com/vps/' };
+    const results = new AlwyzonAdapter().parse(fixture('alwyzon.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'alwyzon');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses DediRock dedicated and VPS offerings', () => {
+    const category = { slug: 'vps-us', location: 'United States', url: 'https://dedirock.com/vps/' };
+    const results = new DediRockAdapter().parse(fixture('dedirock.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'dedirock');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses Onidel product availability', () => {
+    const category = { slug: 'vps-us', location: 'United States', url: 'https://onidel.com/vps/' };
+    const results = new OnidelAdapter().parse(fixture('onidel.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'onidel');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  // Phase 4 B-Tier tests
+  it('parses TierHive VPS plans', () => {
+    const category = { slug: 'vps-us', location: 'United States', url: 'https://tierhive.com/vps/' };
+    const results = new TierHiveAdapter().parse(fixture('tierhive.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'tierhive');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses Gullos hosting offerings', () => {
+    const category = { slug: 'vps-us', location: 'United States', url: 'https://gullos.com/vps/' };
+    const results = new GullosAdapter().parse(fixture('gullos.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'gullos');
+    expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses WebHorizon VPS stock state', () => {
+    const category = { slug: 'vps-in', location: 'India', url: 'https://webhorizon.in/vps/' };
+    const results = new WebHorizonAdapter().parse(fixture('webhorizon.html'), category);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).toHaveProperty('provider', 'webhorizon');
+    expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('inStock');
   });
 });
