@@ -1,0 +1,47 @@
+# Cursor Rules for VPSKnow Stock
+
+> 本项目的完整开发指南请参考 `CLAUDE.md`
+
+## 快速参考
+
+### 开发命令
+```bash
+pnpm dev        # 启动所有服务
+pnpm test       # 运行测试
+pnpm lint       # 代码检查
+pnpm typecheck  # 类型检查
+```
+
+### 数据库操作
+```bash
+cd packages/database
+pnpm db:generate  # 生成 Prisma Client
+pnpm db:push      # 推送 schema 变更（开发环境）
+pnpm db:migrate   # 创建并应用 migration
+```
+
+### 架构要点
+
+- **Monorepo**: Turborepo + pnpm workspaces
+- **技术栈**: TypeScript (strict) + Next.js 15 + PostgreSQL + Redis + BullMQ
+- **核心服务**: web (Next.js) + worker (监控 + 抓取) + bot (Telegram)
+
+### 添加新 Provider
+
+1. 创建 `packages/providers/src/adapters/newprovider.ts`
+2. 实现 `ProviderAdapter` 接口
+3. 注册到 `packages/providers/src/registry.ts`
+4. 在 `packages/database/prisma/seed.ts` 中添加种子数据
+5. 在 `apps/worker/src/index.ts` 的 `PROVIDER_INTERVALS` 中配置检查间隔
+6. 添加测试 `packages/providers/src/adapters/__tests__/newprovider.test.ts`
+
+### 重要约束
+
+- Stock check 需连续 2 次确认才推送通知（防止误报）
+- Provider 检查间隔需遵守 PROVIDER_INTERVALS 配置
+- Telegram 频道发送限制：~20 条/分钟
+- 连续失败达到阈值会自动暂停 provider
+
+---
+
+**完整文档**: 请阅读 `CLAUDE.md` 了解详细的架构说明、开发指南和部署流程。

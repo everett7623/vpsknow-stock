@@ -15,6 +15,7 @@ The system consists of three main services:
 
 - **Monorepo**: Turborepo with pnpm workspaces
 - **Language**: TypeScript (strict mode)
+- **Runtime**: Node.js >=22
 - **Frontend**: Next.js 15 with App Router, React 19, Tailwind 4
 - **Database**: PostgreSQL with Prisma ORM
 - **Queue**: Redis + BullMQ
@@ -38,6 +39,7 @@ pnpm test                 # Run all tests
 cd apps/web && pnpm dev          # Next.js on port 3000
 cd apps/worker && pnpm dev       # Worker with tsx watch
 cd apps/bot && pnpm dev          # Bot with tsx watch
+pnpm format                      # Format all files with Prettier
 ```
 
 ### Database Operations
@@ -97,7 +99,14 @@ interface ProviderAdapter {
 }
 ```
 
-Adapters scrape provider websites and return normalized `StockResult[]`. The registry in `packages/providers/src/registry.ts` exports all adapters. When adding a new provider:
+Adapters scrape provider websites and return normalized `StockResult[]`. The registry in `packages/providers/src/registry.ts` exports all adapters. 
+
+**Current providers by tier:**
+- **S-Tier** (90-300s intervals): bandwagonhost, buyvm, dmit, greencloudvps, hosthatch, spartanhost, vmiss, vps, saltyfish, akilecloud
+- **A-Tier** (180s intervals): racknerd, clouvider, liteserver, crunchbits, servarica, evoxt, alwyzon, dedirock, onidel
+- **B-Tier** (300s intervals): tierhive, gullos, webhorizon
+
+When adding a new provider:
 
 1. Create `packages/providers/src/adapters/newprovider.ts`
 2. Implement the `ProviderAdapter` interface
@@ -130,6 +139,11 @@ This prevents false positives from transient provider API issues.
 
 The worker (`apps/worker/src/index.ts`) uses BullMQ with provider-specific intervals defined in `PROVIDER_INTERVALS`. Jobs are scheduled with jitter to prevent thundering herd. Provider health tracking (`provider-health.ts`) pauses providers after repeated failures.
 
+Key background jobs:
+- **Stock checks**: Per-provider repeating jobs (see PROVIDER_INTERVALS)
+- **LET scraping**: Every ~150s (with jitter)
+- **Data retention**: Daily cleanup of old StockCheck records
+
 ### Telegram Integration
 
 - `packages/telegram/src/send.ts`: sendChannelMessage, sendPrivateMessage
@@ -158,6 +172,8 @@ The worker (`apps/worker/src/index.ts`) uses BullMQ with provider-specific inter
 - Integration tests use real Prisma client (not mocked)
 - Stock pipeline integration test: `apps/worker/src/stock-pipeline.integration.test.ts`
 - Provider adapter tests verify parsing logic with fixtures
+- Run single test file: `cd apps/worker && pnpm test stock-engine.test.ts`
+- Watch mode: `cd packages/providers && pnpm test --watch`
 
 ### Adding Features
 
