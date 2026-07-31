@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const CACHE_SECONDS = 3600; // 缓存 1 小时
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
