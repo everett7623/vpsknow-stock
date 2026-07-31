@@ -28,6 +28,7 @@ model Product {
   id                 String   @id @default(cuid())
   providerId         String
   productId          String   // external identifier e.g. "buyvm-slice-1024-lv"
+  whmcsPid           String?  // WHMCS product ID for affiliate links (e.g. "95" for BandwagonHost)
   planName           String
   category           String   // vps, vds, dedicated, nat_vps, storage
   location           String

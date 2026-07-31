@@ -159,7 +159,6 @@ export async function processStockResults(
             // Send Telegram notification
             try {
               // 为每个产品生成短链接: /go/provider-productId
-              // 例如: /go/bwg-the-plan-dc6 或 /go/buyvm (如果不支持 PID)
               const productSlug = result.productId
                 .replace(/[^a-z0-9-]/gi, '-')
                 .toLowerCase();

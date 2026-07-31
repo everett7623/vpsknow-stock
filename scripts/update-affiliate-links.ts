@@ -66,19 +66,24 @@ async function updateAffiliateLinks() {
     }
 
     // 产品级别链接 (为所有产品生成短链接)
-    // 如果 provider 支持 PID: 生成带 &pid=xxx 的链接
-    // 如果不支持 PID: 使用 provider 级别链接 (所有产品共用)
+    // 如果 provider 支持 PID 且产品有 whmcsPid: 生成带 &pid=xxx 的链接
+    // 否则: 使用 provider 级别链接 (所有产品共用)
     if (provider.products.length > 0) {
+      let withPid = 0;
+      let withoutPid = 0;
+
       for (const product of provider.products) {
         const productSlug = generateShortLinkSlug(provider.slug, product.productId);
 
         let productTargetUrl: string;
-        if (config.supportsPid) {
-          // 支持 PID: 使用产品特定链接
-          productTargetUrl = generateAffiliateUrl(provider.slug, product.productId);
+        if (config.supportsPid && product.whmcsPid) {
+          // 支持 PID 且有 whmcsPid: 使用产品特定链接
+          productTargetUrl = generateAffiliateUrl(provider.slug, product.whmcsPid);
+          withPid++;
         } else {
-          // 不支持 PID: 使用 provider 通用链接
+          // 不支持 PID 或无 whmcsPid: 使用 provider 通用链接
           productTargetUrl = providerTargetUrl;
+          withoutPid++;
         }
 
         await prisma.affiliateLink.upsert({
@@ -93,8 +98,12 @@ async function updateAffiliateLinks() {
         });
       }
 
-      const linkType = config.supportsPid ? 'product-specific links' : 'provider links (shared)';
-      console.log(`   └─ ${provider.products.length} ${linkType} generated`);
+      if (withPid > 0) {
+        console.log(`   └─ ${withPid} product-specific links (with WHMCS PID)`);
+      }
+      if (withoutPid > 0) {
+        console.log(`   └─ ${withoutPid} provider links (no WHMCS PID)`);
+      }
     }
   }
 

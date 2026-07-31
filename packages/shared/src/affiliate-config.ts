@@ -208,12 +208,12 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
 /**
  * 生成 affiliate 链接
  * @param providerSlug Provider slug
- * @param productId 可选的产品 ID (如果 provider 支持 PID)
+ * @param whmcsPid WHMCS 产品 ID (数字字符串,如 "95")
  * @returns 完整的 affiliate 链接
  */
 export function generateAffiliateUrl(
   providerSlug: string,
-  productId?: string,
+  whmcsPid?: string | null,
 ): string {
   const config = AFFILIATE_CONFIGS[providerSlug];
 
@@ -229,9 +229,9 @@ export function generateAffiliateUrl(
 
   let url = config.urlTemplate.replace('{affId}', config.affId);
 
-  // 如果支持 PID 且提供了 productId,则添加 PID
-  if (config.supportsPid && productId) {
-    url = url.replace('{pid}', productId);
+  // 如果支持 PID 且提供了 whmcsPid,则添加 WHMCS PID
+  if (config.supportsPid && whmcsPid) {
+    url = url.replace('{pid}', whmcsPid);
   } else {
     // 移除未使用的 {pid} 占位符
     url = url.replace('&pid={pid}', '').replace('?pid={pid}', '');
