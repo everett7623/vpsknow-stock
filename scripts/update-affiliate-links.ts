@@ -65,11 +65,21 @@ async function updateAffiliateLinks() {
       created++;
     }
 
-    // 产品级别链接 (如果 provider 支持 PID)
-    if (config.supportsPid && provider.products.length > 0) {
+    // 产品级别链接 (为所有产品生成短链接)
+    // 如果 provider 支持 PID: 生成带 &pid=xxx 的链接
+    // 如果不支持 PID: 使用 provider 级别链接 (所有产品共用)
+    if (provider.products.length > 0) {
       for (const product of provider.products) {
         const productSlug = generateShortLinkSlug(provider.slug, product.productId);
-        const productTargetUrl = generateAffiliateUrl(provider.slug, product.productId);
+
+        let productTargetUrl: string;
+        if (config.supportsPid) {
+          // 支持 PID: 使用产品特定链接
+          productTargetUrl = generateAffiliateUrl(provider.slug, product.productId);
+        } else {
+          // 不支持 PID: 使用 provider 通用链接
+          productTargetUrl = providerTargetUrl;
+        }
 
         await prisma.affiliateLink.upsert({
           where: { slug: productSlug },
@@ -83,7 +93,8 @@ async function updateAffiliateLinks() {
         });
       }
 
-      console.log(`   └─ ${provider.products.length} product links generated`);
+      const linkType = config.supportsPid ? 'product-specific links' : 'provider links (shared)';
+      console.log(`   └─ ${provider.products.length} ${linkType} generated`);
     }
   }
 
