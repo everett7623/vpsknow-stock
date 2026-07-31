@@ -1,0 +1,16 @@
+{
+  "name": "update-affiliate-links",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx update-affiliate-links.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@vpsknow/database": "workspace:*",
+    "@vpsknow/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

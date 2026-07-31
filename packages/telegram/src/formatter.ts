@@ -1,8 +1,17 @@
 import type { StockResult } from '@vpsknow/providers';
 
-export function formatRestockMessage(result: StockResult, affiliateUrl?: string): string {
+/**
+ * 格式化补货通知消息
+ * @param result 库存检查结果
+ * @param shortUrl 短链接 (https://stock.vpsknow.com/go/xxx)
+ * @returns Telegram 消息文本
+ */
+export function formatRestockMessage(result: StockResult, shortUrl?: string): string {
   const price = `$${(result.price / 100).toFixed(2)}/${result.billingCycle === 'monthly' ? 'mo' : result.billingCycle === 'annually' ? 'yr' : result.billingCycle}`;
-  const orderLink = affiliateUrl || result.orderUrl;
+
+  // 优先使用短链接,fallback 到原始链接
+  const orderLink = shortUrl || result.orderUrl || '#';
+
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
   return [
