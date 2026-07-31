@@ -263,7 +263,7 @@ export function generateShortLinkSlug(
  */
 export function getConfiguredProvidersCount(): number {
   return Object.keys(AFFILIATE_CONFIGS).filter(
-    (key) => AFFILIATE_CONFIGS[key].affId !== 'PLACEHOLDER',
+    (key) => AFFILIATE_CONFIGS[key]?.affId !== 'PLACEHOLDER',
   ).length;
 }
 
@@ -272,6 +272,6 @@ export function getConfiguredProvidersCount(): number {
  */
 export function getUnconfiguredProviders(): string[] {
   return Object.keys(AFFILIATE_CONFIGS).filter(
-    (key) => AFFILIATE_CONFIGS[key].affId === 'PLACEHOLDER',
+    (key) => AFFILIATE_CONFIGS[key]?.affId === 'PLACEHOLDER',
   );
 }
