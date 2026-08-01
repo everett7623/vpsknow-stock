@@ -1,4 +1,6 @@
 import * as cheerio from 'cheerio';
+import type { BillingCycle } from '@vpsknow/shared';
+import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface Category {
@@ -8,15 +10,20 @@ interface Category {
 }
 
 const CATEGORIES: readonly Category[] = [
-  { slug: 'hk-bgp', location: 'Hong Kong', url: 'https://app.vmiss.com/store/cn-hk-bgp-v3' },
-  { slug: 'hk-intl', location: 'Hong Kong', url: 'https://app.vmiss.com/store/cn-hongkong-intl' },
+  { slug: 'hk-bgp', location: 'Hong Kong', url: 'https://app.vmiss.com/store/cn-hong-kong-bgp' },
+  { slug: 'hk-bgp-dc2', location: 'Hong Kong', url: 'https://app.vmiss.com/store/cn-hk-bgp-v2' },
+  { slug: 'hk-bgp-dc3', location: 'Hong Kong', url: 'https://app.vmiss.com/store/cn-hk-bgp-v3' },
+  { slug: 'hk-intl', location: 'Hong Kong', url: 'https://app.vmiss.com/store/cn-hong-kong-intl' },
+  { slug: 'osaka-iij', location: 'Osaka', url: 'https://app.vmiss.com/store/jp-osaka-iij' },
   { slug: 'tokyo-bgp', location: 'Tokyo', url: 'https://app.vmiss.com/store/jp-tokyo-bgp' },
   { slug: 'tokyo-iij', location: 'Tokyo', url: 'https://app.vmiss.com/store/jp-tokyo-iij' },
+  { slug: 'tokyo-tri', location: 'Tokyo', url: 'https://app.vmiss.com/store/jp-tokyo-tri' },
   { slug: 'seoul-intl', location: 'Seoul', url: 'https://app.vmiss.com/store/kr-seoul-intl' },
   { slug: 'la-tri', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-tri' },
+  { slug: 'la-tri-dc2', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-bgp' },
   { slug: 'la-9929', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-9929' },
   { slug: 'la-cmin2', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cmin2' },
-  { slug: 'la-cn2-gia', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cn2-gia' },
+  { slug: 'la-cn2-gia', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cn2' },
 ] as const;
 
 function parseNumber(text: string, pattern: RegExp): number {
@@ -31,6 +38,15 @@ function storageType(text: string): string {
   return 'Unknown';
 }
 
+function billingCycleFrom(text: string): BillingCycle {
+  if (/semi[- ]?annually/i.test(text)) return 'semi-annually';
+  if (/quarterly/i.test(text)) return 'quarterly';
+  if (/annually|yearly/i.test(text)) return 'annually';
+  if (/biennially/i.test(text)) return 'biennially';
+  if (/triennially/i.test(text)) return 'triennially';
+  return 'monthly';
+}
+
 function idFrom(cardId: string, href: string, categorySlug: string, planName: string): string {
   const numericId = cardId.match(/(\d+)/)?.[1] ?? href.match(/[?&]pid=(\d+)/)?.[1];
   if (numericId) return `vmiss-${numericId}`;
@@ -43,42 +59,44 @@ function idFrom(cardId: string, href: string, categorySlug: string, planName: st
 export class VmissAdapter implements ProviderAdapter {
   readonly slug = 'vmiss';
   readonly name = 'VMISS';
+  warnings: readonly string[] = [];
 
   async check(): Promise<StockResult[]> {
     const results: StockResult[] = [];
     const seen = new Set<string>();
+    const failures: string[] = [];
+    let successfulCategories = 0;
+    this.warnings = [];
 
     for (const category of CATEGORIES) {
-      const response = await fetch(category.url, {
-        headers: {
-          Accept: 'text/html',
-          'User-Agent': 'VPSKnow-Stock/1.0',
-        },
-        signal: AbortSignal.timeout(15_000),
-      });
+      try {
+        const url = `${category.url}?language=english`;
+        const html = await fetchProviderHtml(this.name, url);
+        const parsed = this.parse(html, { ...category, url });
+        if (parsed.length === 0) throw new Error('no parseable products');
+        successfulCategories++;
 
-      if (!response.ok) {
-        throw new Error(`VMISS HTTP ${response.status} for ${category.slug}`);
-      }
-
-      const html = await response.text();
-      if (/cf-chl-|challenge-platform|just a moment|captcha/i.test(html)) {
-        throw new Error(`VMISS Cloudflare challenge for ${category.slug}`);
-      }
-
-      const parsed = this.parse(html, category);
-      for (const result of parsed) {
-        const key = `${result.productId}:${result.location}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          results.push(result);
+        for (const result of parsed) {
+          const key = `${result.productId}:${result.location}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            results.push(result);
+          }
         }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`${category.slug}: ${message}`);
       }
     }
 
-    if (results.length === 0) {
-      throw new Error('VMISS returned no parseable products');
+    if (successfulCategories === 0 || results.length === 0) {
+      throw new Error(
+        `VMISS returned no parseable products; ${failures.length}/${CATEGORIES.length} categories failed. `
+        + failures.slice(0, 3).join('; '),
+      );
     }
+
+    this.warnings = failures;
 
     return results;
   }
@@ -129,7 +147,7 @@ export class VmissAdapter implements ProviderAdapter {
         ipv6: /\bIPv6\b/i.test(text),
         price,
         currency: /\bCAD\b/i.test(text) ? 'CAD' : 'USD',
-        billingCycle: /annual|yearly/i.test(text) ? 'annually' : 'monthly',
+        billingCycle: billingCycleFrom(text),
         inStock,
         orderUrl: inStock ? new URL(href, category.url).href : category.url,
       });

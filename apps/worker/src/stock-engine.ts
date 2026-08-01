@@ -64,14 +64,21 @@ export async function processStockResults(
     summary.checked++;
 
     try {
+      const productIdentity = {
+        providerId_productId: {
+          providerId: provider.id,
+          productId: result.productId,
+        },
+      };
+      const existingProduct = await prisma.product.findUnique({
+        where: productIdentity,
+        select: { id: true },
+      });
+      const isNewProduct = existingProduct === null;
+
       // Upsert product
       const product = await prisma.product.upsert({
-        where: {
-          providerId_productId: {
-            providerId: provider.id,
-            productId: result.productId,
-          },
-        },
+        where: productIdentity,
         update: {
           planName: result.planName,
           location: result.location,
@@ -102,7 +109,7 @@ export async function processStockResults(
           currency: result.currency,
           billingCycle: result.billingCycle,
           orderUrl: result.orderUrl,
-          inStock: false,
+          inStock: result.inStock,
           consecutiveConfirm: 0,
           lastCheckedAt: new Date(),
         },
@@ -116,6 +123,14 @@ export async function processStockResults(
           priceCents: result.price,
         },
       });
+
+      if (isNewProduct) {
+        logger.info(
+          { provider: providerSlug, product: result.planName, inStock: result.inStock },
+          'New product baseline recorded without notification',
+        );
+        continue;
+      }
 
       // Detect state transition
       const previouslyInStock = product.inStock;

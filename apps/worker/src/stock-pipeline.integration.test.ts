@@ -7,6 +7,7 @@ import { processStockResults } from './stock-engine.js';
 
 const databaseMocks = vi.hoisted(() => ({
   providerFindUnique: vi.fn(),
+  productFindUnique: vi.fn(),
   productUpsert: vi.fn(),
   productUpdate: vi.fn(),
   stockCheckCreate: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock('@vpsknow/database', () => ({
   prisma: {
     provider: { findUnique: databaseMocks.providerFindUnique },
     product: {
+      findUnique: databaseMocks.productFindUnique,
       upsert: databaseMocks.productUpsert,
       update: databaseMocks.productUpdate,
     },
@@ -54,6 +56,7 @@ describe('stock pipeline integration', () => {
       id: 'provider-buyvm',
       affiliateLinks: [{ shortUrl: 'https://go.uukk.de/buyvm' }],
     });
+    databaseMocks.productFindUnique.mockResolvedValue({ id: 'product-slice-1024' });
     databaseMocks.productUpsert
       .mockResolvedValueOnce({ id: 'product-slice-1024', inStock: false, consecutiveConfirm: 0 })
       .mockResolvedValueOnce({ id: 'product-slice-1024', inStock: false, consecutiveConfirm: 1 });

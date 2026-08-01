@@ -35,12 +35,12 @@ const HEALTH_PORT = Number.parseInt(process.env.HEALTH_PORT || '3001', 10);
 const PROVIDER_INTERVALS: Record<string, number> = {
   // S-Tier
   bandwagonhost: 90_000,
-  dmit: 150_000,
+  dmit: 120_000,
   buyvm: 90_000,
   greencloudvps: 180_000,
   hosthatch: 150_000,
   spartanhost: 150_000,
-  vmiss: 300_000,
+  vmiss: 180_000,
   vps: 300_000,
   saltyfish: 300_000,
   akilecloud: 300_000,
@@ -54,6 +54,7 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   alwyzon: 180_000,
   dedirock: 180_000,
   onidel: 180_000,
+  bagevm: 180_000,
   // B-Tier
   tierhive: 300_000,
   gullos: 300_000,
@@ -133,6 +134,12 @@ async function bootstrap(): Promise<void> {
         const results = await adapter.check();
         const duration = Date.now() - startTime;
         const summary = await processStockResults(provider, results, logger);
+        if (adapter.warnings?.length) {
+          logger.warn(
+            { provider, warnings: adapter.warnings },
+            'Provider check completed with partial failures',
+          );
+        }
         const previousFailures = await recordProviderSuccess(connection, provider);
 
         if (previousFailures >= ADAPTER_DEGRADED_THRESHOLD && ADMIN_CHAT_ID) {

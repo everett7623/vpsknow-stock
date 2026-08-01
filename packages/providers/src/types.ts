@@ -24,5 +24,6 @@ export interface StockResult {
 export interface ProviderAdapter {
   slug: string;
   name: string;
+  warnings?: readonly string[];
   check(): Promise<StockResult[]>;
 }

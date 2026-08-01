@@ -20,7 +20,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN corepack enable
+RUN apk add --no-cache curl \
+    && corepack enable
 
 COPY --from=build /app /app
 

@@ -5,6 +5,7 @@ import { processStockResults } from './stock-engine.js';
 
 const databaseMocks = vi.hoisted(() => ({
   providerFindUnique: vi.fn(),
+  productFindUnique: vi.fn(),
   productUpsert: vi.fn(),
   productUpdate: vi.fn(),
   stockCheckCreate: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock('@vpsknow/database', () => ({
   prisma: {
     provider: { findUnique: databaseMocks.providerFindUnique },
     product: {
+      findUnique: databaseMocks.productFindUnique,
       upsert: databaseMocks.productUpsert,
       update: databaseMocks.productUpdate,
     },
@@ -85,6 +87,7 @@ describe('processStockResults', () => {
       id: 'provider-1',
       affiliateLinks: [{ shortUrl: 'https://go.uukk.de/buyvm' }],
     });
+    databaseMocks.productFindUnique.mockResolvedValue({ id: 'product-1' });
     databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 0));
     databaseMocks.stockCheckCreate.mockResolvedValue({ id: 'check-1' });
     databaseMocks.stockEventFindFirst.mockResolvedValue(null);
@@ -134,6 +137,32 @@ describe('processStockResults', () => {
     expect(databaseMocks.stockCheckCreate).toHaveBeenCalledWith({
       data: { productId: 'product-1', inStock: false, priceCents: 350 },
     });
+    expect(databaseMocks.stockEventCreate).not.toHaveBeenCalled();
+    expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();
+  });
+
+  it('records a newly discovered in-stock product as a baseline without notifying', async () => {
+    const logger = createLogger();
+    const infoSpy = vi.spyOn(logger, 'info');
+    const inStockResult = { ...stockResult, inStock: true };
+    databaseMocks.productFindUnique.mockResolvedValue(null);
+    databaseMocks.productUpsert.mockResolvedValue(createProduct(true, 0));
+
+    await expect(processStockResults('buyvm', [inStockResult], logger)).resolves.toEqual({
+      checked: 1,
+      restocked: 0,
+      soldOut: 0,
+      errors: 0,
+    });
+
+    expect(databaseMocks.productUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ inStock: true, consecutiveConfirm: 0 }),
+    }));
+    expect(infoSpy).toHaveBeenCalledWith(
+      { provider: 'buyvm', product: 'Slice 1024', inStock: true },
+      'New product baseline recorded without notification',
+    );
+    expect(databaseMocks.productUpdate).not.toHaveBeenCalled();
     expect(databaseMocks.stockEventCreate).not.toHaveBeenCalled();
     expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();
   });
@@ -212,7 +241,7 @@ describe('processStockResults', () => {
     });
     expect(telegramMocks.formatRestockMessage).toHaveBeenCalledWith(
       inStockResult,
-      'https://go.uukk.de/buyvm',
+      'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
     );
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledWith(
       '@vpsknow_stock',

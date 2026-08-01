@@ -216,6 +216,17 @@ async function main() {
     },
   });
 
+  const bagevm = await prisma.provider.upsert({
+    where: { slug: 'bagevm' },
+    update: {},
+    create: {
+      slug: 'bagevm',
+      name: 'BageVM',
+      website: 'https://www.bagevm.com',
+      tier: 'A',
+    },
+  });
+
   // Phase 4 — B-Tier providers
   const tierhive = await prisma.provider.upsert({
     where: { slug: 'tierhive' },
@@ -275,6 +286,14 @@ async function main() {
       },
     });
   }
+
+  // Remove the invalid row produced by the retired marketing-page parser.
+  await prisma.product.deleteMany({
+    where: {
+      providerId: bandwagonhost.id,
+      productId: 'bwg-almalinux-rockylinux-centos-debian-multi-dc',
+    },
+  });
 
   // Seed known products — DMIT
   const dmitPlans = [
@@ -351,6 +370,7 @@ async function main() {
     { providerId: alwyzon.id, slug: 'alwyzon', targetUrl: 'https://alwyzon.com', shortUrl: 'https://go.uukk.de/alwyzon' },
     { providerId: dedirock.id, slug: 'dedirock', targetUrl: 'https://dedirock.com', shortUrl: 'https://go.uukk.de/dedirock' },
     { providerId: onidel.id, slug: 'onidel', targetUrl: 'https://onidel.com', shortUrl: 'https://go.uukk.de/onidel' },
+    { providerId: bagevm.id, slug: 'bagevm', targetUrl: 'https://www.bagevm.com/aff.php?aff=10', shortUrl: 'https://go.uukk.de/bagevm' },
     // Phase 4 B-Tier
     { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com', shortUrl: 'https://go.uukk.de/tierhive' },
     { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://gullos.com', shortUrl: 'https://go.uukk.de/gullos' },
@@ -366,7 +386,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 22`);
+  console.log(`  Providers: 23`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

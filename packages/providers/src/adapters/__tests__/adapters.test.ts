@@ -21,6 +21,7 @@ import { EvoxtAdapter } from '../evoxt.js';
 import { AlwyzonAdapter } from '../alwyzon.js';
 import { DediRockAdapter } from '../dedirock.js';
 import { OnidelAdapter } from '../onidel.js';
+import { BageVMAdapter } from '../bagevm.js';
 import { TierHiveAdapter } from '../tierhive.js';
 import { GullosAdapter } from '../gullos.js';
 import { WebHorizonAdapter } from '../webhorizon.js';
@@ -52,7 +53,26 @@ describe('provider adapters', () => {
       location: 'Los Angeles',
       inStock: false,
       billingCycle: 'monthly',
-      orderUrl: 'https://bandwagonhost.com/vps-hosting.php',
+      orderUrl: 'https://bandwagonhost.com/cart.php',
+    });
+  });
+
+  it('parses the current BandwagonHost WHMCS cart without treating OS names as plans', () => {
+    const results = new BandwagonHostAdapter().parse(fixture('bandwagonhost-cart.html'));
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      productId: 'bwg-hk-cn2gia',
+      planName: 'SPECIAL 40G KVM PROMO V5 - HONG KONG CN2 GIA VPS',
+      location: 'Hong Kong',
+      cpu: '2 Core',
+      ramMb: 2048,
+      storageGb: 40,
+      bandwidthTb: 0.5,
+      price: 8999,
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=95',
     });
   });
 
@@ -76,7 +96,31 @@ describe('provider adapters', () => {
     expect(results[1]).toMatchObject({
       planName: 'PVM.LAX Mini',
       inStock: false,
-      orderUrl: 'https://www.dmit.io/pages/pricing',
+      orderUrl: 'https://www.dmit.io/pages/pricing?language=english',
+    });
+  });
+
+  it('parses DMIT current location, hardware, and network plan groups', () => {
+    const results = new DmitAdapter().parse(fixture('dmit-modern.html'));
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      productId: 'dmit-pvm-lax-tiny',
+      planName: 'LAX.AS3.Pro.TINY',
+      location: 'Los Angeles',
+      cpu: '1 vCore',
+      ramMb: 2048,
+      storageGb: 20,
+      bandwidthTb: 1,
+      price: 1090,
+      inStock: true,
+      orderUrl: 'https://www.dmit.io/cart.php?a=add&pid=253',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'dmit-pvm-lax-mini',
+      planName: 'LAX.AS3.Pro.MINI',
+      inStock: false,
+      orderUrl: 'https://www.dmit.io/pages/pricing?language=english',
     });
   });
 
@@ -426,6 +470,47 @@ describe('provider adapters', () => {
     expect(results.length).toBeGreaterThan(0);
     expect(results[0]).toHaveProperty('provider', 'onidel');
     expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses BageVM quantity as authoritative stock with VPS specifications', () => {
+    const category = {
+      slug: 'japan-servers',
+      location: 'Tokyo',
+      url: 'https://www.bagevm.com/index.php?language=english&rp=/store/japan-servers',
+    };
+    const results = new BageVMAdapter().parse(fixture('bagevm.html'), category);
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'bagevm',
+      productId: 'bagevm-33',
+      planName: 'Japan - SMALL',
+      location: 'Tokyo',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 10,
+      storageType: 'SSD',
+      bandwidthTb: 2,
+      ipv4: true,
+      ipv6: true,
+      price: 399,
+      currency: 'USD',
+      billingCycle: 'monthly',
+      inStock: false,
+      orderUrl: category.url,
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'bagevm-29',
+      planName: 'Japan - MEDIUM',
+      cpu: '2 vCPUs',
+      ramMb: 4096,
+      storageGb: 30,
+      storageType: 'NVMe',
+      bandwidthTb: 12,
+      price: 1599,
+      inStock: true,
+      orderUrl: 'https://www.bagevm.com/index.php/store/japan-servers/japan-medium',
+    });
   });
 
   // Phase 4 B-Tier tests

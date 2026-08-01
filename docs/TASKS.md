@@ -1432,7 +1432,7 @@ Discovery pipeline (4 layers):
 
 ### A-Tier — Phase 4 (Offers + Limited Stock)
 
-RackNerd, DediRock, Onidel, Evoxt, Crunchbits, ServaRICA, Alwyzon, LiteServer, Clouvider.
+RackNerd, DediRock, Onidel, Evoxt, Crunchbits, ServaRICA, Alwyzon, LiteServer, Clouvider, BageVM.
 
 ### B-Tier — Phase 4 (NAT VPS Niche)
 

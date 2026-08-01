@@ -19,6 +19,7 @@ import { EvoxtAdapter } from './adapters/evoxt.js';
 import { AlwyzonAdapter } from './adapters/alwyzon.js';
 import { DediRockAdapter } from './adapters/dedirock.js';
 import { OnidelAdapter } from './adapters/onidel.js';
+import { BageVMAdapter } from './adapters/bagevm.js';
 // Phase 4 — B-Tier
 import { TierHiveAdapter } from './adapters/tierhive.js';
 import { GullosAdapter } from './adapters/gullos.js';
@@ -44,6 +45,7 @@ const adapters: ProviderAdapter[] = [
   new AlwyzonAdapter(),
   new DediRockAdapter(),
   new OnidelAdapter(),
+  new BageVMAdapter(),
   // Phase 4 B-Tier
   new TierHiveAdapter(),
   new GullosAdapter(),

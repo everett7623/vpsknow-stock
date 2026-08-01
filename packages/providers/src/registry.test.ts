@@ -21,6 +21,7 @@ const REQUIRED_PROVIDERS = [
   'alwyzon',
   'dedirock',
   'onidel',
+  'bagevm',
   // Phase 4 B-Tier
   'tierhive',
   'gullos',
