@@ -223,9 +223,10 @@ describe('discoverLetOffers', () => {
     });
     expect(sendMessage).toHaveBeenCalledWith(
       '@vpsknow_offers',
-      expect.stringContaining('https://go.uukk.de/?url=https%3A%2F%2Fexample.com%2Forder'),
+      expect.stringContaining('🔗 Order: https://example.com/order'),
       { disableWebPagePreview: true },
     );
+    expect(sendMessage.mock.calls[0]?.[1]).not.toContain('go.uukk.de');
     expect(databaseMocks.telegramMessageCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ channelId: '@vpsknow_offers', messageId: 1001 }),
     });

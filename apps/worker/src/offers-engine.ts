@@ -80,12 +80,6 @@ function isEligible(
   return TRUSTED_PROVIDERS.has(provider?.toLowerCase() || '') || OFFER_TITLE_PATTERN.test(title);
 }
 
-function affiliateUrl(orderUrl: string | null): string {
-  if (!orderUrl) return 'Not provided';
-  const baseUrl = (process.env.AFFILIATE_BASE_URL || 'https://go.uukk.de').replace(/\/$/, '');
-  return `${baseUrl}/?url=${encodeURIComponent(orderUrl)}`;
-}
-
 function specsSummary(offer: PushableOffer): string {
   const body = offer.body?.replace(/\s+/g, ' ').trim() || '';
   const excerpt = body.length > 140 ? `${body.slice(0, 137)}...` : body;
@@ -114,7 +108,7 @@ async function pushOffer(
     category: offer.category || 'Unspecified',
     billing: offer.billingCycle || 'Unspecified',
     postedAt: offer.postedAt?.toISOString().slice(0, 10) || 'Unknown',
-    orderUrl: affiliateUrl(offer.orderUrl),
+    orderUrl: offer.orderUrl || 'Not provided',
     threadUrl: offer.threadUrl || 'Not provided',
   });
   let channelPushed = false;
