@@ -92,7 +92,6 @@ REDIS_URL=redis://redis:6379
 
 # Telegram（从 @BotFather 获取）
 TELEGRAM_BOT_TOKEN=<你的 Bot Token>
-TELEGRAM_STOCK_CHANNEL_ID=@vpsknow_stock
 TELEGRAM_OFFERS_CHANNEL_ID=@vpsknow_offers
 TELEGRAM_ADMIN_CHAT_ID=<你的管理员 Chat ID>
 
@@ -298,7 +297,7 @@ TELEGRAM_BOT_TOKEN=$(grep TELEGRAM_BOT_TOKEN .env | cut -d '=' -f2)
 curl https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe
 
 # 检查频道 ID
-grep TELEGRAM_STOCK_CHANNEL_ID .env
+grep TELEGRAM_OFFERS_CHANNEL_ID .env
 
 # 查看 Worker 日志中的 Telegram 错误
 docker compose -f docker-compose.production.yml logs worker | grep -i telegram

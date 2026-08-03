@@ -12,7 +12,7 @@ import {
 import type { Logger } from 'pino';
 import { notifyRestockSubscribers } from './subscriber-notifications.js';
 
-const STOCK_CHANNEL_ID = process.env.TELEGRAM_STOCK_CHANNEL_ID || '@vpsknow_stock';
+const PUBLIC_CHANNEL_ID = process.env.TELEGRAM_OFFERS_CHANNEL_ID || '@vpsknow_offers';
 
 interface ProcessResult {
   checked: number;
@@ -206,11 +206,11 @@ export async function processStockResults(
             // Send Telegram notification
             try {
               const message = formatRestockMessage(result, shortUrl);
-              const msgId = await sendChannelMessage(STOCK_CHANNEL_ID, message);
+              const msgId = await sendChannelMessage(PUBLIC_CHANNEL_ID, message);
 
               await prisma.telegramMessage.create({
                 data: {
-                  channelId: STOCK_CHANNEL_ID,
+                  channelId: PUBLIC_CHANNEL_ID,
                   messageId: msgId,
                   stockEventId: event.id,
                   content: message,

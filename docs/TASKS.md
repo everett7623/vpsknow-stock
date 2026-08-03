@@ -32,12 +32,11 @@
 | Name | VPSKnow Stock |
 | Repo | `everett7623/vpsknow-stock` (private) |
 | Website | `stock.vpsknow.com` |
-| Restock Channel | `@vpsknow_stock` |
-| Offers Channel | `@vpsknow_offers` |
+| Alerts Channel | `@vpsknow_offers` |
 | Subscription Bot | `@vpsknow_stock_bot` |
 | Affiliate Base | `go.uukk.de` |
 
-**Core principle**: Restock (state transition `OOS → IN_STOCK`) and Offer (new LET post / deal) are distinct event types, pushed to separate channels, sharing the same infrastructure.
+**Core principle**: Restock (state transition `OOS → IN_STOCK`) and Offer (new LET post / deal) are distinct event types that share the same public channel and infrastructure.
 
 ---
 
@@ -608,19 +607,12 @@ type BillingCycle = 'monthly' | 'quarterly' | 'semi-annually' | 'annually' | 'bi
 ### Channel Strategy
 
 ```text
-@vpsknow_stock (Restock Channel)
-├── Only state transition events
-├── ~5-20 messages/day (varies by market activity)
-├── High signal, zero noise
-├── Users join for: "Tell me when X is back"
-└── Retention strategy: quality over quantity
-
-@vpsknow_offers (Offers Channel)
-├── New LET deals + provider announcements
-├── ~10-30 messages/day
-├── Curated (filtered, not raw dump)
-├── Users join for: "Show me new deals I'd miss"
-└── Retention strategy: save time vs. browsing LET directly
+@vpsknow_offers (Alerts Channel)
+├── Confirmed Restock state transitions
+├── Curated LET deals + provider announcements
+├── Restock and Offer use distinct message formats
+├── Filtering prevents raw LET dumps
+└── One public channel for all high-signal alerts
 
 @vpsknow_stock_bot (Subscription Bot)
 ├── Personal notifications based on filters
@@ -1178,9 +1170,9 @@ export interface ProviderAdapter {
   ⏱ Detected: {timestamp} UTC
   🔗 Order: {affiliateUrl}
   ```
-- [x] On `stock_events.event_type = restock` → format + send to `@vpsknow_stock`
+- [x] On `stock_events.event_type = restock` → format + send to `@vpsknow_offers`
 - [x] Record `telegram_messages` row with message_id
-- [x] Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_STOCK_CHANNEL_ID`
+- [x] Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OFFERS_CHANNEL_ID`
 - [x] Retry on Telegram API failure (3 attempts, 5s backoff)
 
 **Done when**: A simulated restock event sends a correctly formatted message to a test Telegram channel.
@@ -1452,7 +1444,7 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 - ❌ Monitor all providers at once — start with 10
 - ❌ Use 机场/代理-related domains
-- ❌ Dump all LET posts into restock channel
+- ❌ Conflate Restock and Offer event types because they share one public channel
 - ❌ Treat always-in-stock cloud providers as restock targets
 - ❌ Build user accounts, payment, or premium tiers in v1
 - ❌ Put monitoring logic in Next.js / Vercel Cron
@@ -1502,7 +1494,6 @@ REDIS_URL=redis://localhost:6379
 
 # Telegram
 TELEGRAM_BOT_TOKEN=
-TELEGRAM_STOCK_CHANNEL_ID=
 TELEGRAM_OFFERS_CHANNEL_ID=
 
 # Affiliate

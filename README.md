@@ -9,8 +9,7 @@ Real-time VPS restock monitoring and LowEndTalk offer aggregation, powered by [V
 VPSKnow Stock monitors VPS provider inventory and LowEndTalk offers, delivering instant notifications via Telegram and a public-facing stock status website.
 
 - **Website**: `stock.vpsknow.com`
-- **Restock Channel**: `@vpsknow_stock`
-- **Offers Channel**: `@vpsknow_offers`
+- **Alerts Channel**: `@vpsknow_offers`
 - **Subscription Bot**: `@vpsknow_stock_bot`
 
 ## Architecture

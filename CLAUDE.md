@@ -132,8 +132,8 @@ The worker's stock engine (`apps/worker/src/stock-engine.ts`) implements confide
 
 ### Telegram Integration
 
-- Restock events → `@vpsknow_stock` channel
-- LET offers → `@vpsknow_offers` channel
+- Restock events and LET offers → `@vpsknow_offers` channel
+- Restock and Offer remain distinct event types for message formatting and Bot subscriptions
 - All order links **must** go through `go.uukk.de` affiliate URLs
 - `packages/telegram/src/send.ts`: `sendChannelMessage`, `sendPrivateMessage`
 - `packages/telegram/src/templates.ts`: message formatters
@@ -164,7 +164,7 @@ The worker's stock engine (`apps/worker/src/stock-engine.ts`) implements confide
 - Never use `any` or disable TypeScript checks
 - Never hard-code secrets in source files
 - Never use LET last-reply time for deduplication — use Discussion ID
-- Never push LET posts to the restock channel — they go to `@vpsknow_offers`
+- Never conflate Restock and Offer event types because they share one public channel
 - Never make breaking changes to `ProviderAdapter` without updating all adapters
 
 ## Environment Variables
@@ -173,7 +173,6 @@ The worker's stock engine (`apps/worker/src/stock-engine.ts`) implements confide
 DATABASE_URL                 # PostgreSQL connection string
 REDIS_URL                    # Redis connection string
 TELEGRAM_BOT_TOKEN           # Bot API token from @BotFather
-TELEGRAM_STOCK_CHANNEL_ID    # @vpsknow_stock
 TELEGRAM_OFFERS_CHANNEL_ID   # @vpsknow_offers
 TELEGRAM_ADMIN_CHAT_ID       # Admin notifications chat
 AFFILIATE_BASE_URL           # https://go.uukk.de

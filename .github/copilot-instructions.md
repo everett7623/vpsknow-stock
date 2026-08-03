@@ -7,8 +7,7 @@
 VPSKnow Stock 是一个实时 VPS 补货监控和 LowEndTalk 优惠聚合平台。
 
 - **Website**: stock.vpsknow.com
-- **Restock Channel**: @vpsknow_stock
-- **Offers Channel**: @vpsknow_offers
+- **Alerts Channel**: @vpsknow_offers
 
 ## 技术栈
 

@@ -38,8 +38,7 @@
 
 # Telegram
 ✅ TELEGRAM_BOT_TOKEN           # Bot API token
-✅ TELEGRAM_STOCK_CHANNEL_ID    # 补货频道 ID
-✅ TELEGRAM_OFFERS_CHANNEL_ID   # 优惠频道 ID
+✅ TELEGRAM_OFFERS_CHANNEL_ID   # 补货和优惠公共频道 ID
 ✅ TELEGRAM_ADMIN_CHAT_ID       # 管理员通知 Chat ID
 
 # 网站
@@ -246,7 +245,7 @@ docker compose -f docker-compose.production.yml exec worker \
 curl https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe
 
 # 检查频道 ID 格式（应为 @username 或 -100xxxxxxxx）
-echo $TELEGRAM_STOCK_CHANNEL_ID
+echo $TELEGRAM_OFFERS_CHANNEL_ID
 
 # 查看 Worker 日志中的 Telegram 错误
 docker compose -f docker-compose.production.yml logs worker | grep -i telegram

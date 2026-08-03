@@ -36,7 +36,6 @@ cd ../..
 cp .env.example .env
 # 编辑 .env，至少设置：
 # - TELEGRAM_BOT_TOKEN
-# - TELEGRAM_STOCK_CHANNEL_ID
 # - TELEGRAM_OFFERS_CHANNEL_ID
 # - TELEGRAM_ADMIN_CHAT_ID
 
@@ -164,7 +163,7 @@ docker compose exec postgres psql -U vpsknow -d vpsknow_stock -c "SELECT 1"
 curl https://api.telegram.org/bot<YOUR_TOKEN>/getMe
 
 # 检查频道 ID 格式
-echo $TELEGRAM_STOCK_CHANNEL_ID  # 应为 @channel 或 -100xxx
+echo $TELEGRAM_OFFERS_CHANNEL_ID  # 应为 @channel 或 -100xxx
 ```
 
 ---

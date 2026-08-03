@@ -187,7 +187,6 @@ main() {
     check_env_var "POSTGRES_DB" "required"
     check_env_var "REDIS_URL" "required"
     check_env_var "TELEGRAM_BOT_TOKEN" "required"
-    check_env_var "TELEGRAM_STOCK_CHANNEL_ID" "required"
     check_env_var "TELEGRAM_OFFERS_CHANNEL_ID" "required"
     check_env_var "TELEGRAM_ADMIN_CHAT_ID" "required"
     check_env_var "SITE_DOMAIN" "required"

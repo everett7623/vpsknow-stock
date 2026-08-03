@@ -316,12 +316,12 @@ describe('processStockResults', () => {
       'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
     );
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledWith(
-      '@vpsknow_stock',
+      '@vpsknow_offers',
       'formatted restock message',
     );
     expect(databaseMocks.telegramMessageCreate).toHaveBeenCalledWith({
       data: {
-        channelId: '@vpsknow_stock',
+        channelId: '@vpsknow_offers',
         messageId: 321,
         stockEventId: 'event-1',
         content: 'formatted restock message',

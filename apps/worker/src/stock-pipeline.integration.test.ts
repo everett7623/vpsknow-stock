@@ -120,7 +120,7 @@ describe('stock pipeline integration', () => {
       },
     });
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledWith(
-      '@vpsknow_stock',
+      '@vpsknow_offers',
       'formatted BuyVM restock',
     );
     expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledOnce();

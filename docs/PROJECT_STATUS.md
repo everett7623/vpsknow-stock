@@ -39,8 +39,7 @@
 - ✅ 60/24/31 个单元测试通过
 
 ### Telegram 集成
-- ✅ 补货频道推送 (@vpsknow_stock)
-- ✅ 优惠频道推送 (@vpsknow_offers)
+- ✅ 补货和优惠统一频道推送 (@vpsknow_offers)
 - ✅ 订阅机器人 (@vpsknow_stock_bot)
 - ✅ 个性化通知（provider/location/price 过滤）
 - ✅ 管理员告警（adapter 故障/恢复）
@@ -295,7 +294,7 @@
 
 - **GitHub**: https://github.com/everett7623/vpsknow-stock
 - **网站**: https://stock.vpsknow.com
-- **Telegram**: @vpsknow_stock
+- **Telegram**: @vpsknow_offers
 
 ---
 

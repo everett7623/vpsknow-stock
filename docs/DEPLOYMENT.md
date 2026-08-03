@@ -36,7 +36,6 @@ SITE_DOMAIN=stock.example.com
 NEXT_PUBLIC_SITE_URL=https://stock.example.com
 ADMIN_DASHBOARD_TOKEN=use-another-long-random-secret
 TELEGRAM_BOT_TOKEN=...
-TELEGRAM_STOCK_CHANNEL_ID=@vpsknow_stock
 TELEGRAM_OFFERS_CHANNEL_ID=@vpsknow_offers
 TELEGRAM_ADMIN_CHAT_ID=...
 ```

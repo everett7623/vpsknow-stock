@@ -86,18 +86,12 @@ export default async function HomePage() {
           <p className="text-lg text-gray-400">
             Real-time VPS restock monitoring and LowEndTalk offer alerts.
           </p>
-          <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row sm:gap-4">
-            <a
-              href="https://t.me/vpsknow_stock"
-              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
-            >
-              Restock Channel
-            </a>
+          <div className="pt-2">
             <a
               href="https://t.me/vpsknow_offers"
-              className="rounded-lg border border-gray-700 bg-[#12121a] px-5 py-2 text-sm font-medium text-white transition-colors hover:border-gray-500"
+              className="inline-block rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
             >
-              Offers Channel
+              Telegram Channel
             </a>
           </div>
         </header>

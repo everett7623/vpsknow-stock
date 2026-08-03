@@ -16,8 +16,7 @@ VPSKnow Stock is a sub-product of VPSKnow, focused on real-time VPS restock moni
 |------|-------|
 | Project Name | VPSKnow Stock |
 | Website | `stock.vpsknow.com` |
-| Restock Channel | `@vpsknow_stock` |
-| Offers Channel | `@vpsknow_offers` |
+| Alerts Channel | `@vpsknow_offers` |
 | Subscription Bot | `@vpsknow_stock_bot` |
 | Affiliate Base | `go.uukk.de` |
 
@@ -30,7 +29,7 @@ VPSKnow Stock is a sub-product of VPSKnow, focused on real-time VPS restock moni
 - **Restock**: State transition `OUT_OF_STOCK → IN_STOCK` for a known product.
 - **Offer**: A new post/deal discovered from LowEndTalk or a provider's announcement.
 
-They share infrastructure but serve different user intents and are delivered to separate channels.
+They share infrastructure and one public channel, while remaining distinct event types for formatting and subscriptions.
 
 ---
 
@@ -323,7 +322,7 @@ From each LET Offer post, extract:
 
 ### 6.1 Channel Message Formats
 
-#### Restock Notification (`@vpsknow_stock`)
+#### Restock Notification (`@vpsknow_offers`)
 
 ```text
 🟢 RESTOCK — BuyVM
@@ -545,7 +544,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 - ❌ Do NOT monitor all providers at once — start with 10.
 - ❌ Do NOT use 机场-related domains for this project.
-- ❌ Do NOT dump all LET posts into the restock channel.
+- ❌ Do NOT conflate Restock and Offer event types because they share one public channel.
 - ❌ Do NOT treat always-in-stock cloud providers as restock targets.
 - ❌ Do NOT build user accounts, payment, or premium tiers in v1.
 - ❌ Do NOT put monitoring logic inside Next.js or Vercel Cron.

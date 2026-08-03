@@ -10,8 +10,7 @@
 **VPSKnow Stock** is a real-time VPS restock monitoring platform with Telegram push notifications and a public website. It monitors VPS provider inventory, detects state transitions (out-of-stock → in-stock), and pushes structured alerts to Telegram channels.
 
 - **Website**: `stock.vpsknow.com`
-- **Restock Channel**: `@vpsknow_stock`  
-- **Offers Channel**: `@vpsknow_offers`
+- **Alerts Channel**: `@vpsknow_offers`
 - **Subscription Bot**: `@vpsknow_stock_bot`
 - **Affiliate**: All order links go through `go.uukk.de`
 
@@ -184,8 +183,8 @@ Phase 2 adds: GreenCloudVPS, SpartanHost, VMISS, V.PS, SaltyFish
 - Each adapter should have unit tests with mocked HTML fixtures.
 
 ### Telegram Messages
-- Restock → `@vpsknow_stock` channel
-- LET Offers → `@vpsknow_offers` channel
+- Restock and LET Offers → `@vpsknow_offers` channel
+- Keep Restock and Offer as distinct event types for formatting and Bot subscriptions.
 - Format: structured text with emoji, not raw data dumps.
 - All order links MUST go through `go.uukk.de` affiliate.
 
@@ -209,7 +208,7 @@ Phase 2 adds: GreenCloudVPS, SpartanHost, VMISS, V.PS, SaltyFish
 - ❌ Put monitoring logic in Next.js / Vercel Cron
 - ❌ Run all services in single process
 - ❌ Use "last reply time" for LET newness (use Discussion ID dedup)
-- ❌ Dump all LET posts into restock channel (they go to offers channel)
+- ❌ Conflate Restock and Offer event types because they share one public channel
 - ❌ Fabricate stock events or push stale data as new
 - ❌ Hard-code API keys or secrets in source files
 - ❌ Use `any` type or disable TypeScript checks
@@ -225,7 +224,6 @@ Required env vars (see `.env.example`):
 DATABASE_URL          # PostgreSQL connection string
 REDIS_URL             # Redis connection string
 TELEGRAM_BOT_TOKEN    # Bot token from @BotFather
-TELEGRAM_STOCK_CHANNEL_ID   # @vpsknow_stock
 TELEGRAM_OFFERS_CHANNEL_ID  # @vpsknow_offers
 TELEGRAM_ADMIN_CHAT_ID      # Admin notifications
 AFFILIATE_BASE_URL          # https://go.uukk.de
