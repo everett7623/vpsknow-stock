@@ -27,6 +27,10 @@ import { BageVMAdapter } from '../bagevm.js';
 import { TierHiveAdapter } from '../tierhive.js';
 import { GullosAdapter } from '../gullos.js';
 import { WebHorizonAdapter } from '../webhorizon.js';
+import { VMRackAdapter } from '../vmrack.js';
+import { GoMamiAdapter } from '../gomami.js';
+import { ZgoCloudAdapter } from '../zgocloud.js';
+import { ColoCrossingAdapter } from '../colocrossing.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -517,5 +521,116 @@ describe('provider adapters', () => {
     expect(results[0]).toHaveProperty('provider', 'webhorizon');
     expect(results[0]).toHaveProperty('planName');
     expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses VMRack featured plans without inventing a WHMCS PID', () => {
+    const results = new VMRackAdapter().parse(fixture('vmrack.html'));
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'vmrack',
+      productId: 'vmrack-l3-vps-dc2-2c2g-base',
+      planName: 'L3.VPS.DC2.2C2G.Base',
+      location: 'Los Angeles',
+      cpu: '2 vCPUs',
+      ramMb: 2048,
+      storageGb: 20,
+      bandwidthTb: 1,
+      price: 999,
+      inStock: false,
+      orderUrl: 'https://www.vmrack.net/vps',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'vmrack-l3-vps-dc2-2c4g-pro',
+      ramMb: 4096,
+      storageGb: 40,
+      bandwidthTb: 3,
+      price: 3699,
+      inStock: true,
+    });
+  });
+
+  it('parses GoMami WHMCS product IDs, specs, and stock state', () => {
+    const category = {
+      slug: 'hkg-pulse',
+      location: 'Hong Kong',
+      url: 'https://gomami.io/store/hkg-pulse',
+    };
+    const results = new GoMamiAdapter().parse(fixture('gomami.html'), category);
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'gomami',
+      productId: 'gomami-26',
+      planName: 'HKG.Pulse.Nano',
+      location: 'Hong Kong',
+      cpu: '2 vCPUs',
+      ramMb: 2048,
+      storageGb: 40,
+      storageType: 'NVMe',
+      bandwidthTb: 0.5,
+      price: 4900,
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl: 'https://gomami.io/store/hkg-pulse/hkgpulsenano',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'gomami-27',
+      inStock: false,
+      orderUrl: category.url,
+    });
+  });
+
+  it('parses ZgoCloud HostBill product IDs and excludes VDS products', () => {
+    const results = new ZgoCloudAdapter().parse(fixture('zgocloud.html'));
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'zgocloud',
+      productId: 'zgocloud-136',
+      location: 'Los Angeles',
+      cpu: '2 Cores',
+      ramMb: 2048,
+      storageGb: 20,
+      storageType: 'NVMe',
+      bandwidthTb: 2,
+      price: 9600,
+      billingCycle: 'annually',
+      inStock: true,
+      orderUrl: 'https://clients.zgovps.com/?action=add&cmd=cart&id=136',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'zgocloud-160',
+      location: 'Frankfurt',
+      bandwidthTb: 0.5,
+      inStock: false,
+    });
+  });
+
+  it('parses ColoCrossing specials with authoritative WHMCS quantities', () => {
+    const results = new ColoCrossingAdapter().parse(fixture('colocrossing.html'));
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'colocrossing',
+      productId: 'colocrossing-63',
+      planName: '1GB RAM Spring Special',
+      location: 'United States',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 25,
+      bandwidthTb: 40,
+      price: 395,
+      billingCycle: 'monthly',
+      inStock: false,
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'colocrossing-64',
+      location: 'Seattle',
+      storageType: 'NVMe',
+      billingCycle: 'annually',
+      inStock: true,
+      orderUrl: 'https://cloud.colocrossing.com/index.php?rp=/store/specials/2gb-ram-seattle-special',
+    });
   });
 });

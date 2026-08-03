@@ -239,6 +239,50 @@ async function main() {
     },
   });
 
+  const vmrack = await prisma.provider.upsert({
+    where: { slug: 'vmrack' },
+    update: {},
+    create: {
+      slug: 'vmrack',
+      name: 'VMRack',
+      website: 'https://www.vmrack.net',
+      tier: 'B',
+    },
+  });
+
+  const gomami = await prisma.provider.upsert({
+    where: { slug: 'gomami' },
+    update: {},
+    create: {
+      slug: 'gomami',
+      name: 'GoMami',
+      website: 'https://gomami.io',
+      tier: 'B',
+    },
+  });
+
+  const zgocloud = await prisma.provider.upsert({
+    where: { slug: 'zgocloud' },
+    update: {},
+    create: {
+      slug: 'zgocloud',
+      name: 'ZgoCloud',
+      website: 'https://zgovps.com',
+      tier: 'B',
+    },
+  });
+
+  const colocrossing = await prisma.provider.upsert({
+    where: { slug: 'colocrossing' },
+    update: {},
+    create: {
+      slug: 'colocrossing',
+      name: 'ColoCrossing',
+      website: 'https://www.colocrossing.com',
+      tier: 'B',
+    },
+  });
+
   // Seed known products — BandwagonHost
   const bwgPlans = [
     { productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, billingCycle: 'annually' },
@@ -351,6 +395,10 @@ async function main() {
     { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com', shortUrl: 'https://go.uukk.de/tierhive' },
     { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://gullos.com', shortUrl: 'https://go.uukk.de/gullos' },
     { providerId: webhorizon.id, slug: 'webhorizon', targetUrl: 'https://webhorizon.in', shortUrl: 'https://go.uukk.de/webhorizon' },
+    { providerId: vmrack.id, slug: 'vmrack', targetUrl: 'https://www.vmrack.net?ref_code=5YrpHKG16xf', shortUrl: 'https://go.uukk.de/vmrack' },
+    { providerId: gomami.id, slug: 'gomami', targetUrl: 'https://gomami.io/aff.php?aff=209', shortUrl: 'https://go.uukk.de/gomami' },
+    { providerId: zgocloud.id, slug: 'zgocloud', targetUrl: 'https://clients.zgovps.com/?affid=488', shortUrl: 'https://go.uukk.de/zgovps' },
+    { providerId: colocrossing.id, slug: 'colocrossing', targetUrl: 'https://cloud.colocrossing.com/aff.php?aff=467', shortUrl: 'https://go.uukk.de/ccs' },
   ];
 
   for (const link of affiliateLinks) {
@@ -362,7 +410,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 21`);
+  console.log(`  Providers: 25`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

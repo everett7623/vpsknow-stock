@@ -1422,9 +1422,9 @@ Discovery pipeline (4 layers):
 
 RackNerd, DediRock, Onidel, Evoxt, Crunchbits, ServaRICA, Alwyzon, LiteServer, Clouvider, BageVM.
 
-### B-Tier — Phase 4 (NAT VPS Niche)
+### B-Tier — Phase 4 (Additional Limited Stock)
 
-TierHive, Gullo's Hosting, WebHorizon.
+TierHive, Gullo's Hosting, WebHorizon, VMRack, GoMami, ZgoCloud, ColoCrossing.
 
 ### Directory Only (No Monitoring)
 

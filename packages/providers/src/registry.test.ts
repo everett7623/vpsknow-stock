@@ -25,6 +25,10 @@ const REQUIRED_PROVIDERS = [
   'tierhive',
   'gullos',
   'webhorizon',
+  'vmrack',
+  'gomami',
+  'zgocloud',
+  'colocrossing',
 ] as const;
 
 describe('provider registry', () => {

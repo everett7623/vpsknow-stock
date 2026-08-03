@@ -535,6 +535,20 @@ describe('product affiliate mapping', () => {
       '29',
       'https://www.bagevm.com/aff.php?aff=10&pid=29',
     ],
+    [
+      'gomami',
+      'gomami-26',
+      'https://gomami.io/store/hkg-pulse/hkgpulsenano',
+      '26',
+      'https://gomami.io/aff.php?aff=209&pid=26',
+    ],
+    [
+      'colocrossing',
+      'colocrossing-63',
+      'https://cloud.colocrossing.com/index.php?rp=/store/specials/1gb-ram-spring-special',
+      '63',
+      'https://cloud.colocrossing.com/aff.php?aff=467&pid=63',
+    ],
   ])('maps %s to its verified product PID', (provider, productId, orderUrl, pid, expected) => {
     const extracted = extractWhmcsPid(provider, orderUrl, productId);
 
@@ -562,6 +576,27 @@ describe('product affiliate mapping', () => {
     const orderUrl = 'https://example.com/?action=add&cmd=cart&id=235';
 
     expect(buildProductAffiliateUrl('vps', orderUrl, null)).toBe(orderUrl);
+  });
+
+  it('merges the verified ZgoCloud HostBill affiliate parameter into the exact product URL', () => {
+    const orderUrl = 'https://clients.zgovps.com/?action=add&cmd=cart&id=136';
+
+    expect(extractWhmcsPid('zgocloud', orderUrl, 'zgocloud-136')).toBeNull();
+    expect(buildProductAffiliateUrl('zgocloud', orderUrl, null)).toBe(
+      'https://clients.zgovps.com/?action=add&cmd=cart&id=136&affid=488',
+    );
+  });
+
+  it('adds the VMRack referral code only to the verified official origin', () => {
+    const orderUrl = 'https://www.vmrack.net/vps';
+
+    expect(extractWhmcsPid('vmrack', orderUrl, 'vmrack-l3-vps-dc2-2c4g-pro')).toBeNull();
+    expect(buildProductAffiliateUrl('vmrack', orderUrl, null)).toBe(
+      'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf',
+    );
+    expect(buildProductAffiliateUrl('vmrack', 'https://example.com/vps', null)).toBe(
+      'https://example.com/vps',
+    );
   });
 
   it('keeps Evoxt on its exact deploy URL without guessing a legacy WHMCS PID', () => {

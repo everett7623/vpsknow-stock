@@ -22,6 +22,10 @@ import { BageVMAdapter } from './adapters/bagevm.js';
 import { TierHiveAdapter } from './adapters/tierhive.js';
 import { GullosAdapter } from './adapters/gullos.js';
 import { WebHorizonAdapter } from './adapters/webhorizon.js';
+import { VMRackAdapter } from './adapters/vmrack.js';
+import { GoMamiAdapter } from './adapters/gomami.js';
+import { ZgoCloudAdapter } from './adapters/zgocloud.js';
+import { ColoCrossingAdapter } from './adapters/colocrossing.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -47,6 +51,10 @@ const adapters: ProviderAdapter[] = [
   new TierHiveAdapter(),
   new GullosAdapter(),
   new WebHorizonAdapter(),
+  new VMRackAdapter(),
+  new GoMamiAdapter(),
+  new ZgoCloudAdapter(),
+  new ColoCrossingAdapter(),
 ];
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(

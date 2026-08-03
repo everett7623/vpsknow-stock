@@ -57,6 +57,10 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   tierhive: 300_000,
   gullos: 300_000,
   webhorizon: 300_000,
+  vmrack: 300_000,
+  gomami: 300_000,
+  zgocloud: 300_000,
+  colocrossing: 300_000,
 };
 
 async function bootstrap(): Promise<void> {

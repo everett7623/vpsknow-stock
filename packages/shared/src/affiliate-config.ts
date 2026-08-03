@@ -230,6 +230,50 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     supportsPid: false,
     originalUrl: 'https://my.webhorizon.net/',
   },
+
+  vmrack: {
+    provider: 'vmrack',
+    affId: '5YrpHKG16xf',
+    urlTemplate: 'https://www.vmrack.net/vps?ref_code={affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'ref_code',
+      allowedOrigin: 'https://www.vmrack.net',
+    },
+    originalUrl: 'https://www.vmrack.net?ref_code=5YrpHKG16xf',
+  },
+
+  gomami: {
+    provider: 'gomami',
+    affId: '209',
+    urlTemplate: 'https://gomami.io/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://gomami.io/aff.php?aff=209',
+  },
+
+  zgocloud: {
+    provider: 'zgocloud',
+    affId: '488',
+    urlTemplate: 'https://clients.zgovps.com/?affid={affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'affid',
+      allowedOrigin: 'https://clients.zgovps.com',
+    },
+    originalUrl: 'https://clients.zgovps.com/?affid=488',
+  },
+
+  colocrossing: {
+    provider: 'colocrossing',
+    affId: '467',
+    urlTemplate: 'https://cloud.colocrossing.com/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://cloud.colocrossing.com/aff.php?aff=467',
+  },
 };
 
 /**
