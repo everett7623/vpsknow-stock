@@ -314,6 +314,8 @@ async function main() {
     where: {
       providerId: bandwagonhost.id,
       productId: 'bwg-almalinux-rockylinux-centos-debian-multi-dc',
+      stockChecks: { none: {} },
+      stockEvents: { none: {} },
     },
   });
 
