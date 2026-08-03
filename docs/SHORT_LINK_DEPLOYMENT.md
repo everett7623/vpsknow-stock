@@ -75,7 +75,6 @@ npx tsx scripts/update-affiliate-links.ts
 ✅ BandwagonHost: Provider link updated
    └─ 6 product links generated
 ✅ BuyVM: Provider link updated
-⚠️  HostHatch: Affiliate ID not configured, skipping
 ...
 
 📊 Summary:

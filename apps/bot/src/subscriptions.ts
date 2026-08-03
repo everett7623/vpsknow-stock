@@ -13,7 +13,6 @@ export const PROVIDERS = [
   ['dmit', 'DMIT'],
   ['buyvm', 'BuyVM'],
   ['greencloudvps', 'GreenCloudVPS'],
-  ['hosthatch', 'HostHatch'],
   ['spartanhost', 'SpartanHost'],
   ['vmiss', 'VMISS'],
   ['vps', 'V.PS'],

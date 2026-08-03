@@ -40,7 +40,7 @@
 功能:
 - ✅ 遍历所有 providers
 - ✅ 生成 provider 级别短链接 (如 `buyvm`)
-- ✅ 生成 product 级别短链接 (如 `bwg-dc6-95`, 仅支持 PID 的 provider)
+- ✅ 为全部监控产品生成 product 级别短链接（如 `bwg-dc6-95`）
 - ✅ 自动跳过未配置 affiliate ID 的 provider
 - ✅ Upsert 操作 (创建或更新)
 
@@ -140,16 +140,16 @@ curl -I https://stock.vpsknow.com/go/buyvm
 
 ### Provider 级别链接 (通用)
 
-适用于**不支持 PID** 的 provider (如 BuyVM, HostHatch):
+适用于**没有稳定产品 PID** 的 provider（如 Evoxt）：
 
 ```
-短链接: https://stock.vpsknow.com/go/buyvm
-目标链接: https://my.frantech.ca/aff.php?aff=YOUR_ID
+短链接: https://stock.vpsknow.com/go/evoxt-vm-starter-1
+目标链接: https://console.evoxt.com/deploy.php
 ```
 
 ### Product 级别链接 (精确)
 
-适用于**支持 PID** 的 provider (如 BandwagonHost, DMIT, RackNerd):
+适用于**支持 PID** 的 provider（BandwagonHost、DMIT、BuyVM、SpartanHost、GreenCloudVPS、VMISS、SaltyFish、RackNerd、LiteServer、DediRock、BageVM）：
 
 ```
 短链接: https://stock.vpsknow.com/go/bwg-dc6-95

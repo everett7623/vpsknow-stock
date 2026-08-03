@@ -107,10 +107,10 @@ interface ProviderAdapter {
 }
 ```
 
-The registry (`packages/providers/src/registry.ts`) maps slug → adapter instance. `HostHatchAdapter` is conditionally registered only when `HOSTHATCH_API_TOKEN` is set.
+The registry (`packages/providers/src/registry.ts`) maps slug → adapter instance.
 
 **Provider tiers and intervals:**
-- **S-Tier** (90–300s): bandwagonhost (90s), buyvm (90s), dmit/hosthatch/spartanhost (150s), greencloudvps (180s), vmiss/vps/saltyfish/akilecloud (300s)
+- **S-Tier** (90–300s): bandwagonhost (90s), buyvm (90s), dmit/spartanhost (150s), greencloudvps (180s), vmiss/vps/saltyfish/akilecloud (300s)
 - **A-Tier** (180s): racknerd, clouvider, liteserver, crunchbits, servarica, evoxt, alwyzon, dedirock, onidel
 - **B-Tier** (300s): tierhive, gullos, webhorizon
 
@@ -179,7 +179,6 @@ TELEGRAM_ADMIN_CHAT_ID       # Admin notifications chat
 AFFILIATE_BASE_URL           # https://go.uukk.de
 NODE_ENV                     # development | production
 LOG_LEVEL                    # info | debug | warn | error
-HOSTHATCH_API_TOKEN          # Optional — enables authenticated HostHatch adapter
 ```
 
 See `.env.example` for the complete list.

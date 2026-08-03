@@ -30,8 +30,8 @@
 
 ### Provider 监控
 - ✅ **22 个 Provider 适配器**
-  - S-Tier (10): BandwagonHost, DMIT, BuyVM, HostHatch, GreenCloudVPS, SpartanHost, VMISS, AkileCloud, V.PS, SaltyFish
-  - A-Tier (9): RackNerd, Clouvider, LiteServer, Crunchbits, ServaRICA, Evoxt, Alwyzon, DediRock, Onidel
+  - S-Tier (9): BandwagonHost, DMIT, BuyVM, GreenCloudVPS, SpartanHost, VMISS, AkileCloud, V.PS, SaltyFish
+  - A-Tier (10): RackNerd, Clouvider, LiteServer, Crunchbits, ServaRICA, Evoxt, Alwyzon, DediRock, Onidel, BageVM
   - B-Tier (3): TierHive, Gullos, WebHorizon
 - ✅ 智能库存检测（连续确认机制）
 - ✅ Provider 健康监控（降级/暂停）
@@ -142,9 +142,8 @@
 ## 🐛 已知问题和限制
 
 ### 当前限制
-1. **HostHatch API**: 需要 API token，未配置时跳过注册
-2. **Cloudflare 保护**: 部分 provider 可能需要 Playwright（尚未集成）
-3. **价格历史**: 功能已规划但未实现图表展示
+1. **Cloudflare 保护**: 部分 provider 可能需要 Playwright（尚未集成）
+2. **价格历史**: 功能已规划但未实现图表展示
 4. **WebSocket 实时更新**: 当前使用轮询，Phase 4 升级
 
 ### 技术债务
@@ -199,7 +198,6 @@
 - ✅ TELEGRAM_BOT_TOKEN
 - ✅ TELEGRAM_*_CHANNEL_ID
 - ✅ AFFILIATE_BASE_URL
-- ⚠️ HOSTHATCH_API_TOKEN（可选）
 
 ### 部署脚本
 | 脚本 | 功能 | 状态 |

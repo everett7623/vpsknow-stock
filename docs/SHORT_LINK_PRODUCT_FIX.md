@@ -25,11 +25,13 @@
 ```
 用户点击: https://stock.vpsknow.com/go/buyvm-slice-1024-lv
       ↓
-跳转到: https://my.frantech.ca/aff.php?aff=6836 (BuyVM不支持pid)
-或
+跳转到: https://my.frantech.ca/aff.php?aff=6836&pid=1024
+      ↓
+最终页面: BuyVM 对应产品购买页 ✅
+
 用户点击: https://stock.vpsknow.com/go/bandwagonhost-bwg-the-plan-dc6
       ↓
-跳转到: https://bandwagonhost.com/aff.php?aff=68376&pid=bwg-the-plan-dc6
+跳转到: https://bandwagonhost.com/aff.php?aff=68376&pid=95
       ↓
 最终页面: 具体产品购买页 ✅
 ```
@@ -65,12 +67,12 @@ if (config.supportsPid && provider.products.length > 0) { ... }
 if (provider.products.length > 0) {
   for (const product of provider.products) {
     let productTargetUrl: string;
-    if (config.supportsPid) {
+    if (config.supportsPid && product.whmcsPid) {
       // 支持 PID: 带 &pid=xxx
-      productTargetUrl = generateAffiliateUrl(provider.slug, product.productId);
+      productTargetUrl = generateAffiliateUrl(provider.slug, product.whmcsPid);
     } else {
-      // 不支持 PID: 使用 provider 通用链接
-      productTargetUrl = providerTargetUrl;
+      // 未验证 PID: 保留 adapter 提取的精确订单直连
+      productTargetUrl = product.orderUrl;
     }
     // 生成短链接...
   }
@@ -85,18 +87,18 @@ if (provider.products.length > 0) {
 
 | Provider | 短链接示例 | 目标链接 |
 |----------|-----------|---------|
-| **BandwagonHost** | `/go/bandwagonhost-bwg-the-plan-dc6` | `aff.php?aff=68376&pid=bwg-the-plan-dc6` ✅ |
-| **DMIT** | `/go/dmit-hk-pccw-1g` | `aff.php?aff=6077&pid=hk-pccw-1g` ✅ |
-| **RackNerd** | `/go/racknerd-kvm-2g-la` | `aff.php?aff=5550&pid=kvm-2g-la` ✅ |
+| **BandwagonHost** | `/go/bandwagonhost-bwg-the-plan-dc6` | `aff.php?aff=68376&pid=95` ✅ |
+| **BuyVM** | `/go/buyvm-slice-1024-lv` | `aff.php?aff=6836&pid=1024` ✅ |
+| **SpartanHost** | `/go/spartanhost-spartan-1024mb-dalkvm` | `aff.php?aff=2459&pid=317` ✅ |
+| **GreenCloudVPS** | `/go/greencloudvps-gc-2081` | `aff.php?aff=6807&pid=2081` ✅ |
 
 ### 不支持 PID 的 Provider (通用链接)
 
 | Provider | 短链接示例 | 目标链接 | 说明 |
 |----------|-----------|---------|------|
-| **BuyVM** | `/go/buyvm-slice-1024-lv` | `aff.php?aff=6836` | 所有产品共用 |
-| **GreenCloudVPS** | `/go/greencloudvps-kvmmo-1` | `aff.php?aff=6807` | 所有产品共用 |
+| **Evoxt** | `/go/evoxt-vm-starter-1` | 精确订单直连 | 未验证产品级 affiliate |
 
-**注意**: 不支持 PID 的 provider,每个产品仍有独立短链接,但跳转到同一个 provider 页面。这样做的好处:
+**注意**: 不支持 PID 的 provider 仍有独立短链接，并保留 adapter 提取的精确订单 URL。这样做的好处:
 1. ✅ 统一的短链接格式
 2. ✅ 可以追踪每个产品的点击统计
 3. ✅ 未来如果 provider 支持 PID,只需更新配置即可
@@ -145,7 +147,7 @@ docker compose -f docker-compose.production.yml exec worker \
 # ✅ BandwagonHost: Provider link updated
 #    └─ 6 product-specific links generated
 # ✅ BuyVM: Provider link updated
-#    └─ 12 provider links (shared) generated
+#    └─ 12 product-specific links generated
 # ...
 ```
 
@@ -168,9 +170,9 @@ LIMIT 20;
 curl -I https://stock.vpsknow.com/go/bandwagonhost-bwg-the-plan-dc6
 # 应该返回: Location: ...aff.php?aff=68376&pid=bwg-the-plan-dc6
 
-# 测试 BuyVM 产品链接 (不支持 PID)
+# 测试 BuyVM 产品链接 (支持 PID)
 curl -I https://stock.vpsknow.com/go/buyvm-slice-1024-lv
-# 应该返回: Location: ...aff.php?aff=6836 (无 pid)
+# 应该返回: Location: ...aff.php?aff=6836&pid=1024
 ```
 
 ### 步骤 5: 观察 Telegram 通知
@@ -209,7 +211,7 @@ docker compose -f docker-compose.production.yml logs -f worker | grep "RESTOCK"
 
 - [ ] 查询数据库,确认每个产品都有短链接
 - [ ] 测试 BandwagonHost 产品链接 (应该带 `&pid=xxx`)
-- [ ] 测试 BuyVM 产品链接 (应该无 `pid`,但短链接不同)
+- [ ] 测试 BuyVM 产品链接（应带正确的数字 `pid`）
 - [ ] 查看 Telegram 补货通知,确认使用产品短链接
 - [ ] 浏览器访问短链接,确认跳转到产品页面
 - [ ] 检查 provider affiliate 后台,确认追踪生效

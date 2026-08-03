@@ -186,20 +186,24 @@ pnpm db:seed
 |----------|--------|----------|
 | **BandwagonHost** | 6 | 访问 bandwagonhost.com,点击每个产品的 Order 按钮 |
 | **DMIT** | 6 | 访问 dmit.io,查看产品订购链接 |
+| **BuyVM** | 未知 | 从 Frantech 订购链接提取 `pid` |
+| **SpartanHost** | 未知 | 从 WHMCS 商品卡片 ID 解析并生成 `cart.php?a=add&pid=...` |
+| **GreenCloudVPS** | 未知 | 从卡片 ID、订购链接提取 `pid` |
+| **VMISS** | 未知 | 从卡片 ID、订购链接提取 `pid` |
+| **SaltyFish** | 未知 | 从卡片 ID、订购链接提取 `pid` |
 | **RackNerd** | 未知 | 访问 my.racknerd.com,查看 VPS 产品 |
+| **LiteServer** | 未知 | 从卡片 ID、订购链接提取 `pid` |
+| **DediRock** | 未知 | 从卡片 ID、订购链接提取 `pid` |
+| **BageVM** | 未知 | 从卡片 ID、订购链接提取 `pid` |
 
 ### 中优先级 (可能支持 PID)
 
-- Evoxt
-- LiteServer
 - Clouvider
-- DediRock
 
 ### 低优先级 (不支持 PID)
 
-- BuyVM (使用通用链接)
-- GreenCloudVPS (使用通用链接)
-- 其他不使用 WHMCS 的 provider
+- Evoxt（保留精确订单直连）
+- 其他未验证产品级 affiliate 规则的 provider
 
 ---
 

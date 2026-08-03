@@ -3,7 +3,6 @@ import { BandwagonHostAdapter } from './adapters/bandwagonhost.js';
 import { DmitAdapter } from './adapters/dmit.js';
 import { BuyVMAdapter } from './adapters/buyvm.js';
 import { GreenCloudVPSAdapter } from './adapters/greencloudvps.js';
-import { HostHatchAdapter } from './adapters/hosthatch.js';
 import { SpartanHostAdapter } from './adapters/spartanhost.js';
 import { VmissAdapter } from './adapters/vmiss.js';
 import { VpsAdapter } from './adapters/vps.js';
@@ -51,10 +50,6 @@ const adapters: ProviderAdapter[] = [
   new GullosAdapter(),
   new WebHorizonAdapter(),
 ];
-
-if (process.env.HOSTHATCH_API_TOKEN) {
-  adapters.push(new HostHatchAdapter());
-}
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(
   adapters.map((a) => [a.slug, a]),

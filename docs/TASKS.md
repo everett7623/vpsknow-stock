@@ -195,7 +195,7 @@ A vertical timeline showing state transitions:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│  🔥 HostHatch — Annual VPS                      [2h ago]       │
+│  🔥 GreenCloudVPS — Annual VPS                  [2h ago]       │
 │                                                                 │
 │  4 GB RAM · 50 GB NVMe · 9 Locations                           │
 │  $35/year (recurring)                                           │
@@ -367,11 +367,6 @@ A vertical timeline showing state transitions:
   - DDoS Protected Slices
 - **Detection signal**: Presence of `<a>` with "Order Now" text vs "Out of Stock" span
 
-#### HostHatch
-
-- **URL**: `https://hosthatch.com/vps` + location-specific pages
-- **Method**: HTTP GET → parse product grid for availability indicators
-- **Challenge**: Promotional pages are separate URLs that appear/disappear
 - **Products to monitor**:
   - NVMe VPS (multiple locations)
   - Storage VPS (Amsterdam, Stockholm)
@@ -447,7 +442,6 @@ Each adapter needs:
 | Provider | Protection | Strategy |
 |----------|-----------|----------|
 | BuyVM | None | Direct HTTP |
-| HostHatch | Light rate limiting | Polite interval + UA |
 | GreenCloudVPS | WHMCS default | Standard HTTP |
 | BandwagonHost | Moderate | Rotate UA, respect rate |
 | DMIT | Cloudflare (sometimes) | Playwright fallback |
@@ -689,7 +683,7 @@ Inline keyboard buttons:
 #### LET Offer — Structured
 
 ```text
-🔥 NEW OFFER — HostHatch
+🔥 NEW OFFER — RackNerd
 
 ━━━━━━━━━━━━━━━━━━━━
 📦 Annual NVMe VPS
@@ -776,7 +770,7 @@ Bot:  Let's set up your alerts.
 
 User: [Both]
 Bot:  2️⃣ Which providers? (select multiple)
-      [BuyVM] [HostHatch] [GreenCloud]
+      [BuyVM] [GreenCloud] [DMIT]
       [DMIT] [SpartanHost] [BandwagonHost]
       [VMISS] [Netcup] [AkileCloud] [V.PS]
       [✅ All Providers]
@@ -965,7 +959,6 @@ The website should rank for high-intent searches:
 |---------------|------|
 | "buyvm in stock" | `/provider/buyvm` |
 | "buyvm restock" | `/provider/buyvm` |
-| "hosthatch stock" | `/provider/hosthatch` |
 | "vps restock alerts" | `/` |
 | "lowendtalk offers" | `/offers` |
 | "greencloud vps stock" | `/provider/greencloudvps` |
@@ -1262,7 +1255,6 @@ export interface ProviderAdapter {
 |------|--------|
 | Priority | P0 |
 
-- [x] `hosthatch.ts` — Use the authenticated products API for per-location availability; activates when `HOSTHATCH_API_TOKEN` is configured
 - [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
 - [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
@@ -1422,13 +1414,12 @@ Discovery pipeline (4 layers):
 | 1 | **BandwagonHost** | Limited plans, DC6/DC9, HK, restocks | 1–2 min | **Phase 1** |
 | 2 | **DMIT** | PVM, Premium, Eyeball, by location | 2–3 min | **Phase 1** |
 | 3 | **BuyVM** | Slice, Storage Slice, location stock | 1–2 min | **Phase 1** |
-| 4 | HostHatch | Annual deals, Storage, Asia | 2–3 min | Phase 2 |
-| 5 | GreenCloudVPS | Tokyo, SG, HK, Storage, annual | 2–3 min | Phase 2 |
-| 6 | SpartanHost | Seattle, Dallas, AMD, routing | 2–3 min | Phase 2 |
-| 7 | VMISS | CN2, BGP, HK, JP, LA | 5 min | Phase 2 |
-| 8 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
-| 9 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
-| 10 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes | 5 min | Phase 2 |
+| 4 | GreenCloudVPS | Tokyo, SG, HK, Storage, annual | 2–3 min | Phase 2 |
+| 5 | SpartanHost | Seattle, Dallas, AMD, routing | 2–3 min | Phase 2 |
+| 6 | VMISS | CN2, BGP, HK, JP, LA | 5 min | Phase 2 |
+| 7 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
+| 8 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
+| 9 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes | 5 min | Phase 2 |
 
 ### A-Tier — Phase 4 (Offers + Limited Stock)
 

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import {
   AFFILIATE_CONFIGS,
+  buildProductAffiliateUrl,
+  extractWhmcsPid,
   generateAffiliateUrl,
   generateShortLinkSlug,
 } from '@vpsknow/shared/affiliate-config';
@@ -67,7 +69,7 @@ async function updateAffiliateLinks() {
 
     // 产品级别链接 (为所有产品生成短链接)
     // 如果 provider 支持 PID 且产品有 whmcsPid: 生成带 &pid=xxx 的链接
-    // 否则: 使用 provider 级别链接 (所有产品共用)
+    // 否则: 保留产品的原始订单直连
     if (provider.products.length > 0) {
       let withPid = 0;
       let withoutPid = 0;
@@ -75,14 +77,18 @@ async function updateAffiliateLinks() {
       for (const product of provider.products) {
         const productSlug = generateShortLinkSlug(provider.slug, product.productId);
 
-        let productTargetUrl: string;
-        if (config.supportsPid && product.whmcsPid) {
-          // 支持 PID 且有 whmcsPid: 使用产品特定链接
-          productTargetUrl = generateAffiliateUrl(provider.slug, product.whmcsPid);
+        const extractedPid = product.orderUrl
+          ? extractWhmcsPid(provider.slug, product.orderUrl, product.productId)
+          : null;
+        const whmcsPid = extractedPid ?? product.whmcsPid;
+        const productTargetUrl = buildProductAffiliateUrl(
+          provider.slug,
+          product.orderUrl ?? provider.website,
+          whmcsPid,
+        );
+        if (config.supportsPid && whmcsPid) {
           withPid++;
         } else {
-          // 不支持 PID 或无 whmcsPid: 使用 provider 通用链接
-          productTargetUrl = providerTargetUrl;
           withoutPid++;
         }
 
@@ -102,7 +108,7 @@ async function updateAffiliateLinks() {
         console.log(`   └─ ${withPid} product-specific links (with WHMCS PID)`);
       }
       if (withoutPid > 0) {
-        console.log(`   └─ ${withoutPid} provider links (no WHMCS PID)`);
+        console.log(`   └─ ${withoutPid} direct product links (no verified WHMCS PID)`);
       }
     }
   }

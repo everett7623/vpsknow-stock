@@ -45,12 +45,12 @@
 ### ✅ 双层链接支持
 
 **Provider 级别** (通用):
-- 适用于不支持 PID 的 provider (BuyVM, HostHatch...)
+- 适用于没有稳定产品 PID 的 provider（如 Evoxt）
 - 格式: `https://stock.vpsknow.com/go/buyvm`
 - 跳转到 provider 主页
 
 **Product 级别** (精确):
-- 适用于支持 PID 的 provider (BandwagonHost, DMIT, RackNerd...)
+- 适用于支持 PID 的 provider（BandwagonHost、DMIT、BuyVM、SpartanHost、GreenCloudVPS、VMISS、SaltyFish、RackNerd、LiteServer、DediRock、BageVM）
 - 格式: `https://stock.vpsknow.com/go/bwg-dc6-95`
 - 直接跳转到具体产品页面
 
@@ -153,17 +153,17 @@ bandwagonhost: {
 ### 不支持 PID 的 Provider
 
 ```typescript
-buyvm: {
-  provider: 'buyvm',
-  affId: '12345',
-  urlTemplate: 'https://my.frantech.ca/aff.php?aff={affId}',
-  supportsPid: false,  // ❌ 只有 provider 级别链接
+evoxt: {
+  provider: 'evoxt',
+  affId: '994',
+  urlTemplate: 'https://console.evoxt.com/aff.php?aff={affId}',
+  supportsPid: false,
 },
 ```
 
 **效果**:
-- Provider 链接: `/go/buyvm` → 主页
-- Product 链接: 不生成 (所有产品共用 provider 链接)
+- Provider 链接: `/go/evoxt` → affiliate 入口
+- Product 链接: 使用 adapter 提取的精确订单直连
 
 ---
 

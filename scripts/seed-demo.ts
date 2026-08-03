@@ -14,7 +14,6 @@ const DEMO_RESTOCK_EVENTS = [
   { providerSlug: 'buyvm', productId: 'buyvm-slice-1024-lv', planName: 'KVM Slice 1024', location: 'Las Vegas', priceCents: 350, currency: 'USD', billingCycle: 'monthly' },
   { providerSlug: 'dmit', productId: 'dmit-pvm-lax-lite-v2', planName: 'PVM.LAX.Pro.STARTER', location: 'Los Angeles', priceCents: 1488, currency: 'USD', billingCycle: 'annually' },
   { providerSlug: 'bandwagonhost', productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, currency: 'USD', billingCycle: 'annually' },
-  { providerSlug: 'hosthatch', productId: 'hosthatch-nvme-1gb-ams', planName: 'NVMe 1GB', location: 'Amsterdam', priceCents: 3500, currency: 'USD', billingCycle: 'annually' },
   { providerSlug: 'greencloudvps', productId: 'greencloud-budget-kvm-1gb-tok', planName: 'Budget KVM 1GB', location: 'Tokyo', priceCents: 1800, currency: 'USD', billingCycle: 'annually' },
   { providerSlug: 'spartanhost', productId: 'spartanhost-ryzen-1gb-sea', planName: 'Ryzen KVM 1GB', location: 'Seattle', priceCents: 500, currency: 'USD', billingCycle: 'monthly' },
   { providerSlug: 'racknerd', productId: 'racknerd-1gb-lax', planName: '1GB KVM VPS', location: 'Los Angeles', priceCents: 1099, currency: 'USD', billingCycle: 'annually' },
@@ -22,25 +21,6 @@ const DEMO_RESTOCK_EVENTS = [
 ];
 
 const DEMO_OFFERS = [
-  {
-    source: 'lowendtalk',
-    sourceId: 'demo-let-001',
-    provider: 'hosthatch',
-    title: 'HostHatch - Annual NVMe VPS Sale',
-    body: 'Annual deal on NVMe VPS servers across multiple locations',
-    category: 'vps',
-    locations: ['Amsterdam', 'Los Angeles', 'Singapore', 'Tokyo'],
-    priceCents: 3500,
-    currency: 'USD',
-    billingCycle: 'annually',
-    couponCode: null,
-    orderUrl: 'https://hosthatch.com/vps',
-    threadUrl: 'https://lowendtalk.com/discussion/demo-001',
-    isLimitedStock: true,
-    isRecurring: true,
-    confidence: 0.92,
-    postedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
   {
     source: 'lowendtalk',
     sourceId: 'demo-let-002',

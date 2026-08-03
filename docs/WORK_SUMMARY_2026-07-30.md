@@ -107,8 +107,8 @@ Packages：7 个
 **新增 12 个 Provider 适配器**，使系统总监控 Provider 数量达到 **22 个**：
 
 ```
-S-Tier (10): BandwagonHost, DMIT, BuyVM, HostHatch, GreenCloudVPS,
-             SpartanHost, VMISS, AkileCloud, V.PS, SaltyFish
+S-Tier (9): BandwagonHost, DMIT, BuyVM, GreenCloudVPS, SpartanHost,
+            VMISS, AkileCloud, V.PS, SaltyFish
 
 A-Tier (9):  RackNerd, Clouvider, LiteServer, Crunchbits, ServaRICA,
              Evoxt, Alwyzon, DediRock, Onidel

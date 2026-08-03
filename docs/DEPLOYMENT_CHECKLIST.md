@@ -54,7 +54,6 @@
 #### 可选环境变量
 
 ```bash
-⚪ HOSTHATCH_API_TOKEN         # HostHatch API（可选）
 ⚪ LOG_LEVEL                   # 日志级别（默认：info）
 ⚪ BACKUP_RETENTION_DAYS       # 备份保留天数（默认：14）
 ```

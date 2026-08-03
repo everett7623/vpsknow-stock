@@ -14,6 +14,7 @@ const databaseMocks = vi.hoisted(() => ({
   stockEventFindFirst: vi.fn(),
   stockEventCreate: vi.fn(),
   telegramMessageCreate: vi.fn(),
+  affiliateLinkUpsert: vi.fn(),
 }));
 
 const telegramMocks = vi.hoisted(() => ({
@@ -39,6 +40,7 @@ vi.mock('@vpsknow/database', () => ({
       create: databaseMocks.stockEventCreate,
     },
     telegramMessage: { create: databaseMocks.telegramMessageCreate },
+    affiliateLink: { upsert: databaseMocks.affiliateLinkUpsert },
   },
 }));
 
@@ -54,7 +56,13 @@ describe('stock pipeline integration', () => {
     vi.clearAllMocks();
     databaseMocks.providerFindUnique.mockResolvedValue({
       id: 'provider-buyvm',
-      affiliateLinks: [{ shortUrl: 'https://go.uukk.de/buyvm' }],
+      affiliateLinks: [
+        {
+          slug: 'buyvm',
+          targetUrl: 'https://my.frantech.ca/aff.php?aff=123',
+          shortUrl: 'https://go.uukk.de/buyvm',
+        },
+      ],
     });
     databaseMocks.productFindUnique.mockResolvedValue({ id: 'product-slice-1024' });
     databaseMocks.productUpsert
@@ -65,6 +73,7 @@ describe('stock pipeline integration', () => {
     databaseMocks.stockEventFindFirst.mockResolvedValue(null);
     databaseMocks.stockEventCreate.mockResolvedValue({ id: 'event-restock' });
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'message' });
+    databaseMocks.affiliateLinkUpsert.mockImplementation(async ({ create }) => create);
     telegramMocks.formatRestockMessage.mockReturnValue('formatted BuyVM restock');
     telegramMocks.sendChannelMessage.mockResolvedValue(1001);
     subscriberMocks.notifyRestockSubscribers.mockResolvedValue(undefined);
@@ -81,6 +90,7 @@ describe('stock pipeline integration', () => {
       productId: 'buyvm-slice-1024-las-vegas',
       planName: 'Slice 1024',
       inStock: true,
+      orderUrl: 'https://my.frantech.ca/cart.php?a=add&pid=1024',
     });
 
     const logger = pino({ enabled: false });
@@ -96,6 +106,19 @@ describe('stock pipeline integration', () => {
     });
     expect(databaseMocks.stockCheckCreate).toHaveBeenCalledTimes(2);
     expect(databaseMocks.stockEventCreate).toHaveBeenCalledOnce();
+    expect(databaseMocks.affiliateLinkUpsert).toHaveBeenCalledWith({
+      where: { slug: 'buyvm-buyvm-slice-1024-las-vegas' },
+      update: {
+        targetUrl: 'https://my.frantech.ca/aff.php?aff=6836&pid=1024',
+        shortUrl: 'https://stock.vpsknow.com/go/buyvm-buyvm-slice-1024-las-vegas',
+      },
+      create: {
+        providerId: 'provider-buyvm',
+        slug: 'buyvm-buyvm-slice-1024-las-vegas',
+        targetUrl: 'https://my.frantech.ca/aff.php?aff=6836&pid=1024',
+        shortUrl: 'https://stock.vpsknow.com/go/buyvm-buyvm-slice-1024-las-vegas',
+      },
+    });
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledWith(
       '@vpsknow_stock',
       'formatted BuyVM restock',

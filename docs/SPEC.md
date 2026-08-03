@@ -179,20 +179,19 @@ affiliate_links
 
 ## 4. Provider Monitoring
 
-### 4.1 First Batch — 10 Providers (S-Tier)
+### 4.1 First Batch — 9 Providers (S-Tier)
 
 | # | Provider | Focus |
 |---|----------|-------|
 | 1 | BuyVM | Slice, Storage Slice, location stock |
-| 2 | HostHatch | Annual deals, Storage, Asia locations |
-| 3 | GreenCloudVPS | Tokyo, Singapore, HK, Storage, annual |
-| 4 | SpartanHost | Seattle, Dallas, AMD, routing plans |
-| 5 | BandwagonHost | Limited plans, DC6/DC9, restocks |
-| 6 | DMIT | PVM, Premium, Eyeball, by location |
-| 7 | VMISS | CN2, BGP, HK, JP, LA |
-| 8 | AkileCloud | HK, JP, SG, optimized routing |
-| 9 | V.PS | JP, SG, EU limited plans |
-| 10 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes |
+| 2 | GreenCloudVPS | Tokyo, Singapore, HK, Storage, annual |
+| 3 | SpartanHost | Seattle, Dallas, AMD, routing plans |
+| 4 | BandwagonHost | Limited plans, DC6/DC9, restocks |
+| 5 | DMIT | PVM, Premium, Eyeball, by location |
+| 6 | VMISS | CN2, BGP, HK, JP, LA |
+| 7 | AkileCloud | HK, JP, SG, optimized routing |
+| 8 | V.PS | JP, SG, EU limited plans |
+| 9 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes |
 
 ### 4.2 Provider Adapter Interface
 
@@ -226,7 +225,6 @@ packages/providers/src/
 ├── index.ts
 ├── types.ts
 ├── buyvm.ts
-├── hosthatch.ts
 ├── greencloud.ts
 ├── spartanhost.ts
 ├── bandwagonhost.ts
@@ -242,7 +240,7 @@ packages/providers/src/
 | Tier | Providers | Interval |
 |------|-----------|----------|
 | Hot | BuyVM, limited plans | 1–2 min |
-| Active | HostHatch, GreenCloud, SpartanHost | 2–3 min |
+| Active | GreenCloud, SpartanHost | 2–3 min |
 | Standard | Others | 5–10 min |
 | LET RSS | LowEndTalk Offers | 2–3 min |
 | Price Pages | Provider pricing | 30–60 min |
@@ -346,7 +344,7 @@ From each LET Offer post, extract:
 #### LET Offer (`@vpsknow_offers`)
 
 ```text
-🔥 NEW OFFER — HostHatch
+🔥 NEW OFFER — RackNerd
 
 📦 4 GB RAM / 50 GB NVMe
 📍 9 Locations
@@ -357,7 +355,7 @@ From each LET Offer post, extract:
 ├── Source: LowEndTalk
 └── Posted: 2026-07-20
 
-🔗 Order: go.uukk.de/hosthatch
+🔗 Order: my.racknerd.com
 🔗 Thread: lowendtalk.com/discussion/xxxxx
 ```
 
@@ -473,7 +471,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 - [ ] Monorepo setup (Turborepo + pnpm)
 - [ ] Database schema + Prisma setup
-- [ ] 3 provider adapters (BuyVM, HostHatch, GreenCloudVPS)
+- [ ] 3 provider adapters (BuyVM, GreenCloudVPS, SpartanHost)
 - [ ] Stock check worker with BullMQ
 - [ ] Basic restock detection logic (consecutive confirmation)
 - [ ] Telegram channel push (restock only)

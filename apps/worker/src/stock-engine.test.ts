@@ -1,6 +1,7 @@
 import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StockResult } from '@vpsknow/providers';
+import { buildProductAffiliateUrl, extractWhmcsPid } from '@vpsknow/shared';
 import { processStockResults } from './stock-engine.js';
 
 const databaseMocks = vi.hoisted(() => ({
@@ -12,6 +13,7 @@ const databaseMocks = vi.hoisted(() => ({
   stockEventFindFirst: vi.fn(),
   stockEventCreate: vi.fn(),
   telegramMessageCreate: vi.fn(),
+  affiliateLinkUpsert: vi.fn(),
 }));
 
 const telegramMocks = vi.hoisted(() => ({
@@ -36,6 +38,7 @@ vi.mock('@vpsknow/database', () => ({
       create: databaseMocks.stockEventCreate,
     },
     telegramMessage: { create: databaseMocks.telegramMessageCreate },
+    affiliateLink: { upsert: databaseMocks.affiliateLinkUpsert },
   },
 }));
 
@@ -85,7 +88,13 @@ describe('processStockResults', () => {
 
     databaseMocks.providerFindUnique.mockResolvedValue({
       id: 'provider-1',
-      affiliateLinks: [{ shortUrl: 'https://go.uukk.de/buyvm' }],
+      affiliateLinks: [
+        {
+          slug: 'buyvm',
+          targetUrl: 'https://my.frantech.ca/aff.php?aff=123',
+          shortUrl: 'https://go.uukk.de/buyvm',
+        },
+      ],
     });
     databaseMocks.productFindUnique.mockResolvedValue({ id: 'product-1' });
     databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 0));
@@ -94,6 +103,7 @@ describe('processStockResults', () => {
     databaseMocks.stockEventCreate.mockResolvedValue({ id: 'event-1' });
     databaseMocks.productUpdate.mockResolvedValue(createProduct(false, 0));
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'telegram-1' });
+    databaseMocks.affiliateLinkUpsert.mockImplementation(async ({ create }) => create);
     telegramMocks.formatRestockMessage.mockReturnValue('formatted restock message');
     telegramMocks.sendChannelMessage.mockResolvedValue(321);
     subscriberMocks.notifyRestockSubscribers.mockResolvedValue(undefined);
@@ -155,9 +165,11 @@ describe('processStockResults', () => {
       errors: 0,
     });
 
-    expect(databaseMocks.productUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ inStock: true, consecutiveConfirm: 0 }),
-    }));
+    expect(databaseMocks.productUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ inStock: true, consecutiveConfirm: 0 }),
+      }),
+    );
     expect(infoSpy).toHaveBeenCalledWith(
       { provider: 'buyvm', product: 'Slice 1024', inStock: true },
       'New product baseline recorded without notification',
@@ -166,6 +178,66 @@ describe('processStockResults', () => {
     expect(databaseMocks.stockEventCreate).not.toHaveBeenCalled();
     expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      productId: 'gc-101',
+      planName: 'Tokyo KVM 2',
+      orderUrl: 'https://greencloudvps.com/billing/cart.php?a=add&pid=101',
+      pid: '101',
+    },
+    {
+      productId: 'gc-2081',
+      planName: 'CN Premium Optimized Plan 3 (Tokyo)',
+      orderUrl:
+        'https://greencloudvps.com/billing/store/cn-premium-optimized/cn-premium-optimized-plan-3',
+      pid: '2081',
+    },
+  ])(
+    'registers GreenCloud product link for $productId with PID $pid',
+    async ({ productId, planName, orderUrl, pid }) => {
+      const logger = createLogger();
+      const greenCloudResult: StockResult = {
+        ...stockResult,
+        provider: 'greencloudvps',
+        productId,
+        planName,
+        orderUrl,
+      };
+      databaseMocks.providerFindUnique.mockResolvedValue({
+        id: 'greencloud-provider',
+        affiliateLinks: [
+          {
+            slug: 'greencloudvps',
+            targetUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807',
+            shortUrl: 'https://stock.vpsknow.com/go/greencloudvps',
+          },
+        ],
+      });
+
+      await processStockResults('greencloudvps', [greenCloudResult], logger);
+
+      expect(databaseMocks.productUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({ whmcsPid: pid }),
+          create: expect.objectContaining({ whmcsPid: pid }),
+        }),
+      );
+      const slug = `greencloudvps-${productId}`;
+      const targetUrl = `https://greencloudvps.com/billing/aff.php?aff=6807&pid=${pid}`;
+      const shortUrl = `https://stock.vpsknow.com/go/${slug}`;
+      expect(databaseMocks.affiliateLinkUpsert).toHaveBeenCalledWith({
+        where: { slug },
+        update: { targetUrl, shortUrl },
+        create: {
+          providerId: 'greencloud-provider',
+          slug,
+          targetUrl,
+          shortUrl,
+        },
+      });
+    },
+  );
 
   it('records a first in-stock confirmation without notifying', async () => {
     const logger = createLogger();
@@ -257,7 +329,7 @@ describe('processStockResults', () => {
     });
     expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledWith(
       inStockResult,
-      'https://go.uukk.de/buyvm',
+      'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
       logger,
     );
   });
@@ -367,7 +439,9 @@ describe('processStockResults', () => {
       .mockRejectedValueOnce(databaseError)
       .mockResolvedValueOnce(createProduct(false, 0));
 
-    await expect(processStockResults('buyvm', [stockResult, secondResult], logger)).resolves.toEqual({
+    await expect(
+      processStockResults('buyvm', [stockResult, secondResult], logger),
+    ).resolves.toEqual({
       checked: 2,
       restocked: 0,
       soldOut: 0,
@@ -379,5 +453,114 @@ describe('processStockResults', () => {
       { provider: 'buyvm', productId: 'slice-1024-lv', err: databaseError },
       'Error processing stock result',
     );
+  });
+});
+
+describe('product affiliate mapping', () => {
+  it.each([
+    [
+      'bandwagonhost',
+      'bwg-hk-cn2gia',
+      'https://bandwagonhost.com/cart.php?a=add&pid=95',
+      '95',
+      'https://bandwagonhost.com/aff.php?aff=68376&pid=95',
+    ],
+    [
+      'dmit',
+      'dmit-pvm-lax-tiny',
+      'https://www.dmit.io/cart.php?a=add&pid=253',
+      '253',
+      'https://www.dmit.io/aff.php?aff=6077&pid=253',
+    ],
+    [
+      'buyvm',
+      'slice-1024-lv',
+      'https://my.frantech.ca/cart.php?a=add&pid=1024',
+      '1024',
+      'https://my.frantech.ca/aff.php?aff=6836&pid=1024',
+    ],
+    [
+      'spartanhost',
+      'spartan-1024mb-dalkvm',
+      'https://billing.spartanhost.net/cart.php?a=add&pid=317',
+      '317',
+      'https://billing.spartanhost.net/aff.php?aff=2459&pid=317',
+    ],
+    [
+      'greencloudvps',
+      'gc-2081',
+      'https://greencloudvps.com/billing/store/cn-premium-optimized/cn-premium-optimized-plan-3',
+      '2081',
+      'https://greencloudvps.com/billing/aff.php?aff=6807&pid=2081',
+    ],
+    [
+      'vmiss',
+      'vmiss-101',
+      'https://app.vmiss.com/store/vps/plan-a',
+      '101',
+      'https://app.vmiss.com/aff.php?aff=1922&pid=101',
+    ],
+    [
+      'saltyfish',
+      'saltyfish-137',
+      'https://portal.saltyfish.io/store/hong-kong/plan-a',
+      '137',
+      'https://portal.saltyfish.io/aff.php?aff=575&pid=137',
+    ],
+    [
+      'racknerd',
+      'racknerd-301',
+      'https://my.racknerd.com/cart.php?a=add&pid=301',
+      '301',
+      'https://my.racknerd.com/aff.php?aff=5550&pid=301',
+    ],
+    [
+      'liteserver',
+      'liteserver-407',
+      'https://clients.liteserver.nl/index.php?rp=/store/hdd-storage-vps/hdd-1g-1',
+      '407',
+      'https://clients.liteserver.nl/aff.php?aff=771&pid=407',
+    ],
+    [
+      'dedirock',
+      'dedirock-36',
+      'https://billing.dedirock.com/index.php/store/kvm-vps-hosting/kvm-vps-start',
+      '36',
+      'https://billing.dedirock.com/aff.php?aff=77&pid=36',
+    ],
+    [
+      'bagevm',
+      'bagevm-29',
+      'https://www.bagevm.com/index.php?rp=/store/japan-servers/plan-a',
+      '29',
+      'https://www.bagevm.com/aff.php?aff=10&pid=29',
+    ],
+  ])('maps %s to its verified product PID', (provider, productId, orderUrl, pid, expected) => {
+    const extracted = extractWhmcsPid(provider, orderUrl, productId);
+
+    expect(extracted).toBe(pid);
+    expect(buildProductAffiliateUrl(provider, orderUrl, extracted)).toBe(expected);
+  });
+
+  it('keeps non-WHMCS AkileCloud on the exact product URL', () => {
+    const orderUrl = 'https://akile.io/shop/server?areaId=2&nodeId=19&planId=900&type=traffic';
+
+    expect(extractWhmcsPid('akilecloud', orderUrl, 'akilecloud-jp-lite')).toBeNull();
+    expect(buildProductAffiliateUrl('akilecloud', orderUrl, null)).toBe(orderUrl);
+  });
+
+  it('does not infer a PID suffix for providers configured to use the order URL', () => {
+    const orderUrl = 'https://bandwagonhost.com/cart.php';
+
+    expect(extractWhmcsPid('bandwagonhost', orderUrl, 'bwg-plan-95')).toBeNull();
+    expect(buildProductAffiliateUrl('bandwagonhost', orderUrl, null)).toBe(orderUrl);
+  });
+
+  it.each([
+    ['vps', 'vps-235', 'https://vps.hosting/?action=add&cmd=cart&id=235'],
+    ['evoxt', 'evoxt-vm-starter-1', 'https://console.evoxt.com/order?plan=starter-1'],
+  ])('does not infer an unverified PID for %s', (provider, productId, orderUrl) => {
+    expect(extractWhmcsPid(provider, orderUrl, productId)).toBeNull();
+    expect(buildProductAffiliateUrl(provider, orderUrl, null)).toBe(orderUrl);
   });
 });

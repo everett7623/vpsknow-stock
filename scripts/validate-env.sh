@@ -197,7 +197,6 @@ main() {
 
     # 3. 可选环境变量检查
     print_section "可选环境变量"
-    check_env_var "HOSTHATCH_API_TOKEN" "optional"
     check_env_var "LOG_LEVEL" "optional"
     check_env_var "BACKUP_RETENTION_DAYS" "optional"
 

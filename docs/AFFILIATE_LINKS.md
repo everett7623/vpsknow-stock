@@ -30,8 +30,7 @@ https://go.uukk.de/provider?pid=YOUR_PID
 | **BandwagonHost** | `https://go.uukk.de/bwg` | `https://bandwagonhost.com/aff.php?aff=YOUR_ID` | ⚠️ 需更新 PID |
 | **DMIT** | `https://go.uukk.de/dmit` | `https://www.dmit.io/aff.php?aff=YOUR_ID` | ⚠️ 需更新 PID |
 | **BuyVM** | `https://go.uukk.de/buyvm` | `https://my.frantech.ca/aff.php?aff=YOUR_ID` | ⚠️ 需更新 PID |
-| **HostHatch** | `https://go.uukk.de/hosthatch` | `https://cloud.hosthatch.com/signup` | ⚠️ 无 aff 参数 |
-| **SpartanHost** | `https://go.uukk.de/spartanhost` | `https://billing.spartanhost.net` | ⚠️ 无 aff 参数 |
+| **SpartanHost** | `https://stock.vpsknow.com/go/spartanhost` | `https://billing.spartanhost.net/aff.php?aff=2459` | ✅ 产品链接追加真实 PID |
 | **VMISS** | `https://go.uukk.de/vmiss` | `https://app.vmiss.com` | ⚠️ 无 aff 参数 |
 | **V.PS** | `https://go.uukk.de/vps` | `https://vps.hosting` | ⚠️ 无 aff 参数 |
 | **SaltyFish** | `https://go.uukk.de/saltyfish` | `https://portal.saltyfish.io` | ⚠️ 无 aff 参数 |

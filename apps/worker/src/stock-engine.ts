@@ -3,7 +3,12 @@ import type { Prisma } from '@vpsknow/database';
 import type { StockResult } from '@vpsknow/providers';
 import { sendChannelMessage } from '@vpsknow/telegram';
 import { formatRestockMessage } from '@vpsknow/telegram';
-import { RESTOCK_COOLDOWN_MS, CONSECUTIVE_CONFIRMS_REQUIRED } from '@vpsknow/shared';
+import {
+  RESTOCK_COOLDOWN_MS,
+  CONSECUTIVE_CONFIRMS_REQUIRED,
+  buildProductAffiliateUrl,
+  extractWhmcsPid,
+} from '@vpsknow/shared';
 import type { Logger } from 'pino';
 import { notifyRestockSubscribers } from './subscriber-notifications.js';
 
@@ -14,6 +19,11 @@ interface ProcessResult {
   restocked: number;
   soldOut: number;
   errors: number;
+}
+
+function productLinkSlug(providerSlug: string, productId: string): string {
+  const normalizedProductId = productId.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  return `${providerSlug}-${normalizedProductId}`;
 }
 
 function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
@@ -58,8 +68,6 @@ export async function processStockResults(
     return summary;
   }
 
-  const affiliateLink = provider.affiliateLinks[0];
-
   for (const result of results) {
     summary.checked++;
 
@@ -75,6 +83,7 @@ export async function processStockResults(
         select: { id: true },
       });
       const isNewProduct = existingProduct === null;
+      const whmcsPid = extractWhmcsPid(providerSlug, result.orderUrl, result.productId);
 
       // Upsert product
       const product = await prisma.product.upsert({
@@ -92,6 +101,7 @@ export async function processStockResults(
           currency: result.currency,
           billingCycle: result.billingCycle,
           orderUrl: result.orderUrl,
+          ...(whmcsPid ? { whmcsPid } : {}),
           lastCheckedAt: new Date(),
         },
         create: {
@@ -109,11 +119,33 @@ export async function processStockResults(
           currency: result.currency,
           billingCycle: result.billingCycle,
           orderUrl: result.orderUrl,
+          whmcsPid,
           inStock: result.inStock,
           consecutiveConfirm: 0,
           lastCheckedAt: new Date(),
         },
       });
+
+      const linkSlug = productLinkSlug(providerSlug, result.productId);
+      const shortUrl = `https://stock.vpsknow.com/go/${linkSlug}`;
+      const targetUrl = buildProductAffiliateUrl(providerSlug, result.orderUrl, whmcsPid);
+      const existingProductLink = provider.affiliateLinks.find((link) => link.slug === linkSlug);
+      if (
+        !existingProductLink ||
+        existingProductLink.targetUrl !== targetUrl ||
+        existingProductLink.shortUrl !== shortUrl
+      ) {
+        await prisma.affiliateLink.upsert({
+          where: { slug: linkSlug },
+          update: { targetUrl, shortUrl },
+          create: {
+            providerId: provider.id,
+            slug: linkSlug,
+            targetUrl,
+            shortUrl,
+          },
+        });
+      }
 
       // Record stock check
       await prisma.stockCheck.create({
@@ -173,14 +205,7 @@ export async function processStockResults(
 
             // Send Telegram notification
             try {
-              // 为每个产品生成短链接: /go/provider-productId
-              const productSlug = result.productId
-                .replace(/[^a-z0-9-]/gi, '-')
-                .toLowerCase();
-              const shortLinkSlug = `${providerSlug}-${productSlug}`;
-              const affiliateUrl = `https://stock.vpsknow.com/go/${shortLinkSlug}`;
-
-              const message = formatRestockMessage(result, affiliateUrl);
+              const message = formatRestockMessage(result, shortUrl);
               const msgId = await sendChannelMessage(STOCK_CHANNEL_ID, message);
 
               await prisma.telegramMessage.create({
@@ -203,7 +228,7 @@ export async function processStockResults(
               );
             }
 
-            await notifyRestockSubscribers(result, affiliateLink?.shortUrl, logger);
+            await notifyRestockSubscribers(result, shortUrl, logger);
             summary.restocked++;
           } else {
             logger.debug(

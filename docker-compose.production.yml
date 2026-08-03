@@ -60,7 +60,6 @@ services:
       TELEGRAM_OFFERS_CHANNEL_ID: ${TELEGRAM_OFFERS_CHANNEL_ID:-@vpsknow_offers}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:?TELEGRAM_ADMIN_CHAT_ID is required}
       AFFILIATE_BASE_URL: ${AFFILIATE_BASE_URL:-https://go.uukk.de}
-      HOSTHATCH_API_TOKEN: ${HOSTHATCH_API_TOKEN:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

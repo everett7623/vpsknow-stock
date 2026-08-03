@@ -5,8 +5,11 @@ import { BandwagonHostAdapter } from '../bandwagonhost.js';
 import { BuyVMAdapter } from '../buyvm.js';
 import { DmitAdapter } from '../dmit.js';
 import { GreenCloudVPSAdapter } from '../greencloudvps.js';
-import { HostHatchAdapter } from '../hosthatch.js';
-import { SpartanHostAdapter } from '../spartanhost.js';
+import {
+  applySpartanWhmcsPids,
+  parseSpartanWhmcsPidMap,
+  SpartanHostAdapter,
+} from '../spartanhost.js';
 import { VmissAdapter } from '../vmiss.js';
 import { VpsAdapter } from '../vps.js';
 import { SaltyFishAdapter } from '../saltyfish.js';
@@ -180,41 +183,6 @@ describe('provider adapters', () => {
     });
   });
 
-  it('parses HostHatch API stock by product and location', () => {
-    const payload: unknown = JSON.parse(fixture('hosthatch.json'));
-    const results = new HostHatchAdapter('test-token').parse(payload);
-
-    expect(results).toHaveLength(3);
-    expect(results[0]).toMatchObject({
-      provider: 'hosthatch',
-      productId: 'hh-nvme-2gb-ams',
-      planName: 'NVMe 2 GB',
-      location: 'Amsterdam',
-      category: 'vps',
-      cpu: '1 Core',
-      ramMb: 2048,
-      storageGb: 10,
-      storageType: 'NVMe',
-      bandwidthTb: 1,
-      price: 400,
-      billingCycle: 'monthly',
-      inStock: true,
-    });
-    expect(results[1]).toMatchObject({
-      productId: 'hh-nvme-2gb-sto',
-      location: 'Stockholm',
-      inStock: false,
-    });
-    expect(results[2]).toMatchObject({
-      productId: 'hh-storage-1tb-lon',
-      category: 'storage',
-      storageGb: 1024,
-      storageType: 'HDD',
-      bandwidthTb: 2.441,
-      price: 500,
-    });
-  });
-
   it('parses SpartanHost plans as independent per-location stock results', () => {
     const results = new SpartanHostAdapter().parse(fixture('spartanhost.html'));
 
@@ -246,6 +214,25 @@ describe('provider adapters', () => {
       price: 1000,
       inStock: true,
     });
+  });
+
+  it('maps SpartanHost WHMCS card IDs to exact cart order URLs', () => {
+    const results = new SpartanHostAdapter().parse(fixture('spartanhost.html'));
+    const pidByOrderUrl = parseSpartanWhmcsPidMap(`
+      <div class="product clearfix" id="product317">
+        <a href="/store/dallas-premium-vps/1024mb-dalkvm"
+           id="product317-order-button">Order Now</a>
+      </div>
+      <div class="product clearfix" id="product402">
+        <a href="/store/e5-seattle/2048mb-seabkvm"
+           id="product402-order-button">Order Now</a>
+      </div>
+    `);
+    const mapped = applySpartanWhmcsPids(results, pidByOrderUrl);
+
+    expect(mapped[0]?.orderUrl).toBe('https://spartanhost.org/vps');
+    expect(mapped[1]?.orderUrl).toBe('https://billing.spartanhost.net/cart.php?a=add&pid=317');
+    expect(mapped[2]?.orderUrl).toBe('https://billing.spartanhost.net/cart.php?a=add&pid=402');
   });
 
   it('parses VMISS WHMCS quantity as authoritative stock state', () => {
@@ -385,7 +372,11 @@ describe('provider adapters', () => {
 
   // Phase 4 A-Tier tests
   it('parses RackNerd WHMCS plans with multiple locations', () => {
-    const category = { slug: 'kvm-los-angeles', location: 'Los Angeles', url: 'https://my.racknerd.com/index.php?rp=/store/kvm-vps' };
+    const category = {
+      slug: 'kvm-los-angeles',
+      location: 'Los Angeles',
+      url: 'https://my.racknerd.com/index.php?rp=/store/kvm-vps',
+    };
     const results = new RackNerdAdapter().parse(fixture('racknerd.html'), category);
 
     expect(results.length).toBeGreaterThan(0);
@@ -396,7 +387,11 @@ describe('provider adapters', () => {
   });
 
   it('parses Clouvider products with pricing and availability', () => {
-    const category = { slug: 'cloud-us', location: 'United States', url: 'https://www.clouvider.com/cloud-servers/usa/' };
+    const category = {
+      slug: 'cloud-us',
+      location: 'United States',
+      url: 'https://www.clouvider.com/cloud-servers/usa/',
+    };
     const results = new ClouviderAdapter().parse(fixture('clouvider.html'), category);
 
     expect(results.length).toBeGreaterThan(0);
@@ -406,7 +401,11 @@ describe('provider adapters', () => {
   });
 
   it('parses LiteServer Netherlands VPS offerings', () => {
-    const category = { slug: 'vps-nl', location: 'Netherlands', url: 'https://liteserver.nl/en/vps/' };
+    const category = {
+      slug: 'vps-nl',
+      location: 'Netherlands',
+      url: 'https://liteserver.nl/en/vps/',
+    };
     const results = new LiteServerAdapter().parse(fixture('liteserver.html'), category);
 
     expect(results.length).toBeGreaterThan(0);
@@ -416,7 +415,11 @@ describe('provider adapters', () => {
   });
 
   it('parses Crunchbits stock and plan details', () => {
-    const category = { slug: 'vps-us', location: 'United States', url: 'https://crunchbits.com/vps/' };
+    const category = {
+      slug: 'vps-us',
+      location: 'United States',
+      url: 'https://crunchbits.com/vps/',
+    };
     const results = new CrunchbitsAdapter().parse(fixture('crunchbits.html'), category);
 
     expect(results.length).toBeGreaterThan(0);
@@ -454,7 +457,11 @@ describe('provider adapters', () => {
   });
 
   it('parses DediRock dedicated and VPS offerings', () => {
-    const category = { slug: 'vps-us', location: 'United States', url: 'https://dedirock.com/vps/' };
+    const category = {
+      slug: 'vps-us',
+      location: 'United States',
+      url: 'https://dedirock.com/vps/',
+    };
     const results = new DediRockAdapter().parse(fixture('dedirock.html'), category);
 
     expect(results.length).toBeGreaterThan(0);
@@ -515,7 +522,11 @@ describe('provider adapters', () => {
 
   // Phase 4 B-Tier tests
   it('parses TierHive VPS plans', () => {
-    const category = { slug: 'vps-us', location: 'United States', url: 'https://tierhive.com/vps/' };
+    const category = {
+      slug: 'vps-us',
+      location: 'United States',
+      url: 'https://tierhive.com/vps/',
+    };
     const results = new TierHiveAdapter().parse(fixture('tierhive.html'), category);
 
     expect(results.length).toBeGreaterThan(0);

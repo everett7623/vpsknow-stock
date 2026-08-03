@@ -39,17 +39,6 @@ async function main() {
     },
   });
 
-  const hosthatch = await prisma.provider.upsert({
-    where: { slug: 'hosthatch' },
-    update: {},
-    create: {
-      slug: 'hosthatch',
-      name: 'HostHatch',
-      website: 'https://hosthatch.com',
-      tier: 'S',
-    },
-  });
-
   const spartanhost = await prisma.provider.upsert({
     where: { slug: 'spartanhost' },
     update: {},
@@ -353,7 +342,6 @@ async function main() {
     { providerId: bandwagonhost.id, slug: 'bandwagonhost', targetUrl: 'https://bandwagonhost.com/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/bwg' },
     { providerId: dmit.id, slug: 'dmit', targetUrl: 'https://www.dmit.io/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/dmit' },
     { providerId: buyvm.id, slug: 'buyvm', targetUrl: 'https://my.frantech.ca/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/buyvm' },
-    { providerId: hosthatch.id, slug: 'hosthatch', targetUrl: 'https://cloud.hosthatch.com/signup', shortUrl: 'https://go.uukk.de/hosthatch' },
     { providerId: spartanhost.id, slug: 'spartanhost', targetUrl: 'https://billing.spartanhost.net', shortUrl: 'https://go.uukk.de/spartanhost' },
     { providerId: vmiss.id, slug: 'vmiss', targetUrl: 'https://app.vmiss.com', shortUrl: 'https://go.uukk.de/vmiss' },
     { providerId: vps.id, slug: 'vps', targetUrl: 'https://vps.hosting', shortUrl: 'https://go.uukk.de/vps' },
@@ -386,7 +374,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 23`);
+  console.log(`  Providers: 22`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

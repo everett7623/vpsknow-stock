@@ -2,38 +2,46 @@
 
 > 数据来源: `主机与域名服务商短链接汇总-20260731.xlsx`
 > 更新时间: 2026-07-31
-> 状态: ✅ 22 个 provider 中 18 个已配置真实 affiliate ID
+> 状态: ✅ 22 个 provider 中 17 个已配置真实 affiliate ID
 
 ---
 
 ## 📊 配置统计
 
-### ✅ 已配置 (18 个)
+### ✅ 已配置 (17 个)
 
 | Provider | Affiliate ID | 链接格式 | 支持 PID |
 |----------|--------------|----------|---------|
 | **BandwagonHost** | `68376` | `aff.php?aff=68376&pid={pid}` | ✅ |
 | **DMIT** | `6077` | `aff.php?aff=6077&pid={pid}` | ✅ |
-| **BuyVM** | `6836` | `aff.php?aff=6836` | ❌ |
-| **HostHatch** | `4354` | `/a/4354` | ❌ |
-| **SpartanHost** | `2459` | `aff.php?aff=2459` | ❌ |
-| **VMISS** | `1922` | `aff.php?aff=1922` | ❌ |
+| **BuyVM** | `6836` | `aff.php?aff=6836&pid={pid}` | ✅ |
+| **SpartanHost** | `2459` | `aff.php?aff=2459&pid={pid}` | ✅ |
+| **VMISS** | `1922` | `aff.php?aff=1922&pid={pid}` | ✅ |
 | **V.PS** | `723` | `?affid=723` | ❌ |
-| **SaltyFish** | `575` | `aff.php?aff=575` | ❌ |
-| **GreenCloudVPS** | `6807` | `aff.php?aff=6807` | ❌ |
+| **SaltyFish** | `575` | `aff.php?aff=575&pid={pid}` | ✅ |
+| **GreenCloudVPS** | `6807` | `aff.php?aff=6807&pid={pid}` | ✅ |
 | **AkileCloud** | `77106f01-...` | `?aff_code=...` | ❌ |
 | **RackNerd** | `5550` | `aff.php?aff=5550&pid={pid}` | ✅ |
 | **Clouvider** | `543` | `?affid=543` | ❌ |
-| **LiteServer** | `771` | `aff.php?aff=771` | ❌ |
+| **LiteServer** | `771` | `aff.php?aff=771&pid={pid}` | ✅ |
 | **Evoxt** | `994` | `aff.php?aff=994` | ❌ |
-| **DediRock** | `77` | `aff.php?aff=77` | ❌ |
+| **DediRock** | `77` | `aff.php?aff=77&pid={pid}` | ✅ |
 | **Onidel** | `1572199` | `?referral=1572199` | ❌ |
+| **BageVM** | `10` | `aff.php?aff=10&pid={pid}` | ✅ |
 | **TierHive** | `4FB89FE7369E` | `/r/4FB89FE7369E` | ❌ |
 
-**支持 PID 的 provider (3 个)**:
+**支持 PID 的 provider (11 个)**:
 - BandwagonHost ✅
 - DMIT ✅
+- BuyVM ✅
+- SpartanHost ✅
+- VMISS ✅
+- SaltyFish ✅
+- GreenCloudVPS ✅
 - RackNerd ✅
+- LiteServer ✅
+- DediRock ✅
+- BageVM ✅
 
 ### ⚠️ 未配置 (4 个)
 

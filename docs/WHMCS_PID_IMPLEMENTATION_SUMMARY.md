@@ -57,9 +57,8 @@ if (config.supportsPid && product.whmcsPid) {
   productTargetUrl = generateAffiliateUrl(provider.slug, product.whmcsPid);
   // 例: aff.php?aff=68376&pid=95
 } else {
-  // 无 WHMCS PID: 使用 provider 通用链接
-  productTargetUrl = providerTargetUrl;
-  // 例: aff.php?aff=68376
+  // 无已验证 WHMCS PID: 保留精确订单直连
+  productTargetUrl = product.orderUrl;
 }
 ```
 
@@ -272,9 +271,9 @@ curl -I https://stock.vpsknow.com/go/bandwagonhost-bwg-the-plan-dc6
 
 ### 🟡 可选完成
 
-- [ ] Evoxt - 可能支持 PID
-- [ ] LiteServer - 可能支持 PID
-- [ ] Clouvider - 可能支持 PID
+- [x] LiteServer - 已从产品卡片 ID 提取 PID
+- [ ] Clouvider - 未验证产品级 affiliate 规则，保留精确订单直连
+- [ ] Evoxt - 未验证产品级 affiliate 规则，保留精确订单直连
 
 ### ✅ 已完成
 
