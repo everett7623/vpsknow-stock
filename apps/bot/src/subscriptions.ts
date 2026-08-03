@@ -17,7 +17,6 @@ export const PROVIDERS = [
   ['vmiss', 'VMISS'],
   ['vps', 'V.PS'],
   ['saltyfish', 'SaltyFish'],
-  ['akilecloud', 'AkileCloud'],
 ] as const;
 
 export const REGIONS = [

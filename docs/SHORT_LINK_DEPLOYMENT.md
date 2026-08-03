@@ -92,7 +92,7 @@ git add .
 git commit -m "feat: 实现短链接系统(DigVPS模式)
 
 - 添加 /go/[id] 路由 (服务器端 302 重定向)
-- 配置 22 个 provider 的 affiliate 链接
+- 配置 21 个 provider 的 affiliate 链接
 - 更新 Telegram 通知使用短链接
 - 添加点击统计功能"
 

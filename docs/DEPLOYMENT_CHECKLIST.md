@@ -178,7 +178,7 @@ curl http://localhost:3001/health
 docker compose -f docker-compose.production.yml exec postgres \
   psql -U vpsknow -d vpsknow_stock -c "SELECT COUNT(*) FROM providers;"
 
-# 期望输出：22 行（22 个 providers）
+# 期望输出：21 行（21 个 providers）
 
 # 4. 检查 Redis 连接
 docker compose -f docker-compose.production.yml exec redis redis-cli ping
@@ -306,7 +306,7 @@ pnpm test
 - [ ] 所有 Docker 容器运行正常
 - [ ] Worker 健康端点响应 200
 - [ ] 网站可通过 HTTPS 访问
-- [ ] 数据库包含 22 个 providers
+- [ ] 数据库包含 21 个 providers
 - [ ] Redis 可连接
 - [ ] 首次 stock check 已执行（查看日志）
 - [ ] Telegram Bot 响应 /start 命令

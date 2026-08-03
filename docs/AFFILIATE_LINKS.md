@@ -32,10 +32,9 @@ https://go.uukk.de/provider?pid=YOUR_PID
 | **BuyVM** | `https://go.uukk.de/buyvm` | `https://my.frantech.ca/aff.php?aff=YOUR_ID` | ⚠️ 需更新 PID |
 | **SpartanHost** | `https://stock.vpsknow.com/go/spartanhost` | `https://billing.spartanhost.net/aff.php?aff=2459` | ✅ 产品链接追加真实 PID |
 | **VMISS** | `https://go.uukk.de/vmiss` | `https://app.vmiss.com` | ⚠️ 无 aff 参数 |
-| **V.PS** | `https://go.uukk.de/vps` | `https://vps.hosting` | ⚠️ 无 aff 参数 |
+| **V.PS** | `https://stock.vpsknow.com/go/vps` | `https://vps.hosting/?affid=723` | ✅ 产品订单参数与 `affid` 安全合并 |
 | **SaltyFish** | `https://go.uukk.de/saltyfish` | `https://portal.saltyfish.io` | ⚠️ 无 aff 参数 |
 | **GreenCloudVPS** | `https://go.uukk.de/greencloudvps` | `https://greencloudvps.com` | ⚠️ 无 aff 参数 |
-| **AkileCloud** | `https://go.uukk.de/akilecloud` | `https://next.akile.io/shop/server/` | ⚠️ 无 aff 参数 |
 
 ### A-Tier Providers
 
@@ -142,7 +141,7 @@ docker compose -f docker-compose.production.yml exec -T postgres \
 ## 📊 当前状态
 
 - [x] 数据库 schema 已定义 (`AffiliateLink` 表)
-- [x] Seed 脚本已包含 22 个 provider
+- [x] Seed 脚本已包含 21 个 provider
 - [ ] **待更新**: 替换 `YOUR_ID` 为真实 affiliate ID
 - [ ] **待更新**: 为无 aff 参数的 provider 获取 affiliate 链接
 - [ ] **待测试**: 所有链接点击后跳转正确

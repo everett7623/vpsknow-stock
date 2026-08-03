@@ -23,10 +23,17 @@ export type AffiliateConfig = AffiliateConfigBase &
         supportsPid: true;
         /** PID 的可靠来源 */
         pidSource: 'order-url' | 'whmcs-card-id';
+        productAffiliate?: never;
       }
     | {
         supportsPid: false;
         pidSource?: never;
+        /** 非 WHMCS 系统经实站验证的产品级 affiliate 参数合并规则 */
+        productAffiliate?: {
+          strategy: 'query-param';
+          parameter: string;
+          allowedOrigin: string;
+        };
       }
   );
 
@@ -86,6 +93,11 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     affId: '723',
     urlTemplate: 'https://vps.hosting/?affid={affId}',
     supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'affid',
+      allowedOrigin: 'https://vps.hosting',
+    },
     originalUrl: 'https://vps.hosting/?affid=723',
   },
 
@@ -105,14 +117,6 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     supportsPid: true,
     pidSource: 'whmcs-card-id',
     originalUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807',
-  },
-
-  akilecloud: {
-    provider: 'akilecloud',
-    affId: '77106f01-65c7-4d97-af2a-2c043eef90b0',
-    urlTemplate: 'https://akile.io/register?aff_code={affId}',
-    supportsPid: false,
-    originalUrl: 'https://akile.io/register?aff_code=77106f01-65c7-4d97-af2a-2c043eef90b0',
   },
 
   // ========== A-Tier Providers ==========
@@ -295,6 +299,17 @@ export function buildProductAffiliateUrl(
 
   if (config.supportsPid && whmcsPid) {
     return generateAffiliateUrl(providerSlug, whmcsPid);
+  }
+
+  if (config.productAffiliate?.strategy === 'query-param') {
+    try {
+      const url = new URL(orderUrl);
+      if (url.origin !== config.productAffiliate.allowedOrigin) return orderUrl;
+      url.searchParams.set(config.productAffiliate.parameter, config.affId);
+      return url.href;
+    } catch {
+      return orderUrl;
+    }
   }
 
   return orderUrl;

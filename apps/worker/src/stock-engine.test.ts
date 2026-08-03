@@ -542,13 +542,6 @@ describe('product affiliate mapping', () => {
     expect(buildProductAffiliateUrl(provider, orderUrl, extracted)).toBe(expected);
   });
 
-  it('keeps non-WHMCS AkileCloud on the exact product URL', () => {
-    const orderUrl = 'https://akile.io/shop/server?areaId=2&nodeId=19&planId=900&type=traffic';
-
-    expect(extractWhmcsPid('akilecloud', orderUrl, 'akilecloud-jp-lite')).toBeNull();
-    expect(buildProductAffiliateUrl('akilecloud', orderUrl, null)).toBe(orderUrl);
-  });
-
   it('does not infer a PID suffix for providers configured to use the order URL', () => {
     const orderUrl = 'https://bandwagonhost.com/cart.php';
 
@@ -556,11 +549,25 @@ describe('product affiliate mapping', () => {
     expect(buildProductAffiliateUrl('bandwagonhost', orderUrl, null)).toBe(orderUrl);
   });
 
-  it.each([
-    ['vps', 'vps-235', 'https://vps.hosting/?action=add&cmd=cart&id=235'],
-    ['evoxt', 'evoxt-vm-starter-1', 'https://console.evoxt.com/order?plan=starter-1'],
-  ])('does not infer an unverified PID for %s', (provider, productId, orderUrl) => {
-    expect(extractWhmcsPid(provider, orderUrl, productId)).toBeNull();
-    expect(buildProductAffiliateUrl(provider, orderUrl, null)).toBe(orderUrl);
+  it('merges the verified V.PS HostBill affiliate parameter into the exact product URL', () => {
+    const orderUrl = 'https://vps.hosting/?action=add&cmd=cart&id=235';
+
+    expect(extractWhmcsPid('vps', orderUrl, 'vps-235')).toBeNull();
+    expect(buildProductAffiliateUrl('vps', orderUrl, null)).toBe(
+      'https://vps.hosting/?action=add&cmd=cart&id=235&affid=723',
+    );
+  });
+
+  it('does not merge the V.PS affiliate parameter into an unexpected origin', () => {
+    const orderUrl = 'https://example.com/?action=add&cmd=cart&id=235';
+
+    expect(buildProductAffiliateUrl('vps', orderUrl, null)).toBe(orderUrl);
+  });
+
+  it('keeps Evoxt on its exact deploy URL without guessing a legacy WHMCS PID', () => {
+    const orderUrl = 'https://console.evoxt.com/deploy.php';
+
+    expect(extractWhmcsPid('evoxt', orderUrl, 'evoxt-uk-london-vm-1')).toBeNull();
+    expect(buildProductAffiliateUrl('evoxt', orderUrl, null)).toBe(orderUrl);
   });
 });

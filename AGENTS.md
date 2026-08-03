@@ -161,7 +161,7 @@ docker compose down             # Stop all services
 | 2 | **DMIT** | PVM, Premium, Eyeball, by location | 2–3 min |
 | 3 | **BuyVM** | KVM Slice, Storage Slice, location stock | 1–2 min |
 
-Phase 2 adds: GreenCloudVPS, SpartanHost, VMISS, AkileCloud, V.PS, SaltyFish
+Phase 2 adds: GreenCloudVPS, SpartanHost, VMISS, V.PS, SaltyFish
 
 ---
 

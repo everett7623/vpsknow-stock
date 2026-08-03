@@ -91,12 +91,13 @@ if (provider.products.length > 0) {
 | **BuyVM** | `/go/buyvm-slice-1024-lv` | `aff.php?aff=6836&pid=1024` ✅ |
 | **SpartanHost** | `/go/spartanhost-spartan-1024mb-dalkvm` | `aff.php?aff=2459&pid=317` ✅ |
 | **GreenCloudVPS** | `/go/greencloudvps-gc-2081` | `aff.php?aff=6807&pid=2081` ✅ |
+| **V.PS** | `/go/vps-vps-238` | `?action=add&cmd=cart&id=238&affid=723` ✅ |
 
 ### 不支持 PID 的 Provider (通用链接)
 
 | Provider | 短链接示例 | 目标链接 | 说明 |
 |----------|-----------|---------|------|
-| **Evoxt** | `/go/evoxt-vm-starter-1` | 精确订单直连 | 未验证产品级 affiliate |
+| **Evoxt** | `/go/evoxt-vm-starter-1` | 精确 `deploy.php` 直连 | 当前套餐无稳定 WHMCS PID 映射 |
 
 **注意**: 不支持 PID 的 provider 仍有独立短链接，并保留 adapter 提取的精确订单 URL。这样做的好处:
 1. ✅ 统一的短链接格式

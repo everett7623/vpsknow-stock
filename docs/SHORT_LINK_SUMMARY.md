@@ -9,7 +9,7 @@
 
 ### 核心功能
 1. **`apps/web/src/app/go/[id]/route.ts`** - 短链接路由 (302 重定向)
-2. **`packages/shared/src/affiliate-config.ts`** - Affiliate 配置文件 (22 个 provider)
+2. **`packages/shared/src/affiliate-config.ts`** - Affiliate 配置文件 (21 个 provider)
 3. **`scripts/update-affiliate-links.ts`** - 数据库更新脚本
 4. **`scripts/affiliate-links-queries.sql`** - SQL 查询脚本
 
@@ -53,6 +53,10 @@
 - 适用于支持 PID 的 provider（BandwagonHost、DMIT、BuyVM、SpartanHost、GreenCloudVPS、VMISS、SaltyFish、RackNerd、LiteServer、DediRock、BageVM）
 - 格式: `https://stock.vpsknow.com/go/bwg-dc6-95`
 - 直接跳转到具体产品页面
+
+**非 WHMCS 产品级 affiliate**:
+- V.PS 保留 HostBill 商品 `id`，仅在可信 `vps.hosting` origin 上追加 `affid=723`
+- Evoxt 当前套餐仅有统一 `deploy.php`，没有稳定产品 PID，继续使用精确直链
 
 ### ✅ 自动功能
 

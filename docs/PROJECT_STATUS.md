@@ -12,7 +12,7 @@
 | 阶段 | 状态 | 完成度 | 说明 |
 |------|------|--------|------|
 | **Phase 1 - MVP** | ✅ 已完成 | 95% | 核心功能完成，待生产环境验证 |
-| **Phase 2 - LET + 全量** | ✅ 已完成 | 100% | 10个 S-Tier + LET 引擎 |
+| **Phase 2 - LET + 全量** | ✅ 已完成 | 100% | 8个 S-Tier + LET 引擎 |
 | **Phase 3 - Bot + 订阅** | ✅ 已完成 | 100% | Telegram Bot 完全实现 |
 | **Phase 4 - 扩展** | 🔄 进行中 | 70% | 12个新 provider 已添加 |
 
@@ -29,8 +29,8 @@
 - ✅ 健康检查和监控端点
 
 ### Provider 监控
-- ✅ **22 个 Provider 适配器**
-  - S-Tier (9): BandwagonHost, DMIT, BuyVM, GreenCloudVPS, SpartanHost, VMISS, AkileCloud, V.PS, SaltyFish
+- ✅ **21 个 Provider 适配器**
+  - S-Tier (8): BandwagonHost, DMIT, BuyVM, GreenCloudVPS, SpartanHost, VMISS, V.PS, SaltyFish
   - A-Tier (10): RackNerd, Clouvider, LiteServer, Crunchbits, ServaRICA, Evoxt, Alwyzon, DediRock, Onidel, BageVM
   - B-Tier (3): TierHive, Gullos, WebHorizon
 - ✅ 智能库存检测（连续确认机制）
@@ -101,7 +101,7 @@
 #### 2. 数据库 Migration 验证
 - [ ] 确认 baseline migration 在生产环境执行
 - [ ] 测试种子数据填充
-- [ ] 验证所有 22 个 provider 注册
+- [ ] 验证所有 21 个 provider 注册
 
 #### 3. Provider 页面完善
 根据 TASKS.md Line 1214，Provider 详情页需要补充：
@@ -157,7 +157,7 @@
 
 ### 项目规模
 - **总 TypeScript 文件**: 65 个
-- **Provider 适配器**: 22 个
+- **Provider 适配器**: 21 个
 - **测试文件**: 9 个
 - **服务数**: 5 个（web, worker, bot, postgres, redis）
 - **Packages**: 7 个（database, providers, parsers, telegram, shared, config, web）

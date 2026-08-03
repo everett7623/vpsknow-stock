@@ -494,7 +494,7 @@ fi
 - [ ] 所有 Docker 容器运行正常（`docker ps`）
 - [ ] Worker 健康检查返回 200（`curl http://localhost:3001/health`）
 - [ ] 网站可通过 HTTPS 访问（`curl -I https://stock.vpsknow.com`）
-- [ ] 数据库包含 22 个 providers
+- [ ] 数据库包含 21 个 providers
 - [ ] Telegram Bot 响应 `/start` 命令
 - [ ] 首次 stock check 已执行（查看 Worker 日志）
 - [ ] SSL 证书自动申请成功（Caddy）

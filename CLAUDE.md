@@ -110,8 +110,8 @@ interface ProviderAdapter {
 The registry (`packages/providers/src/registry.ts`) maps slug → adapter instance.
 
 **Provider tiers and intervals:**
-- **S-Tier** (90–300s): bandwagonhost (90s), buyvm (90s), dmit/spartanhost (150s), greencloudvps (180s), vmiss/vps/saltyfish/akilecloud (300s)
-- **A-Tier** (180s): racknerd, clouvider, liteserver, crunchbits, servarica, evoxt, alwyzon, dedirock, onidel
+- **S-Tier** (90–300s): bandwagonhost (90s), buyvm (90s), dmit/spartanhost (150s), greencloudvps/vmiss (180s), vps/saltyfish (300s)
+- **A-Tier** (180s): racknerd, clouvider, liteserver, crunchbits, servarica, evoxt, alwyzon, dedirock, onidel, bagevm
 - **B-Tier** (300s): tierhive, gullos, webhorizon
 
 When adding a new provider:

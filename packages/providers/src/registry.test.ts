@@ -10,7 +10,6 @@ const REQUIRED_PROVIDERS = [
   'vmiss',
   'vps',
   'saltyfish',
-  'akilecloud',
   // Phase 4 A-Tier
   'racknerd',
   'clouvider',

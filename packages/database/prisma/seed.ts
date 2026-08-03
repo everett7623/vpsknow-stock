@@ -94,17 +94,6 @@ async function main() {
     },
   });
 
-  const akilecloud = await prisma.provider.upsert({
-    where: { slug: 'akilecloud' },
-    update: {},
-    create: {
-      slug: 'akilecloud',
-      name: 'AkileCloud',
-      website: 'https://akile.io',
-      tier: 'S',
-    },
-  });
-
   // Phase 4 — A-Tier providers
   const racknerd = await prisma.provider.upsert({
     where: { slug: 'racknerd' },
@@ -347,7 +336,6 @@ async function main() {
     { providerId: vps.id, slug: 'vps', targetUrl: 'https://vps.hosting', shortUrl: 'https://go.uukk.de/vps' },
     { providerId: saltyfish.id, slug: 'saltyfish', targetUrl: 'https://portal.saltyfish.io', shortUrl: 'https://go.uukk.de/saltyfish' },
     { providerId: greencloudvps.id, slug: 'greencloudvps', targetUrl: 'https://greencloudvps.com', shortUrl: 'https://go.uukk.de/greencloudvps' },
-    { providerId: akilecloud.id, slug: 'akilecloud', targetUrl: 'https://next.akile.io/shop/server/', shortUrl: 'https://go.uukk.de/akilecloud' },
     // Phase 4 A-Tier
     { providerId: racknerd.id, slug: 'racknerd', targetUrl: 'https://my.racknerd.com', shortUrl: 'https://go.uukk.de/racknerd' },
     { providerId: clouvider.id, slug: 'clouvider', targetUrl: 'https://www.clouvider.com', shortUrl: 'https://go.uukk.de/clouvider' },
@@ -374,7 +362,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 22`);
+  console.log(`  Providers: 21`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

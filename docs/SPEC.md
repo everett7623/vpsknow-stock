@@ -179,7 +179,7 @@ affiliate_links
 
 ## 4. Provider Monitoring
 
-### 4.1 First Batch — 9 Providers (S-Tier)
+### 4.1 First Batch — 8 Providers (S-Tier)
 
 | # | Provider | Focus |
 |---|----------|-------|
@@ -189,9 +189,8 @@ affiliate_links
 | 4 | BandwagonHost | Limited plans, DC6/DC9, restocks |
 | 5 | DMIT | PVM, Premium, Eyeball, by location |
 | 6 | VMISS | CN2, BGP, HK, JP, LA |
-| 7 | AkileCloud | HK, JP, SG, optimized routing |
-| 8 | V.PS | JP, SG, EU limited plans |
-| 9 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes |
+| 7 | V.PS | JP, SG, EU limited plans |
+| 8 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes |
 
 ### 4.2 Provider Adapter Interface
 
@@ -230,7 +229,6 @@ packages/providers/src/
 ├── bandwagonhost.ts
 ├── dmit.ts
 ├── vmiss.ts
-├── akilecloud.ts
 ├── vps.ts
 └── saltyfish.ts
 ```
@@ -481,7 +479,7 @@ These providers are always in stock; they appear in the provider directory and c
 
 ### Phase 2 — LET + Full First Batch (2–3 weeks)
 
-- [ ] Remaining 7 first-batch provider adapters
+- [ ] Remaining 6 first-batch provider adapters
 - [ ] LowEndTalk RSS + HTML scraper
 - [ ] LET post parser (structured field extraction)
 - [ ] Filter engine for LET offers

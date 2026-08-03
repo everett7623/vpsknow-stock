@@ -7,7 +7,6 @@ import { SpartanHostAdapter } from './adapters/spartanhost.js';
 import { VmissAdapter } from './adapters/vmiss.js';
 import { VpsAdapter } from './adapters/vps.js';
 import { SaltyFishAdapter } from './adapters/saltyfish.js';
-import { AkileCloudAdapter } from './adapters/akilecloud.js';
 // Phase 4 — A-Tier
 import { RackNerdAdapter } from './adapters/racknerd.js';
 import { ClouviderAdapter } from './adapters/clouvider.js';
@@ -33,7 +32,6 @@ const adapters: ProviderAdapter[] = [
   new VmissAdapter(),
   new VpsAdapter(),
   new SaltyFishAdapter(),
-  new AkileCloudAdapter(),
   // Phase 4 A-Tier
   new RackNerdAdapter(),
   new ClouviderAdapter(),

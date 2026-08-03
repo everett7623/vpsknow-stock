@@ -18,7 +18,7 @@
 ### 代码行数（估算）
 
 ```
-packages/providers      ~3,500 行（22 个 adapter）
+packages/providers      ~3,500 行（21 个 adapter）
 apps/worker            ~1,500 行
 apps/bot               ~800 行
 apps/web               ~2,000 行
@@ -51,7 +51,7 @@ packages/shared        ~300 行
 
 ### 关键测试覆盖
 
-- ✅ 所有 22 个 provider 适配器
+- ✅ 所有 21 个 provider 适配器
 - ✅ Stock 检测引擎（连续确认机制）
 - ✅ Provider 健康监控（断路器）
 - ✅ LET Offer 解析（4 层管道）
@@ -65,7 +65,7 @@ packages/shared        ~300 行
 ### Provider 生态
 
 ```
-总 Provider 数：22 个
+总 Provider 数：21 个
 
 按层级分布：
 - S-Tier: 10 个（45%）
@@ -285,7 +285,7 @@ Website 并发支持：~200 req/s（预估）
 - ✅ Phase 1 - MVP（3 个初始 provider）
 - ✅ Phase 2 - LET + 全量（10 个 S-Tier provider）
 - ✅ Phase 3 - Bot + 订阅（完整 Telegram 集成）
-- 🔄 Phase 4 - 扩展（22 个 provider，70% 完成）
+- 🔄 Phase 4 - 扩展（21 个 provider，70% 完成）
 
 ### 下一步
 
@@ -300,7 +300,7 @@ Website 并发支持：~200 req/s（预估）
 
 ### 项目成就
 
-- 🎯 **22 个 Provider 全覆盖** - S/A/B 三层完整监控
+- 🎯 **21 个 Provider 全覆盖** - S/A/B 三层完整监控
 - 🧪 **100% 测试通过** - 65 个测试用例零失败
 - 📚 **文档体系完善** - 7,200+ 行详细文档
 - 🏗️ **架构设计优秀** - Monorepo + 微服务 + 清晰分层

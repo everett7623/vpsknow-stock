@@ -447,7 +447,6 @@ Each adapter needs:
 | DMIT | Cloudflare (sometimes) | Playwright fallback |
 | SpartanHost | None | Direct HTTP |
 | VMISS | Cloudflare Managed Challenge | Direct HTTP when permitted; reject challenge pages and validate in dry-run |
-| AkileCloud | None | Direct HTTP |
 | V.PS | None | Direct HTTP |
 | SaltyFish | WHMCS default | Standard HTTP; reject challenge and error pages |
 
@@ -772,7 +771,7 @@ User: [Both]
 Bot:  2️⃣ Which providers? (select multiple)
       [BuyVM] [GreenCloud] [DMIT]
       [DMIT] [SpartanHost] [BandwagonHost]
-      [VMISS] [Netcup] [AkileCloud] [V.PS]
+      [VMISS] [Netcup] [V.PS]
       [✅ All Providers]
       [→ Next]
 
@@ -1245,11 +1244,11 @@ export interface ProviderAdapter {
 
 ## Phase 2 — LET + Full First Batch
 
-**Goal**: All 10 first-batch providers + LowEndTalk Offer engine.
+**Goal**: All 9 first-batch providers + LowEndTalk Offer engine.
 **Duration**: 2–3 weeks.
 **Depends on**: Phase 1 complete.
 
-### Task 2.1 — Remaining 7 Provider Adapters
+### Task 2.1 — Remaining 6 Provider Adapters
 
 | Item | Detail |
 |------|--------|
@@ -1258,14 +1257,13 @@ export interface ProviderAdapter {
 - [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
 - [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
-- [x] `akilecloud.ts` — Parse server shop cards for stock, CNY pricing, and HK/JP/SG locations
 - [x] `vps.ts` (V.PS) — Parse HostBill product cards for Singapore and Tokyo availability
 - [x] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
 - [x] Unit tests per adapter with HTML fixtures
 - [x] Register all in adapter registry
 - [x] Add BullMQ jobs with appropriate intervals
 
-**Done when**: All 10 providers are running in the worker and stock_checks are accumulating.
+**Done when**: All 9 providers are running in the worker and stock_checks are accumulating.
 
 **Deployment note**: The production migration service applies the schema and idempotently seeds the provider registry before the worker and bot start. GreenCloudVPS uses a 3-minute scheduler; credential-free Phase 2 providers use their documented intervals.
 
@@ -1417,9 +1415,8 @@ Discovery pipeline (4 layers):
 | 4 | GreenCloudVPS | Tokyo, SG, HK, Storage, annual | 2–3 min | Phase 2 |
 | 5 | SpartanHost | Seattle, Dallas, AMD, routing | 2–3 min | Phase 2 |
 | 6 | VMISS | CN2, BGP, HK, JP, LA | 5 min | Phase 2 |
-| 7 | AkileCloud | HK, JP, SG, optimized routing | 5 min | Phase 2 |
-| 8 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
-| 9 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes | 5 min | Phase 2 |
+| 7 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
+| 8 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes | 5 min | Phase 2 |
 
 ### A-Tier — Phase 4 (Offers + Limited Stock)
 

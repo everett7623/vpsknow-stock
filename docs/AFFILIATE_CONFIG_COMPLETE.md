@@ -2,13 +2,13 @@
 
 > 数据来源: `主机与域名服务商短链接汇总-20260731.xlsx`
 > 更新时间: 2026-07-31
-> 状态: ✅ 22 个 provider 中 17 个已配置真实 affiliate ID
+> 状态: ✅ 21 个 provider 中 16 个已配置真实 affiliate ID
 
 ---
 
 ## 📊 配置统计
 
-### ✅ 已配置 (17 个)
+### ✅ 已配置 (16 个)
 
 | Provider | Affiliate ID | 链接格式 | 支持 PID |
 |----------|--------------|----------|---------|
@@ -17,10 +17,9 @@
 | **BuyVM** | `6836` | `aff.php?aff=6836&pid={pid}` | ✅ |
 | **SpartanHost** | `2459` | `aff.php?aff=2459&pid={pid}` | ✅ |
 | **VMISS** | `1922` | `aff.php?aff=1922&pid={pid}` | ✅ |
-| **V.PS** | `723` | `?affid=723` | ❌ |
+| **V.PS** | `723` | 产品订单 URL 追加 `affid=723` | ✅ HostBill 产品级 |
 | **SaltyFish** | `575` | `aff.php?aff=575&pid={pid}` | ✅ |
 | **GreenCloudVPS** | `6807` | `aff.php?aff=6807&pid={pid}` | ✅ |
-| **AkileCloud** | `77106f01-...` | `?aff_code=...` | ❌ |
 | **RackNerd** | `5550` | `aff.php?aff=5550&pid={pid}` | ✅ |
 | **Clouvider** | `543` | `?affid=543` | ❌ |
 | **LiteServer** | `771` | `aff.php?aff=771&pid={pid}` | ✅ |
@@ -43,7 +42,7 @@
 - DediRock ✅
 - BageVM ✅
 
-### ⚠️ 未配置 (4 个)
+### ⚠️ 未配置 (5 个)
 
 | Provider | 原因 | 解决方案 |
 |----------|------|----------|
@@ -71,7 +70,7 @@ git add .
 # 提交
 git commit -m "feat: 从 Excel 导入真实 affiliate ID
 
-- 18 个 provider 已配置真实 affiliate ID
+- 16 个 provider 已配置真实 affiliate ID
 - 3 个 provider 支持产品级别 PID (BandwagonHost, DMIT, RackNerd)
 - 实现 DigVPS 风格短链接系统
 - 添加点击统计功能
@@ -281,15 +280,15 @@ LIMIT 10;
 | **总 Provider** | 210 行 | 包含云主机、域名、VPS、NAT、杜甫等 |
 | **VPS Provider** | ~100 个 | 仅 VPS 类别 |
 | **已有 aff 链接** | ~80 个 | 有完整 affiliate 链接的 |
-| **vpsknow-stock 匹配** | 22 个 | 项目中的 22 个 provider |
+| **vpsknow-stock 匹配** | 21 个 | 项目中的 21 个 provider |
 | **成功匹配并配置** | 18 个 | 有真实 affiliate ID 的 |
 
 ### 配置覆盖率
 
-- **S-Tier**: 10/10 (100%) ✅
+- **S-Tier**: 8/8 (100%) ✅
 - **A-Tier**: 6/9 (67%) ⚠️
 - **B-Tier**: 1/3 (33%) ⚠️
-- **总体**: 18/22 (82%) ✅
+- **总体**: 16/21 (76%) ✅
 
 ---
 
@@ -297,7 +296,7 @@ LIMIT 10;
 
 ### ✅ 完成的工作
 
-1. **从 Excel 导入真实 affiliate ID** - 18 个 provider 配置完成
+1. **从 Excel 导入真实 affiliate ID** - 16 个 provider 配置完成
 2. **实现短链接系统** - DigVPS 风格服务器端 302 重定向
 3. **支持产品级别链接** - BandwagonHost, DMIT, RackNerd
 4. **更新 Telegram 通知** - 使用短链接替代原始链接
@@ -308,7 +307,7 @@ LIMIT 10;
 
 1. **修复 VPS SSH 访问** - 通过 Hetzner Console VNC
 2. **部署到生产环境** - 推送代码 + 重新构建
-3. **注册剩余 affiliate 计划** - 4 个未配置的 provider
+3. **注册剩余 affiliate 计划** - 5 个未配置的 provider
 
 ### 📈 预期收益
 

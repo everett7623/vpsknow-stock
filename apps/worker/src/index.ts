@@ -42,7 +42,6 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   vmiss: 180_000,
   vps: 300_000,
   saltyfish: 300_000,
-  akilecloud: 300_000,
   // A-Tier
   racknerd: 180_000,
   clouvider: 180_000,

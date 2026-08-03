@@ -27,10 +27,11 @@
 ### 2. Affiliate 配置文件
 **文件**: `packages/shared/src/affiliate-config.ts`
 
-包含 22 个 provider 的配置:
+包含 21 个 provider 的配置:
 - ✅ Affiliate ID 占位符 (`YOUR_AFF_ID`)
 - ✅ URL 模板 (支持 `{affId}` 和 `{pid}` 占位符)
 - ✅ PID 支持标识 (`supportsPid: boolean`)
+- ✅ 非 WHMCS 产品参数合并策略（限定可信 origin）
 - ✅ 短链接生成函数 (`generateShortLinkSlug`)
 - ✅ Affiliate URL 生成函数 (`generateAffiliateUrl`)
 
@@ -163,6 +164,17 @@ curl -I https://stock.vpsknow.com/go/buyvm
 - ✅ 直接跳转到具体产品页面
 - ✅ 更高的转化率
 - ✅ 精确追踪每个产品的点击
+
+### 非 WHMCS 产品级 affiliate
+
+V.PS 使用 HostBill 产品 `id`，不是 WHMCS PID。系统只在订单 URL 的 origin
+严格等于 `https://vps.hosting` 时追加 `affid=723`，并保留原有
+`action=add&cmd=cart&id=...` 参数：
+
+```
+短链接: https://stock.vpsknow.com/go/vps-vps-238
+目标链接: https://vps.hosting/?action=add&cmd=cart&id=238&affid=723
+```
 
 ---
 
