@@ -509,10 +509,10 @@ describe('product affiliate mapping', () => {
     ],
     [
       'racknerd',
-      'racknerd-301',
-      'https://my.racknerd.com/cart.php?a=add&pid=301',
-      '301',
-      'https://my.racknerd.com/aff.php?aff=5550&pid=301',
+      'racknerd-871',
+      'https://my.racknerd.com/index.php?rp=/store/dedicated-servers/dual-intel-xeon-e5-2650-v2-128gb-ram-1tb-ssd-3tb-hdd',
+      '871',
+      'https://my.racknerd.com/aff.php?aff=5550&pid=871',
     ],
     [
       'liteserver',

@@ -1,22 +1,82 @@
 import * as cheerio from 'cheerio';
-import type { BillingCycle } from '@vpsknow/shared';
+import type { BillingCycle, ProductCategory } from '@vpsknow/shared';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface Category {
   slug: string;
   location: string;
+  category: ProductCategory;
   url: string;
 }
 
 const PORTAL = 'https://my.racknerd.com';
 const CATEGORIES: readonly Category[] = [
-  { slug: 'kvm-los-angeles', location: 'Los Angeles', url: `${PORTAL}/index.php?rp=/store/kvm-vps` },
-  { slug: 'kvm-chicago', location: 'Chicago', url: `${PORTAL}/index.php?rp=/store/chicago-kvm` },
-  { slug: 'kvm-new-york', location: 'New York', url: `${PORTAL}/index.php?rp=/store/new-york-kvm` },
-  { slug: 'kvm-seattle', location: 'Seattle', url: `${PORTAL}/index.php?rp=/store/seattle-kvm` },
-  { slug: 'kvm-atlanta', location: 'Atlanta', url: `${PORTAL}/index.php?rp=/store/atlanta-kvm` },
-  { slug: 'kvm-dallas', location: 'Dallas', url: `${PORTAL}/index.php?rp=/store/dallas-kvm` },
-  { slug: 'kvm-san-jose', location: 'San Jose', url: `${PORTAL}/index.php?rp=/store/sj-kvm` },
+  {
+    slug: 'kvm-los-angeles',
+    location: 'Los Angeles',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/kvm-vps`,
+  },
+  {
+    slug: 'kvm-chicago',
+    location: 'Chicago',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/chicago-kvm`,
+  },
+  {
+    slug: 'kvm-new-york',
+    location: 'New York',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/new-york-kvm`,
+  },
+  {
+    slug: 'kvm-seattle',
+    location: 'Seattle',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/seattle-kvm`,
+  },
+  {
+    slug: 'kvm-atlanta',
+    location: 'Atlanta',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/atlanta-kvm`,
+  },
+  {
+    slug: 'kvm-dallas',
+    location: 'Dallas',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/dallas-kvm`,
+  },
+  {
+    slug: 'kvm-san-jose',
+    location: 'San Jose',
+    category: 'vps',
+    url: `${PORTAL}/index.php?rp=/store/sj-kvm`,
+  },
+  {
+    slug: 'dedicated',
+    location: 'Multiple Locations',
+    category: 'dedicated',
+    url: `${PORTAL}/index.php?rp=/store/dedicated-servers`,
+  },
+  {
+    slug: 'dedicated-unmetered',
+    location: 'Multiple Locations',
+    category: 'dedicated',
+    url: `${PORTAL}/index.php?rp=/store/high-bandwidth-unmetered-dedicated-servers`,
+  },
+  {
+    slug: 'dedicated-amd',
+    location: 'Utah',
+    category: 'dedicated',
+    url: `${PORTAL}/index.php?rp=/store/amd-ryzenepyc-dedicated-servers`,
+  },
+  {
+    slug: 'dedicated-seo',
+    location: 'Multiple Locations',
+    category: 'dedicated',
+    url: `${PORTAL}/index.php?rp=/store/seo-dedicated-servers`,
+  },
 ] as const;
 
 function numberFrom(text: string, pattern: RegExp): number {
@@ -31,6 +91,36 @@ function parseBillingCycle(text: string): BillingCycle {
   if (/biennially/i.test(text)) return 'biennially';
   if (/triennially/i.test(text)) return 'triennially';
   return 'monthly';
+}
+
+function parseRamMb(description: string): number {
+  const match = description.match(/(\d+(?:\.\d+)?)\s*(MB|GB|TB)(?:\s+DDR\d+)?\s+RAM/i);
+  if (!match) return 0;
+
+  const value = Number.parseFloat(match[1]!);
+  const unit = match[2]!.toUpperCase();
+  if (unit === 'TB') return Math.round(value * 1024 * 1024);
+  if (unit === 'GB') return Math.round(value * 1024);
+  return Math.round(value);
+}
+
+function parseStorage(description: string): { sizeGb: number; type: string } {
+  const pattern = /(?:(\d+)\s*x\s*)?(\d+(?:\.\d+)?)\s*(GB|TB)\s*(NVMe|SSD|HDD|SAS)/gi;
+  const types = new Set<string>();
+  let sizeGb = 0;
+
+  for (const match of description.matchAll(pattern)) {
+    const quantity = Number.parseInt(match[1] ?? '1', 10);
+    const size = Number.parseFloat(match[2]!);
+    const unitMultiplier = match[3]!.toUpperCase() === 'TB' ? 1024 : 1;
+    sizeGb += quantity * size * unitMultiplier;
+    types.add(match[4]!.toUpperCase() === 'NVME' ? 'NVMe' : match[4]!.toUpperCase());
+  }
+
+  return {
+    sizeGb: Math.round(sizeGb),
+    type: types.size === 0 ? 'Unknown' : types.size === 1 ? [...types][0]! : 'Mixed',
+  };
 }
 
 export class RackNerdAdapter implements ProviderAdapter {
@@ -85,21 +175,31 @@ export class RackNerdAdapter implements ProviderAdapter {
 
       const pricing = card.find('.product-pricing').text().replace(/\s+/g, ' ').trim();
       const priceText = card.find('.product-pricing .price').first().text();
-      const ramGb = numberFrom(description, /(\d+(?:\.\d+)?)\s*GB\s+RAM/i);
-      const storageGb = numberFrom(description, /(\d+(?:\.\d+)?)\s*GB\s+(?:NVMe|SSD|HDD|SAS)/i);
-      const cores = Math.round(numberFrom(description, /(\d+(?:\.\d+)?)x?\s*vCPU|vCores?|Cores?/i));
-      const bwTb = numberFrom(description, /(\d+(?:\.\d+)?)\s*TB\s+(?:BW|Bandwidth|Transfer)/i);
+      const storage = parseStorage(description);
+      const cores = Math.round(
+        numberFrom(description, /(\d+(?:\.\d+)?)\s*x?\s*(?:vCPUs?|vCores?|Cores?)/i),
+      );
+      const bwTb = numberFrom(
+        description,
+        /(\d+(?:\.\d+)?)\s*TB(?:\s+Monthly)?\s+(?:BW|Bandwidth|Transfer)/i,
+      );
+      const cpu =
+        category.category === 'dedicated'
+          ? planName.split('|')[0]!.trim()
+          : cores > 0
+            ? `${cores} vCPU${cores === 1 ? '' : 's'}`
+            : 'Unknown';
 
       results.push({
         provider: this.slug,
         productId: `racknerd-${numericId}`,
         planName,
         location: category.location,
-        category: 'vps',
-        cpu: cores > 0 ? `${cores} vCPU${cores === 1 ? '' : 's'}` : 'Unknown',
-        ramMb: Math.round(ramGb * 1024),
-        storageGb: Math.round(storageGb),
-        storageType: /\bNVMe\b/i.test(description) ? 'NVMe' : 'SSD',
+        category: category.category,
+        cpu,
+        ramMb: parseRamMb(description),
+        storageGb: storage.sizeGb,
+        storageType: storage.type,
         bandwidthTb: bwTb,
         ipv4: true,
         ipv6: /ipv6/i.test(description),
@@ -107,7 +207,7 @@ export class RackNerdAdapter implements ProviderAdapter {
         currency: 'USD',
         billingCycle: parseBillingCycle(pricing),
         inStock,
-        orderUrl: inStock ? new URL(orderHref, PORTAL).href : `${PORTAL}/index.php?rp=/store/kvm-vps`,
+        orderUrl: inStock ? new URL(orderHref, PORTAL).href : category.url,
       });
     });
 

@@ -344,6 +344,7 @@ describe('provider adapters', () => {
     const category = {
       slug: 'kvm-los-angeles',
       location: 'Los Angeles',
+      category: 'vps' as const,
       url: 'https://my.racknerd.com/index.php?rp=/store/kvm-vps',
     };
     const results = new RackNerdAdapter().parse(fixture('racknerd.html'), category);
@@ -353,6 +354,33 @@ describe('provider adapters', () => {
     expect(results[0]).toHaveProperty('planName');
     expect(results[0]).toHaveProperty('location', 'Los Angeles');
     expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses RackNerd dedicated plans and preserves the WHMCS product ID', () => {
+    const category = {
+      slug: 'dedicated',
+      location: 'Multiple Locations',
+      category: 'dedicated' as const,
+      url: 'https://my.racknerd.com/index.php?rp=/store/dedicated-servers',
+    };
+    const results = new RackNerdAdapter().parse(fixture('racknerd-dedicated.html'), category);
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        provider: 'racknerd',
+        productId: 'racknerd-871',
+        category: 'dedicated',
+        cpu: 'Dual Intel Xeon E5-2650 v2',
+        ramMb: 131_072,
+        storageGb: 4096,
+        storageType: 'Mixed',
+        bandwidthTb: 50,
+        price: 24_500,
+        inStock: true,
+        orderUrl:
+          'https://my.racknerd.com/index.php?rp=/store/dedicated-servers/dual-intel-xeon-e5-2650-v2-128gb-ram-1tb-ssd-3tb-hdd',
+      }),
+    ]);
   });
 
   it('parses Clouvider products with pricing and availability', () => {
@@ -630,7 +658,8 @@ describe('provider adapters', () => {
       storageType: 'NVMe',
       billingCycle: 'annually',
       inStock: true,
-      orderUrl: 'https://cloud.colocrossing.com/index.php?rp=/store/specials/2gb-ram-seattle-special',
+      orderUrl:
+        'https://cloud.colocrossing.com/index.php?rp=/store/specials/2gb-ram-seattle-special',
     });
   });
 });
