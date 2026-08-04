@@ -485,6 +485,135 @@ describe('processStockResults', () => {
     );
   });
 
+  it('notifies only the lowest-priced VMRack configuration in the same plan group', async () => {
+    const logger = createLogger();
+    const vmrackBase = {
+      ...stockResult,
+      provider: 'vmrack',
+      location: 'Los Angeles',
+      storageGb: 20,
+      storageType: 'SSD',
+      bandwidthTb: 1,
+      price: 1_150,
+      inStock: true,
+      orderUrl: 'https://www.vmrack.net/vps',
+    };
+    const lowest = {
+      ...vmrackBase,
+      productId: 'vmrack-l3-vps-dc2-1c1g',
+      planName: 'L3.VPS.DC2.1C1G',
+      cpu: '1 vCPU',
+      ramMb: 1_024,
+    };
+    const middle = {
+      ...vmrackBase,
+      productId: 'vmrack-l3-vps-dc2-2c2g',
+      planName: 'L3.VPS.DC2.2C2G',
+      cpu: '2 vCPUs',
+      ramMb: 2_048,
+      price: 1_300,
+    };
+    const highest = {
+      ...vmrackBase,
+      productId: 'vmrack-l3-vps-dc2-4c4g',
+      planName: 'L3.VPS.DC2.4C4G',
+      cpu: '4 vCPUs',
+      ramMb: 4_096,
+      price: 2_000,
+    };
+    databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 1));
+
+    await expect(
+      processStockResults('vmrack', [highest, middle, lowest], logger),
+    ).resolves.toEqual({
+      checked: 3,
+      restocked: 3,
+      soldOut: 0,
+      errors: 0,
+    });
+
+    expect(databaseMocks.stockEventCreate).toHaveBeenCalledTimes(3);
+    expect(telegramMocks.formatRestockMessage).toHaveBeenCalledOnce();
+    expect(telegramMocks.formatRestockMessage).toHaveBeenCalledWith(
+      lowest,
+      'https://stock.vpsknow.com/go/vmrack-vmrack-l3-vps-dc2-1c1g',
+    );
+    expect(telegramMocks.sendChannelMessage).toHaveBeenCalledOnce();
+    expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledOnce();
+    expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledWith(
+      lowest,
+      'https://stock.vpsknow.com/go/vmrack-vmrack-l3-vps-dc2-1c1g',
+      logger,
+    );
+  });
+
+  it('keeps separate VMRack route series eligible for notification', async () => {
+    const logger = createLogger();
+    const common = {
+      ...stockResult,
+      provider: 'vmrack',
+      location: 'Los Angeles',
+      storageGb: 20,
+      bandwidthTb: 1,
+      inStock: true,
+      orderUrl: 'https://www.vmrack.net/vps',
+    };
+    const l2Plan = {
+      ...common,
+      productId: 'vmrack-l2-vps-dc2-1c1g',
+      planName: 'L2.VPS.DC2.1C1G',
+      price: 1_000,
+    };
+    const l3Plan = {
+      ...common,
+      productId: 'vmrack-l3-vps-dc2-1c1g',
+      planName: 'L3.VPS.DC2.1C1G',
+      price: 1_150,
+    };
+    databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 1));
+
+    await processStockResults('vmrack', [l2Plan, l3Plan], logger);
+
+    expect(telegramMocks.sendChannelMessage).toHaveBeenCalledTimes(2);
+    expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries only the lowest-priced pending VMRack configuration while it remains available', async () => {
+    const logger = createLogger();
+    const lowest = {
+      ...stockResult,
+      provider: 'vmrack',
+      productId: 'vmrack-l3-vps-dc2-1c1g',
+      planName: 'L3.VPS.DC2.1C1G',
+      location: 'Los Angeles',
+      storageGb: 20,
+      bandwidthTb: 1,
+      price: 1_150,
+      inStock: true,
+      orderUrl: 'https://www.vmrack.net/vps',
+    };
+    const higher = {
+      ...lowest,
+      productId: 'vmrack-l3-vps-dc2-2c2g',
+      planName: 'L3.VPS.DC2.2C2G',
+      cpu: '2 vCPUs',
+      ramMb: 2_048,
+      price: 1_300,
+    };
+    databaseMocks.productUpsert.mockResolvedValue(createProduct(true, 0));
+    databaseMocks.stockEventFindFirst.mockResolvedValue({ id: 'pending-event' });
+
+    await processStockResults('vmrack', [higher, lowest], logger);
+
+    expect(databaseMocks.stockEventFindFirst).toHaveBeenCalledOnce();
+    expect(telegramMocks.formatRestockMessage).toHaveBeenCalledOnce();
+    expect(telegramMocks.formatRestockMessage).toHaveBeenCalledWith(
+      lowest,
+      'https://stock.vpsknow.com/go/vmrack-vmrack-l3-vps-dc2-1c1g',
+    );
+    expect(telegramMocks.sendChannelMessage).toHaveBeenCalledOnce();
+  });
+
   it('continues processing later results after a per-result database failure', async () => {
     const logger = createLogger();
     const errorSpy = vi.spyOn(logger, 'error');

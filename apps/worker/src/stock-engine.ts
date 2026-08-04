@@ -26,6 +26,60 @@ function productLinkSlug(providerSlug: string, productId: string): string {
   return `${providerSlug}-${normalizedProductId}`;
 }
 
+function vmrackNotificationGroupKey(result: StockResult): string | null {
+  const planSeries = result.planName.match(/\b((?:L\d\.)?B?VPS)\.(DC\d+)(?:\.|$)/i);
+  if (!planSeries) return null;
+
+  return [
+    planSeries[1]!.toLowerCase(),
+    planSeries[2]!.toLowerCase(),
+    result.location.trim().toLowerCase(),
+    result.category,
+    result.storageGb,
+    result.storageType.trim().toLowerCase(),
+    result.bandwidthTb,
+    result.ipv4,
+    result.ipv6,
+    result.currency.toUpperCase(),
+    result.billingCycle,
+  ].join('|');
+}
+
+function restockNotificationProductIds(
+  providerSlug: string,
+  results: StockResult[],
+): Set<string> {
+  const selected = new Set(results.map((result) => result.productId));
+  if (providerSlug !== 'vmrack') return selected;
+
+  const lowestPricedByGroup = new Map<string, StockResult>();
+  for (const result of results) {
+    if (!result.inStock || result.price <= 0) continue;
+
+    const groupKey = vmrackNotificationGroupKey(result);
+    if (!groupKey) continue;
+
+    const current = lowestPricedByGroup.get(groupKey);
+    if (
+      !current ||
+      result.price < current.price ||
+      (result.price === current.price && result.ramMb < current.ramMb)
+    ) {
+      lowestPricedByGroup.set(groupKey, result);
+    }
+  }
+
+  for (const result of results) {
+    const groupKey = vmrackNotificationGroupKey(result);
+    const selectedResult = groupKey ? lowestPricedByGroup.get(groupKey) : undefined;
+    if (selectedResult && selectedResult.productId !== result.productId) {
+      selected.delete(result.productId);
+    }
+  }
+
+  return selected;
+}
+
 function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
   return {
     result: {
@@ -56,6 +110,7 @@ export async function processStockResults(
   logger: Logger,
 ): Promise<ProcessResult> {
   const summary: ProcessResult = { checked: 0, restocked: 0, soldOut: 0, errors: 0 };
+  const notificationProductIds = restockNotificationProductIds(providerSlug, results);
 
   // Find provider
   const provider = await prisma.provider.findUnique({
@@ -203,10 +258,17 @@ export async function processStockResults(
               },
             });
 
-            const delivered = await deliverRestockNotification(event.id, result, shortUrl, logger);
-            if (!delivered) summary.errors++;
+            if (notificationProductIds.has(result.productId)) {
+              const delivered = await deliverRestockNotification(event.id, result, shortUrl, logger);
+              if (!delivered) summary.errors++;
 
-            await notifyRestockSubscribers(result, shortUrl, logger);
+              await notifyRestockSubscribers(result, shortUrl, logger);
+            } else {
+              logger.debug(
+                { provider: providerSlug, product: result.planName },
+                'RESTOCK notification suppressed in favor of lower-priced VMRack configuration',
+              );
+            }
             summary.restocked++;
           } else {
             logger.debug(
@@ -218,13 +280,15 @@ export async function processStockResults(
               data: { inStock: true, consecutiveConfirm: 0, lastStockChangeAt: new Date() },
             });
 
-            const retryResult = await retryPendingRestockNotification(
-              product.id,
-              result,
-              shortUrl,
-              logger,
-            );
-            if (retryResult === 'failed') summary.errors++;
+            if (notificationProductIds.has(result.productId)) {
+              const retryResult = await retryPendingRestockNotification(
+                product.id,
+                result,
+                shortUrl,
+                logger,
+              );
+              if (retryResult === 'failed') summary.errors++;
+            }
           }
         } else {
           // Not enough confirmations yet
@@ -270,13 +334,15 @@ export async function processStockResults(
           });
         }
       } else {
-        const retryResult = await retryPendingRestockNotification(
-          product.id,
-          result,
-          shortUrl,
-          logger,
-        );
-        if (retryResult === 'failed') summary.errors++;
+        if (notificationProductIds.has(result.productId)) {
+          const retryResult = await retryPendingRestockNotification(
+            product.id,
+            result,
+            shortUrl,
+            logger,
+          );
+          if (retryResult === 'failed') summary.errors++;
+        }
       }
     } catch (err) {
       summary.errors++;
