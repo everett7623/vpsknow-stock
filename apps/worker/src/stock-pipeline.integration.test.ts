@@ -13,8 +13,10 @@ const databaseMocks = vi.hoisted(() => ({
   stockCheckCreate: vi.fn(),
   stockEventFindFirst: vi.fn(),
   stockEventCreate: vi.fn(),
+  stockEventUpdate: vi.fn(),
   telegramMessageCreate: vi.fn(),
   affiliateLinkUpsert: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 const telegramMocks = vi.hoisted(() => ({
@@ -38,9 +40,11 @@ vi.mock('@vpsknow/database', () => ({
     stockEvent: {
       findFirst: databaseMocks.stockEventFindFirst,
       create: databaseMocks.stockEventCreate,
+      update: databaseMocks.stockEventUpdate,
     },
     telegramMessage: { create: databaseMocks.telegramMessageCreate },
     affiliateLink: { upsert: databaseMocks.affiliateLinkUpsert },
+    $transaction: databaseMocks.transaction,
   },
 }));
 
@@ -72,8 +76,12 @@ describe('stock pipeline integration', () => {
     databaseMocks.stockCheckCreate.mockResolvedValue({ id: 'check' });
     databaseMocks.stockEventFindFirst.mockResolvedValue(null);
     databaseMocks.stockEventCreate.mockResolvedValue({ id: 'event-restock' });
+    databaseMocks.stockEventUpdate.mockResolvedValue({ id: 'event-restock', notified: true });
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'message' });
     databaseMocks.affiliateLinkUpsert.mockImplementation(async ({ create }) => create);
+    databaseMocks.transaction.mockImplementation(async (operations: Promise<unknown>[]) =>
+      Promise.all(operations),
+    );
     telegramMocks.formatRestockMessage.mockReturnValue('formatted BuyVM restock');
     telegramMocks.sendChannelMessage.mockResolvedValue(1001);
     subscriberMocks.notifyRestockSubscribers.mockResolvedValue(undefined);
@@ -123,6 +131,10 @@ describe('stock pipeline integration', () => {
       '@vpsknow_offers',
       'formatted BuyVM restock',
     );
+    expect(databaseMocks.stockEventUpdate).toHaveBeenCalledWith({
+      where: { id: 'event-restock' },
+      data: { notified: true },
+    });
     expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledOnce();
   });
 });

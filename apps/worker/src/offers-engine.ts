@@ -53,8 +53,10 @@ export interface OfferDiscoverySummary {
 }
 
 const TRUSTED_PROVIDERS = new Set(['bandwagonhost', 'buyvm', 'dmit', 'greencloudvps']);
-const OFFER_TITLE_PATTERN = /\b(limited|flash|restock|stock|let special)\b/i;
-const EXCLUDED_OFFER_PATTERN = /\b(shared hosting|domain|email|ssl|service transfer|wtb|free proxy|vpn)\b/i;
+const OFFER_TITLE_PATTERN =
+  /\b(limited|flash|restock|stock|sale|special|deals?|offers?|promo(?:tion)?|discount|off)\b/i;
+const EXCLUDED_OFFER_PATTERN =
+  /\b(shared hosting|domain|email|ssl|service transfer|wtb|free proxy|vpn)\b/i;
 
 function defaultDependencies(): OfferDiscoveryDependencies {
   return {
@@ -65,31 +67,71 @@ function defaultDependencies(): OfferDiscoveryDependencies {
 
 function isEligible(
   title: string,
-  body: string,
   provider: string | null,
   category: string | null,
   priceCents: number | null,
 ): boolean {
-  if (!category || !['vps', 'vds', 'nat_vps', 'dedicated'].includes(category) || priceCents === null) {
+  if (
+    !category ||
+    !['vps', 'vds', 'nat_vps', 'dedicated', 'storage'].includes(category) ||
+    priceCents === null
+  ) {
     return false;
   }
 
-  const content = `${title} ${body}`;
-  if (EXCLUDED_OFFER_PATTERN.test(content)) return false;
+  if (EXCLUDED_OFFER_PATTERN.test(title)) return false;
 
   return TRUSTED_PROVIDERS.has(provider?.toLowerCase() || '') || OFFER_TITLE_PATTERN.test(title);
 }
 
-function specsSummary(offer: PushableOffer): string {
-  const body = offer.body?.replace(/\s+/g, ' ').trim() || '';
-  const excerpt = body.length > 140 ? `${body.slice(0, 137)}...` : body;
-  const coupon = offer.couponCode ? `Coupon: ${offer.couponCode}` : '';
-  return [excerpt, coupon].filter(Boolean).join(' | ') || 'See thread for full specifications';
-}
-
 function priceSummary(offer: PushableOffer): string {
   if (offer.priceCents === null) return 'Price unavailable';
-  return `${offer.currency || 'USD'} ${(offer.priceCents / 100).toFixed(2)}`;
+  const symbols: Record<string, string> = { USD: '$', EUR: '€', GBP: '£' };
+  const currency = offer.currency || 'USD';
+  return `${symbols[currency] || `${currency} `}${(offer.priceCents / 100).toFixed(2)}`;
+}
+
+function categorySummary(category: string | null): string {
+  const labels: Record<string, string> = {
+    vps: 'VPS',
+    vds: 'VDS',
+    nat_vps: 'NAT VPS',
+    dedicated: 'Dedicated Server',
+    storage: 'Storage VPS',
+  };
+  return category ? labels[category] || category : 'Not specified';
+}
+
+function billingSummary(billingCycle: string | null): string {
+  const labels: Record<string, string> = {
+    monthly: 'month',
+    quarterly: 'quarter',
+    'semi-annually': '6 months',
+    annually: 'year',
+    biennially: '2 years',
+    triennially: '3 years',
+  };
+  return billingCycle ? labels[billingCycle] || billingCycle : 'see original';
+}
+
+function originalOfferUrl(offer: PushableOffer): string {
+  if (!offer.threadUrl) {
+    throw new Error(`Offer ${offer.id} is missing its original LowEndTalk URL`);
+  }
+
+  let url: URL;
+  try {
+    url = new URL(offer.threadUrl);
+  } catch {
+    throw new Error(`Offer ${offer.id} has an invalid LowEndTalk URL`);
+  }
+  if (
+    !['lowendtalk.com', 'www.lowendtalk.com'].includes(url.hostname) ||
+    !/^\/discussion\/\d+(?:\/|$)/.test(url.pathname)
+  ) {
+    throw new Error(`Offer ${offer.id} has an invalid LowEndTalk URL`);
+  }
+  return url.href;
 }
 
 async function pushOffer(
@@ -98,18 +140,18 @@ async function pushOffer(
   notifySubscribers = false,
 ): Promise<boolean> {
   if (offer.pushed) return false;
+  const originalUrl = originalOfferUrl(offer);
 
   const message = formatOfferMessage({
     provider: offer.provider || 'LowEndTalk',
     title: offer.title,
-    specs: specsSummary(offer),
-    locations: offer.locations.join(', ') || 'Unspecified',
+    locations: offer.locations.join(', ') || 'Not specified',
     price: priceSummary(offer),
-    category: offer.category || 'Unspecified',
-    billing: offer.billingCycle || 'Unspecified',
+    category: categorySummary(offer.category),
+    billing: billingSummary(offer.billingCycle),
     postedAt: offer.postedAt?.toISOString().slice(0, 10) || 'Unknown',
-    orderUrl: offer.orderUrl || 'Not provided',
-    threadUrl: offer.threadUrl || 'Not provided',
+    couponCode: offer.couponCode,
+    originalUrl,
   });
   let channelPushed = false;
   let channelError: unknown;
@@ -204,7 +246,7 @@ export async function discoverLetOffers(
     }
 
     const offer = parseLetOffer(discussion.title, await detailResponse.text(), discussion.author);
-    if (!isEligible(discussion.title, offer.body, offer.provider, offer.category, offer.priceCents)) {
+    if (!isEligible(discussion.title, offer.provider, offer.category, offer.priceCents)) {
       summary.skipped++;
       continue;
     }

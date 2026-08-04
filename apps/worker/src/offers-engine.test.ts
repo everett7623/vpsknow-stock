@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  discoverLetOffers,
-  type OfferDiscoveryDependencies,
-} from './offers-engine.js';
+import { discoverLetOffers, type OfferDiscoveryDependencies } from './offers-engine.js';
 
 const databaseMocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
@@ -42,10 +39,21 @@ const discussion = {
   url: 'https://lowendtalk.com/discussion/12345/example',
 };
 const parsedOffer = {
-  provider: 'ExampleHost', title: discussion.title, body: '2 GB VPS $12.00 annual', category: 'vps',
-  locations: ['Los Angeles'], priceCents: 1200, currency: 'USD', billingCycle: 'annually',
-  couponCode: 'FLASH26', orderUrl: 'https://example.com/order', isLimitedStock: true,
-  ipv4: true, isRecurring: false, isPreorder: false, confidence: 1,
+  provider: 'ExampleHost',
+  title: discussion.title,
+  body: '2 GB VPS $12.00 annual',
+  category: 'vps',
+  locations: ['Los Angeles'],
+  priceCents: 1200,
+  currency: 'USD',
+  billingCycle: 'annually',
+  couponCode: 'FLASH26',
+  orderUrl: 'https://example.com/order',
+  isLimitedStock: true,
+  ipv4: true,
+  isRecurring: false,
+  isPreorder: false,
+  confidence: 1,
 };
 
 const storedOffer = {
@@ -77,7 +85,9 @@ describe('discoverLetOffers', () => {
     databaseMocks.create.mockResolvedValue(storedOffer);
     databaseMocks.update.mockResolvedValue({ ...storedOffer, pushed: true });
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'message-1' });
-    databaseMocks.transaction.mockImplementation(async (operations: Promise<unknown>[]) => Promise.all(operations));
+    databaseMocks.transaction.mockImplementation(async (operations: Promise<unknown>[]) =>
+      Promise.all(operations),
+    );
     sendMessage.mockResolvedValue(1001);
     subscriberMocks.notifyOfferSubscribers.mockResolvedValue(undefined);
     parserMocks.parseLetListing.mockReturnValue([discussion]);
@@ -90,7 +100,11 @@ describe('discoverLetOffers', () => {
     const fetcher = vi.fn();
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 0, stored: 0, pushed: 0, skipped: 0, initialized: true,
+      discovered: 0,
+      stored: 0,
+      pushed: 0,
+      skipped: 0,
+      initialized: true,
     });
     expect(redis.set).toHaveBeenCalledWith('let:first-run-at', expect.any(String), 'NX');
     expect(fetcher).not.toHaveBeenCalled();
@@ -102,7 +116,11 @@ describe('discoverLetOffers', () => {
     databaseMocks.findUnique.mockResolvedValue({ ...storedOffer, pushed: true });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 0, pushed: 0, skipped: 1, initialized: false,
+      discovered: 1,
+      stored: 0,
+      pushed: 0,
+      skipped: 1,
+      initialized: false,
     });
     expect(fetcher).toHaveBeenCalledOnce();
     expect(databaseMocks.create).not.toHaveBeenCalled();
@@ -110,10 +128,17 @@ describe('discoverLetOffers', () => {
 
   it('stores a valid newly discovered offer using its discussion ID', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn().mockResolvedValueOnce(response('<rss />')).mockResolvedValueOnce(response('<article />'));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 1, pushed: 0, skipped: 0, initialized: false,
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
     });
     expect(databaseMocks.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -128,18 +153,28 @@ describe('discoverLetOffers', () => {
 
   it('skips offers without a category or price', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn().mockResolvedValueOnce(response('<rss />')).mockResolvedValueOnce(response('<article />'));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
     parserMocks.parseLetOffer.mockReturnValue({ ...parsedOffer, category: null, priceCents: null });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 0, pushed: 0, skipped: 1, initialized: false,
+      discovered: 1,
+      stored: 0,
+      pushed: 0,
+      skipped: 1,
+      initialized: false,
     });
     expect(databaseMocks.create).not.toHaveBeenCalled();
   });
 
   it('skips an untrusted offer without an offer-trigger title', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn().mockResolvedValueOnce(response('<rss />')).mockResolvedValueOnce(response('<article />'));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
     parserMocks.parseLetRss.mockReturnValue([{ ...discussion, title: 'Affordable VPS plan' }]);
     parserMocks.parseLetOffer.mockReturnValue({
       ...parsedOffer,
@@ -148,14 +183,21 @@ describe('discoverLetOffers', () => {
     });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 0, pushed: 0, skipped: 1, initialized: false,
+      discovered: 1,
+      stored: 0,
+      pushed: 0,
+      skipped: 1,
+      initialized: false,
     });
     expect(databaseMocks.create).not.toHaveBeenCalled();
   });
 
   it('stores a trusted provider offer without an offer-trigger title', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn().mockResolvedValueOnce(response('<rss />')).mockResolvedValueOnce(response('<article />'));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
     parserMocks.parseLetOffer.mockReturnValue({
       ...parsedOffer,
       provider: 'BuyVM',
@@ -163,35 +205,104 @@ describe('discoverLetOffers', () => {
     });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 1, pushed: 0, skipped: 0, initialized: false,
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
     });
     expect(databaseMocks.create).toHaveBeenCalledOnce();
   });
 
-  it('rejects excluded content even when the title matches an offer trigger', async () => {
+  it('stores a priced storage VPS offer when the title has an offer trigger', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn().mockResolvedValueOnce(response('<rss />')).mockResolvedValueOnce(response('<article />'));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLetRss.mockReturnValue([{ ...discussion, title: 'Storage VPS Offer' }]);
     parserMocks.parseLetOffer.mockReturnValue({
       ...parsedOffer,
-      provider: 'BuyVM',
-      body: 'Limited shared hosting promotion',
+      provider: 'StorageHost',
+      title: 'Storage VPS Offer',
+      category: 'storage',
     });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 0, pushed: 0, skipped: 1, initialized: false,
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledOnce();
+  });
+
+  it('rejects an excluded offer type even when the title has an offer trigger', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLetRss.mockReturnValue([
+      { ...discussion, title: 'Limited shared hosting promotion' },
+    ]);
+    parserMocks.parseLetOffer.mockReturnValue({
+      ...parsedOffer,
+      provider: 'BuyVM',
+      title: 'Limited shared hosting promotion',
+    });
+
+    await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
+      discovered: 1,
+      stored: 0,
+      pushed: 0,
+      skipped: 1,
+      initialized: false,
     });
     expect(databaseMocks.create).not.toHaveBeenCalled();
   });
 
+  it('keeps a VPS offer when shared hosting appears only later in a mixed post', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLetRss.mockReturnValue([
+      { ...discussion, title: 'RackNerd VPS Black Friday Deals' },
+    ]);
+    parserMocks.parseLetOffer.mockReturnValue({
+      ...parsedOffer,
+      provider: 'dustinc',
+      title: 'RackNerd VPS Black Friday Deals',
+      body: 'KVM VPS plans are listed first. Shared hosting plans are also available.',
+    });
+
+    await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledOnce();
+  });
+
   it('falls back to the HTML listing when RSS is unavailable', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(response('', 503))
       .mockResolvedValueOnce(response('<html />'))
       .mockResolvedValueOnce(response('<article />'));
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1, stored: 1, pushed: 0, skipped: 0, initialized: false,
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
     });
     expect(parserMocks.parseLetListing).toHaveBeenCalledOnce();
     expect(fetcher).toHaveBeenCalledTimes(3);
@@ -199,7 +310,8 @@ describe('discoverLetOffers', () => {
 
   it('propagates failures when RSS and the HTML listing are unavailable', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(response('', 503))
       .mockResolvedValueOnce(response('', 502));
 
@@ -210,7 +322,8 @@ describe('discoverLetOffers', () => {
 
   it('sends a new offer to the offers channel and records the delivery', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(response('<rss />'))
       .mockResolvedValueOnce(response('<article />'));
     const dependencies: OfferDiscoveryDependencies = {
@@ -219,14 +332,23 @@ describe('discoverLetOffers', () => {
     };
 
     await expect(discoverLetOffers(redis, fetcher, dependencies)).resolves.toEqual({
-      discovered: 1, stored: 1, pushed: 1, skipped: 0, initialized: false,
+      discovered: 1,
+      stored: 1,
+      pushed: 1,
+      skipped: 0,
+      initialized: false,
     });
     expect(sendMessage).toHaveBeenCalledWith(
       '@vpsknow_offers',
-      expect.stringContaining('🔗 Order: https://example.com/order'),
+      expect.stringContaining(`🔗 Original: ${discussion.url}`),
       { disableWebPagePreview: true },
     );
-    expect(sendMessage.mock.calls[0]?.[1]).not.toContain('go.uukk.de');
+    const message = sendMessage.mock.calls[0]?.[1];
+    expect(message).not.toContain('🔗 Order:');
+    expect(message).not.toContain('https://example.com/order');
+    expect(message).not.toContain('go.uukk.de');
+    expect(message).toContain('🌐 vpsknow.com');
+    expect(message).toContain('💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot');
     expect(databaseMocks.telegramMessageCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ channelId: '@vpsknow_offers', messageId: 1001 }),
     });
@@ -246,16 +368,39 @@ describe('discoverLetOffers', () => {
     };
 
     await expect(discoverLetOffers(redis, fetcher, dependencies)).resolves.toEqual({
-      discovered: 1, stored: 0, pushed: 1, skipped: 0, initialized: false,
+      discovered: 1,
+      stored: 0,
+      pushed: 1,
+      skipped: 0,
+      initialized: false,
     });
     expect(fetcher).toHaveBeenCalledOnce();
     expect(databaseMocks.create).not.toHaveBeenCalled();
     expect(sendMessage).toHaveBeenCalledOnce();
   });
 
+  it('rejects a stored offer whose source URL is not an original LowEndTalk discussion', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
+    databaseMocks.findUnique.mockResolvedValue({
+      ...storedOffer,
+      threadUrl: 'https://stock.vpsknow.com/go/example',
+    });
+    const dependencies: OfferDiscoveryDependencies = {
+      ...disabledNotifications,
+      offersChannelId: '@vpsknow_offers',
+    };
+
+    await expect(discoverLetOffers(redis, fetcher, dependencies)).rejects.toThrow(
+      'Offer offer-1 has an invalid LowEndTalk URL',
+    );
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
   it('leaves a newly stored offer eligible for retry when Telegram delivery fails', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(response('<rss />'))
       .mockResolvedValueOnce(response('<article />'));
     sendMessage.mockRejectedValueOnce(new Error('Telegram unavailable'));
@@ -264,7 +409,9 @@ describe('discoverLetOffers', () => {
       offersChannelId: '@vpsknow_offers',
     };
 
-    await expect(discoverLetOffers(redis, fetcher, dependencies)).rejects.toThrow('Telegram unavailable');
+    await expect(discoverLetOffers(redis, fetcher, dependencies)).rejects.toThrow(
+      'Telegram unavailable',
+    );
     expect(databaseMocks.create).toHaveBeenCalledOnce();
     expect(databaseMocks.update).not.toHaveBeenCalled();
   });

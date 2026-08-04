@@ -1,8 +1,6 @@
 import { prisma } from '@vpsknow/database';
 import type { Prisma } from '@vpsknow/database';
 import type { StockResult } from '@vpsknow/providers';
-import { sendChannelMessage } from '@vpsknow/telegram';
-import { formatRestockMessage } from '@vpsknow/telegram';
 import {
   RESTOCK_COOLDOWN_MS,
   CONSECUTIVE_CONFIRMS_REQUIRED,
@@ -11,8 +9,10 @@ import {
 } from '@vpsknow/shared';
 import type { Logger } from 'pino';
 import { notifyRestockSubscribers } from './subscriber-notifications.js';
-
-const PUBLIC_CHANNEL_ID = process.env.TELEGRAM_OFFERS_CHANNEL_ID || '@vpsknow_offers';
+import {
+  deliverRestockNotification,
+  retryPendingRestockNotification,
+} from './restock-notifications.js';
 
 interface ProcessResult {
   checked: number;
@@ -203,30 +203,8 @@ export async function processStockResults(
               },
             });
 
-            // Send Telegram notification
-            try {
-              const message = formatRestockMessage(result, shortUrl);
-              const msgId = await sendChannelMessage(PUBLIC_CHANNEL_ID, message);
-
-              await prisma.telegramMessage.create({
-                data: {
-                  channelId: PUBLIC_CHANNEL_ID,
-                  messageId: msgId,
-                  stockEventId: event.id,
-                  content: message,
-                },
-              });
-
-              logger.info(
-                { provider: providerSlug, product: result.planName, location: result.location },
-                'RESTOCK notification sent',
-              );
-            } catch (tgErr) {
-              logger.error(
-                { provider: providerSlug, product: result.planName, err: tgErr },
-                'Failed to send Telegram notification',
-              );
-            }
+            const delivered = await deliverRestockNotification(event.id, result, shortUrl, logger);
+            if (!delivered) summary.errors++;
 
             await notifyRestockSubscribers(result, shortUrl, logger);
             summary.restocked++;
@@ -239,6 +217,14 @@ export async function processStockResults(
               where: { id: product.id },
               data: { inStock: true, consecutiveConfirm: 0, lastStockChangeAt: new Date() },
             });
+
+            const retryResult = await retryPendingRestockNotification(
+              product.id,
+              result,
+              shortUrl,
+              logger,
+            );
+            if (retryResult === 'failed') summary.errors++;
           }
         } else {
           // Not enough confirmations yet
@@ -283,8 +269,15 @@ export async function processStockResults(
             data: { consecutiveConfirm: 0 },
           });
         }
+      } else {
+        const retryResult = await retryPendingRestockNotification(
+          product.id,
+          result,
+          shortUrl,
+          logger,
+        );
+        if (retryResult === 'failed') summary.errors++;
       }
-      // previouslyInStock && nowInStock — still in stock, no action needed
     } catch (err) {
       summary.errors++;
       logger.error(

@@ -1,5 +1,7 @@
 import type { StockResult } from '@vpsknow/providers';
 
+const MESSAGE_FOOTER = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'];
+
 /**
  * 格式化补货通知消息
  * @param result 库存检查结果
@@ -32,20 +34,21 @@ export function formatRestockMessage(result: StockResult, shortUrl?: string): st
     '━━━━━━━━━━━━━━━━━━━━',
     '',
     `🔗 Order: ${orderLink}`,
+    '',
+    ...MESSAGE_FOOTER,
   ].join('\n');
 }
 
 export function formatOfferMessage(opts: {
   provider: string;
   title: string;
-  specs: string;
   locations: string;
   price: string;
   category: string;
   billing: string;
   postedAt: string;
-  orderUrl: string;
-  threadUrl: string;
+  couponCode: string | null;
+  originalUrl: string;
 }): string {
   return [
     `🔥 NEW OFFER — ${opts.provider}`,
@@ -53,17 +56,16 @@ export function formatOfferMessage(opts: {
     '━━━━━━━━━━━━━━━━━━━━',
     `📦 ${opts.title}`,
     '',
-    `   ${opts.specs}`,
     `📍 ${opts.locations}`,
-    `💰 ${opts.price}`,
+    `💰 From ${opts.price} / ${opts.billing}`,
+    `🖥 Category: ${opts.category}`,
+    ...(opts.couponCode ? [`🎟 Coupon: ${opts.couponCode}`] : []),
+    `🕒 Posted: ${opts.postedAt}`,
     '',
-    `├── Category: ${opts.category}`,
-    `├── Billing: ${opts.billing}`,
-    `├── Source: LowEndTalk`,
-    `└── Posted: ${opts.postedAt}`,
     '━━━━━━━━━━━━━━━━━━━━',
     '',
-    `🔗 Order: ${opts.orderUrl}`,
-    `🔗 Thread: ${opts.threadUrl}`,
+    `🔗 Original: ${opts.originalUrl}`,
+    '',
+    ...MESSAGE_FOOTER,
   ].join('\n');
 }

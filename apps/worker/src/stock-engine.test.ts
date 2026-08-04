@@ -12,8 +12,10 @@ const databaseMocks = vi.hoisted(() => ({
   stockCheckCreate: vi.fn(),
   stockEventFindFirst: vi.fn(),
   stockEventCreate: vi.fn(),
+  stockEventUpdate: vi.fn(),
   telegramMessageCreate: vi.fn(),
   affiliateLinkUpsert: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 const telegramMocks = vi.hoisted(() => ({
@@ -36,9 +38,11 @@ vi.mock('@vpsknow/database', () => ({
     stockEvent: {
       findFirst: databaseMocks.stockEventFindFirst,
       create: databaseMocks.stockEventCreate,
+      update: databaseMocks.stockEventUpdate,
     },
     telegramMessage: { create: databaseMocks.telegramMessageCreate },
     affiliateLink: { upsert: databaseMocks.affiliateLinkUpsert },
+    $transaction: databaseMocks.transaction,
   },
 }));
 
@@ -101,9 +105,13 @@ describe('processStockResults', () => {
     databaseMocks.stockCheckCreate.mockResolvedValue({ id: 'check-1' });
     databaseMocks.stockEventFindFirst.mockResolvedValue(null);
     databaseMocks.stockEventCreate.mockResolvedValue({ id: 'event-1' });
+    databaseMocks.stockEventUpdate.mockResolvedValue({ id: 'event-1', notified: true });
     databaseMocks.productUpdate.mockResolvedValue(createProduct(false, 0));
     databaseMocks.telegramMessageCreate.mockResolvedValue({ id: 'telegram-1' });
     databaseMocks.affiliateLinkUpsert.mockImplementation(async ({ create }) => create);
+    databaseMocks.transaction.mockImplementation(async (operations: Promise<unknown>[]) =>
+      Promise.all(operations),
+    );
     telegramMocks.formatRestockMessage.mockReturnValue('formatted restock message');
     telegramMocks.sendChannelMessage.mockResolvedValue(321);
     subscriberMocks.notifyRestockSubscribers.mockResolvedValue(undefined);
@@ -327,6 +335,11 @@ describe('processStockResults', () => {
         content: 'formatted restock message',
       },
     });
+    expect(databaseMocks.stockEventUpdate).toHaveBeenCalledWith({
+      where: { id: 'event-1' },
+      data: { notified: true },
+    });
+    expect(databaseMocks.transaction).toHaveBeenCalledOnce();
     expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledWith(
       inStockResult,
       'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
@@ -339,7 +352,9 @@ describe('processStockResults', () => {
     const debugSpy = vi.spyOn(logger, 'debug');
     const inStockResult = { ...stockResult, inStock: true };
     databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 1));
-    databaseMocks.stockEventFindFirst.mockResolvedValue({ id: 'recent-event' });
+    databaseMocks.stockEventFindFirst
+      .mockResolvedValueOnce({ id: 'recent-event' })
+      .mockResolvedValueOnce(null);
 
     await expect(processStockResults('buyvm', [inStockResult], logger)).resolves.toEqual({
       checked: 1,
@@ -369,6 +384,45 @@ describe('processStockResults', () => {
     );
     expect(databaseMocks.stockEventCreate).not.toHaveBeenCalled();
     expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();
+  });
+
+  it('retries a recent unsent restock while the product remains in stock', async () => {
+    const logger = createLogger();
+    const warnSpy = vi.spyOn(logger, 'warn');
+    const inStockResult = { ...stockResult, inStock: true };
+    databaseMocks.productUpsert.mockResolvedValue(createProduct(true, 0));
+    databaseMocks.stockEventFindFirst.mockResolvedValue({ id: 'pending-event' });
+
+    await expect(processStockResults('buyvm', [inStockResult], logger)).resolves.toEqual({
+      checked: 1,
+      restocked: 0,
+      soldOut: 0,
+      errors: 0,
+    });
+
+    expect(databaseMocks.stockEventFindFirst).toHaveBeenCalledWith({
+      where: {
+        productId: 'product-1',
+        eventType: 'restock',
+        notified: false,
+        detectedAt: { gte: new Date('2026-07-21T11:00:00.000Z') },
+        telegramMessages: { none: {} },
+      },
+      orderBy: { detectedAt: 'desc' },
+      select: { id: true },
+    });
+    expect(telegramMocks.sendChannelMessage).toHaveBeenCalledWith(
+      '@vpsknow_offers',
+      'formatted restock message',
+    );
+    expect(databaseMocks.stockEventUpdate).toHaveBeenCalledWith({
+      where: { id: 'pending-event' },
+      data: { notified: true },
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      { provider: 'BuyVM', product: 'Slice 1024', eventId: 'pending-event' },
+      'Retrying pending RESTOCK notification',
+    );
   });
 
   it('records a sold-out event without notifying Telegram', async () => {
@@ -411,7 +465,7 @@ describe('processStockResults', () => {
       checked: 1,
       restocked: 1,
       soldOut: 0,
-      errors: 0,
+      errors: 1,
     });
 
     expect(databaseMocks.stockEventCreate).toHaveBeenCalledOnce();
@@ -424,8 +478,9 @@ describe('processStockResults', () => {
       },
     });
     expect(databaseMocks.telegramMessageCreate).not.toHaveBeenCalled();
+    expect(databaseMocks.stockEventUpdate).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalledWith(
-      { provider: 'buyvm', product: 'Slice 1024', err: deliveryError },
+      { provider: 'BuyVM', product: 'Slice 1024', err: deliveryError },
       'Failed to send Telegram notification',
     );
   });

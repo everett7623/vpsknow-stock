@@ -69,7 +69,7 @@ strict-transport-security: max-age=31536000; includeSubDomains
 - 部分 provider 遇到 Cloudflare 403 (预期行为)
 
 ### ✅ Telegram 通知
-- Bot Token: 8394094019:AAFv43l7eZS8mY4zxTZ9VL-T3P99NN5cvT0
+- Bot Token: <REDACTED>
 - Channel: @vpsknow_stock
 - Admin Chat: -1004499373985
 
@@ -103,20 +103,20 @@ strict-transport-security: max-age=31536000; includeSubDomains
 ### SSH 访问
 ```bash
 ssh root@209.50.227.204
-Password: WTt688GJskXdCWaK
+Password: <REDACTED>
 ```
 
 ### 数据库
 ```
 User: vpsknow
-Password: vVR4gP2i0udeIJ2YDsI4dqnGTBE7eDx
+Password: <REDACTED>
 Database: vpsknow_stock
 ```
 
 ### Admin Dashboard
 ```
 URL: https://stock.vpsknow.com/admin
-Token: qcqHIGqnLubHo1jAk2XE0lCBaUb2CWmqz75DOGQDHmXbqcIu
+Token: <REDACTED>
 ```
 
 ---

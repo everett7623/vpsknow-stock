@@ -8,7 +8,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts --config ../config/eslint.cjs"
+    "lint": "eslint src --ext .ts --config ../config/eslint.cjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@vpsknow/shared": "workspace:*",
@@ -16,6 +17,7 @@
     "grammy": "^1.35.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
   }
 }

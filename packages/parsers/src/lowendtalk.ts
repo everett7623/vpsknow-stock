@@ -27,6 +27,38 @@ export interface ParsedLetOffer {
   confidence: number;
 }
 
+interface ParsedPrice {
+  priceCents: number;
+  currency: string;
+  billingCycle: BillingCycle | null;
+}
+
+const PRICE_PATTERN =
+  /(?:(US\s*\$|USD|\$|EUR|€|GBP|£)\s*(\d+(?:[.,]\d{1,2})?)|(\d+(?:[.,]\d{1,2})?)\s*(US\s*\$|USD|\$|EUR|€|GBP|£))(?![A-Za-z])(?:\s*(?:\/|per\s+)?\s*(monthly|month|mo|quarterly|quarter|semi-annually|semiannually|annually|annual|yearly|year|yr|biennially|biennial|triennially|triennial))?/gi;
+
+const LOCATION_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
+  ['Los Angeles', /\b(?:Los Angeles|LAX)\b/i],
+  ['New York', /\b(?:New York(?: City)?|NYC)\b/i],
+  ['Dallas', /\bDallas\b/i],
+  ['Miami', /\bMiami\b/i],
+  ['Chicago', /\bChicago\b/i],
+  ['Seattle', /\bSeattle\b/i],
+  ['San Jose', /\bSan Jose\b/i],
+  ['Ashburn', /\bAshburn\b/i],
+  ['Salt Lake City', /\bSalt Lake City\b/i],
+  ['Toronto', /\bToronto\b/i],
+  ['Amsterdam', /\bAmsterdam\b/i],
+  ['Frankfurt', /\bFrankfurt\b/i],
+  ['London', /\bLondon\b/i],
+  ['Paris', /\bParis\b/i],
+  ['Strasbourg', /\bStrasbourg\b/i],
+  ['Tokyo', /\bTokyo\b/i],
+  ['Singapore', /\bSingapore\b/i],
+  ['Hong Kong', /\bHong Kong\b/i],
+  ['Hanoi', /\bHanoi\b/i],
+  ['Ho Chi Minh City', /\bHo Chi Minh(?: City)?\b/i],
+];
+
 function discussionIdFromUrl(url: string): string | null {
   return url.match(/\/discussion\/(\d+)/i)?.[1] ?? null;
 }
@@ -47,11 +79,73 @@ function parseBillingCycle(value: string): BillingCycle | null {
 }
 
 function parseCategory(value: string): ProductCategory | null {
-  if (/\bnat\s*vps\b/i.test(value)) return 'nat_vps';
-  if (/\bstorage\b/i.test(value)) return 'storage';
-  if (/\bdedicated\b/i.test(value)) return 'dedicated';
-  if (/\b(vds|vps|kvm)\b/i.test(value)) return 'vps';
+  const candidates: Array<{ category: ProductCategory; index: number; priority: number }> = [
+    { category: 'nat_vps', index: value.search(/\bnat\s*vps\b/i), priority: 0 },
+    { category: 'vps', index: value.search(/\b(vds|vps|kvm)\b/i), priority: 1 },
+    { category: 'dedicated', index: value.search(/\bdedicated\b/i), priority: 2 },
+    { category: 'storage', index: value.search(/\bstorage\b/i), priority: 3 },
+  ];
+
+  return (
+    candidates
+      .filter((candidate) => candidate.index >= 0)
+      .sort((left, right) => left.index - right.index || left.priority - right.priority)[0]
+      ?.category ?? null
+  );
+}
+
+function currencyFromToken(token: string): string {
+  const normalized = token.replace(/\s+/g, '').toUpperCase();
+  if (normalized === 'EUR' || token === '€') return 'EUR';
+  if (normalized === 'GBP' || token === '£') return 'GBP';
+  return 'USD';
+}
+
+function parsePrice(value: string): ParsedPrice | null {
+  PRICE_PATTERN.lastIndex = 0;
+
+  for (const match of value.matchAll(PRICE_PATTERN)) {
+    const index = match.index;
+    const amount = match[2] || match[3];
+    const currencyToken = match[1] || match[4];
+    if (index === undefined || !amount || !currencyToken) continue;
+
+    const before = value.slice(Math.max(0, index - 48), index);
+    const after = value.slice(index + match[0].length, index + match[0].length + 48);
+    if (/\b(credits?|prizes?|refund|money[ -]?back)\b/i.test(after)) continue;
+    if (/\b(giveaway|prize)\s*[:=-]?\s*$/i.test(before)) continue;
+    if (/\b(regular\s+price|was)\s*[:=-]?\s*$/i.test(before)) continue;
+    if (/^\s*(?:->|→)/.test(after)) continue;
+    if (/\b(optional|additional)\b/i.test(before) && /\bfee\b/i.test(after)) continue;
+
+    const numericPrice = Number.parseFloat(amount.replace(',', '.'));
+    if (!Number.isFinite(numericPrice)) continue;
+
+    return {
+      priceCents: Math.round(numericPrice * 100),
+      currency: currencyFromToken(currencyToken),
+      billingCycle: parseBillingCycle(match[5] || `${before} ${match[0]} ${after}`),
+    };
+  }
+
   return null;
+}
+
+function parseLocations(value: string): string[] {
+  return LOCATION_PATTERNS.filter(([, pattern]) => pattern.test(value)).map(
+    ([location]) => location,
+  );
+}
+
+function normalizeExternalUrl(href: string | null): string | null {
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, 'https://lowendtalk.com');
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 export function parseLetRss(xml: string): LetDiscussion[] {
@@ -60,8 +154,10 @@ export function parseLetRss(xml: string): LetDiscussion[] {
 
   $('item').each((_, item) => {
     const title = normalizeText($(item).find('title').first().text());
-    const url = normalizeText($(item).find('link').first().text() || $(item).find('guid').first().text());
-    const author = normalizeText($(item).find('creator, author').first().text());
+    const url = normalizeText(
+      $(item).find('link').first().text() || $(item).find('guid').first().text(),
+    );
+    const author = normalizeText($(item).find('dc\\:creator, creator, author').first().text());
     const postedAt = new Date(normalizeText($(item).find('pubDate, date').first().text()));
     const discussionId = discussionIdFromUrl(url);
 
@@ -100,20 +196,39 @@ export function parseLetListing(html: string, discoveredAt: Date): LetDiscussion
 
 export function parseLetOffer(title: string, html: string, author: string): ParsedLetOffer {
   const $ = cheerio.load(html);
-  const body = normalizeText($('article, .Message, .message, .Item-Body').first().text() || $.text());
+  const firstPost = $('article, .Message, .message, .Item-Body').first();
+  const body = normalizeText(firstPost.text() || $.text());
   const combined = `${title} ${body}`;
-  const priceMatch = combined.match(/(?:US\s*)?\$(\d+(?:\.\d{1,2})?)(?:\s*\/\s*([\w-]+))?/i);
-  const orderUrl = $('a[href]').filter((_, link) => /order|cart|billing|store/i.test($(link).attr('href') || '')).first().attr('href') ?? null;
-  const locations = [...combined.matchAll(/\b(Los Angeles|New York|Dallas|Miami|Chicago|Seattle|Amsterdam|Frankfurt|London|Tokyo|Singapore|Hong Kong)\b/gi)].map((match) => match[1]!);
-  const couponMatch = combined.match(/(?:coupon(?:\s+code)?|promo(?:tion)?\s*code)\s*[:=-]?\s*([A-Z0-9-]{3,})/i);
-  const billingCycle = parseBillingCycle(priceMatch?.[2] || combined);
+  const parsedPrice = parsePrice(title) ?? parsePrice(body);
+  const orderHref =
+    firstPost
+      .find('a[href]')
+      .filter((_, link) => {
+        const linkText = normalizeText($(link).text());
+        const href = $(link).attr('href') || '';
+        return /\b(order|cart|checkout|buy now)\b/i.test(`${linkText} ${href}`);
+      })
+      .first()
+      .attr('href') ?? null;
+  const orderUrl = normalizeExternalUrl(orderHref);
+  const locations = parseLocations(combined);
+  const couponMatch = combined.match(
+    /(?:coupon(?:\s+code)?|promo(?:tion)?\s*code)\s*[:=-]?\s*([A-Z0-9-]{3,})/i,
+  );
   const category = parseCategory(combined);
-  const priceCents = priceMatch ? Math.round(Number.parseFloat(priceMatch[1]!) * 100) : null;
-  const provider = author || null;
-  const confidence = [provider, category, priceCents, billingCycle, orderUrl].filter(Boolean).length / 5;
+  const detectedAuthor = normalizeText(
+    firstPost.closest('.Item, article, li').find('.Username').first().text(),
+  );
+  const provider = normalizeText(author) || detectedAuthor || null;
+  const confidence =
+    [provider, category, parsedPrice?.priceCents, parsedPrice?.billingCycle, orderUrl].filter(
+      (value) => value !== null && value !== undefined,
+    ).length / 5;
   const ipv4 = /\b(?:no\s+ipv4|without\s+ipv4|ipv6[\s-]+only)\b/i.test(combined)
     ? false
-    : /\b(?:dedicated\s+ipv4|ipv4\s*(?:included|available|[:=-]\s*(?:yes|[1-9]))|[1-9]\s*(?:x\s*)?ipv4)\b/i.test(combined)
+    : /\b(?:dedicated\s+ipv4|ipv4\s*(?:included|available|[:=-]\s*(?:yes|[1-9]))|[1-9]\s*(?:x\s*)?ipv4)\b/i.test(
+          combined,
+        )
       ? true
       : null;
 
@@ -122,10 +237,10 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
     title,
     body,
     category,
-    locations: [...new Set(locations)],
-    priceCents,
-    currency: priceCents === null ? null : 'USD',
-    billingCycle,
+    locations,
+    priceCents: parsedPrice?.priceCents ?? null,
+    currency: parsedPrice?.currency ?? null,
+    billingCycle: parsedPrice?.billingCycle ?? null,
     couponCode: couponMatch?.[1] ?? null,
     orderUrl,
     ipv4,

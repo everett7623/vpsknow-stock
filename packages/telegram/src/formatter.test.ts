@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import type { StockResult } from '@vpsknow/providers';
+import { formatOfferMessage, formatRestockMessage } from './formatter.js';
+
+const footer = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'].join('\n');
+
+const stockResult: StockResult = {
+  provider: 'BuyVM',
+  productId: 'slice-1024-lv',
+  planName: 'Slice 1024',
+  location: 'Las Vegas',
+  category: 'vps',
+  cpu: '1 Core',
+  ramMb: 1024,
+  storageGb: 20,
+  storageType: 'SSD',
+  bandwidthTb: 1,
+  ipv4: true,
+  ipv6: true,
+  price: 350,
+  currency: 'USD',
+  billingCycle: 'monthly',
+  inStock: true,
+  orderUrl: 'https://buyvm.net/order',
+};
+
+describe('Telegram message formatters', () => {
+  it('appends the common footer to restock messages', () => {
+    const message = formatRestockMessage(
+      stockResult,
+      'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
+    );
+
+    expect(message).toContain('🔗 Order: https://stock.vpsknow.com/go/buyvm-slice-1024-lv');
+    expect(message.endsWith(footer)).toBe(true);
+  });
+
+  it('formats offers with only the original LowEndTalk URL and the common footer', () => {
+    const originalUrl = 'https://lowendtalk.com/discussion/12345/example-offer';
+    const message = formatOfferMessage({
+      provider: 'ExampleHost',
+      title: 'ExampleHost VPS Flash Sale',
+      locations: 'Los Angeles',
+      price: '$12.00',
+      category: 'VPS',
+      billing: 'year',
+      postedAt: '2026-08-04',
+      couponCode: 'FLASH26',
+      originalUrl,
+    });
+
+    expect(message).toContain(`🔗 Original: ${originalUrl}`);
+    expect(message).toContain('🎟 Coupon: FLASH26');
+    expect(message).not.toContain('🔗 Order:');
+    expect(message).not.toContain('go.uukk.de');
+    expect(message).not.toContain('stock.vpsknow.com/go/');
+    expect(message.endsWith(footer)).toBe(true);
+  });
+});
