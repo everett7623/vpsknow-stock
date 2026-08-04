@@ -8,6 +8,8 @@ import {
   type ProviderHealthConnection,
 } from './provider-health.js';
 
+const footer = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'].join('\n');
+
 function createConnection(incrementedFailures = 0): ProviderHealthConnection & {
   del: ReturnType<typeof vi.fn>;
   exists: ReturnType<typeof vi.fn>;
@@ -58,12 +60,17 @@ describe('provider health', () => {
   });
 
   it('formats actionable failure and recovery alerts', () => {
-    expect(formatProviderFailureAlert(
+    const failureAlert = formatProviderFailureAlert(
       'buyvm',
       { failures: 5, degraded: true, paused: true },
       1234,
       new Error('No parseable products'),
-    )).toContain('Possible provider page or API change');
-    expect(formatProviderRecoveryAlert('buyvm', 5)).toContain('Previous failures: 5');
+    );
+    const recoveryAlert = formatProviderRecoveryAlert('buyvm', 5);
+
+    expect(failureAlert).toContain('Possible provider page or API change');
+    expect(failureAlert.endsWith(footer)).toBe(true);
+    expect(recoveryAlert).toContain('Previous failures: 5');
+    expect(recoveryAlert.endsWith(footer)).toBe(true);
   });
 });

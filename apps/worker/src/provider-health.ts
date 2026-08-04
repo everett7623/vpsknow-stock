@@ -3,6 +3,7 @@ import { ADAPTER_DEGRADED_THRESHOLD, ADAPTER_PAUSED_THRESHOLD } from '@vpsknow/s
 const FAILURE_KEY_PREFIX = 'provider-failures:';
 const PAUSE_KEY_PREFIX = 'provider-paused:';
 const PAUSE_DURATION_SECONDS = 5 * 60;
+const MESSAGE_FOOTER = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'];
 
 export interface ProviderFailureState {
   failures: number;
@@ -73,6 +74,8 @@ export function formatProviderFailureAlert(
     `Error: ${detail.slice(0, 300)}`,
     '',
     'Possible provider page or API change. Review the adapter before re-enabling notifications.',
+    '',
+    ...MESSAGE_FOOTER,
   ].join('\n');
 }
 
@@ -82,5 +85,7 @@ export function formatProviderRecoveryAlert(provider: string, previousFailures: 
     `Provider: ${provider}`,
     `Previous failures: ${previousFailures}`,
     'Stock checks are succeeding again.',
+    '',
+    ...MESSAGE_FOOTER,
   ].join('\n');
 }
