@@ -305,3 +305,5 @@ pnpm dev                    # Start all services
 - **Complete stack**: Caddy, website, worker, bot, PostgreSQL, and Redis run through `docker-compose.production.yml` on the VPS
 - **Public ports**: Only Caddy exposes 80/443; PostgreSQL and Redis stay on the private Docker network
 - **New adapter**: Run in "dry-run" mode for 24h before activating push
+- **Local deployment credentials**: Read VPS connection settings from the git-ignored project file `.env.deploy.local`
+- **Credential handling**: Use the `VPSKNOW_DEPLOY_*` variables without printing, committing, or copying their values into commands, logs, or tracked files
