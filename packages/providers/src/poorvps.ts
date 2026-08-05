@@ -1,8 +1,22 @@
 import { createDecipheriv, createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
+import { load } from 'cheerio';
 
 const OPENSSL_PREFIX = Buffer.from('Salted__', 'ascii');
 const KEY_AND_IV_BYTES = 48;
+const POORVPS_CDN_HOST = 'cdn.poorvps.com';
+const MAX_ASSET_COUNT = 20;
+const MAX_BUNDLE_LENGTH = 2_000_000;
+const MAX_PASSWORD_CANDIDATES = 2_048;
+const DISCOVERY_TTL_MS = 60 * 60 * 1000;
+
+interface DiscoveredCatalogSource {
+  dataUrl: string;
+  password: string;
+  discoveredAt: number;
+}
+
+const discoveredSources = new Map<string, DiscoveredCatalogSource>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -64,20 +78,148 @@ export function decodePoorVpsCatalog(
   return parsed;
 }
 
-export async function fetchPoorVpsCatalog(
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractAssetUrls(html: string, pageUrl: string): string[] {
+  const $ = load(html);
+  const urls = new Set<string>();
+
+  $('script[src], link[href]').each((_index, element) => {
+    const reference = $(element).attr('src') ?? $(element).attr('href');
+    if (!reference) return;
+
+    try {
+      const url = new URL(reference, pageUrl);
+      if (
+        url.protocol === 'https:' &&
+        url.hostname === POORVPS_CDN_HOST &&
+        url.pathname.endsWith('.js')
+      ) {
+        urls.add(url.href);
+      }
+    } catch {
+      // Ignore malformed third-party asset references from the public page.
+    }
+  });
+
+  return [...urls].slice(0, MAX_ASSET_COUNT);
+}
+
+function extractCatalogFile(bundle: string, catalogName: string): string | null {
+  const pattern = new RegExp(
+    `["'\`]${escapeRegExp(catalogName)}["'\`]\\s*:\\s*["'\`](cache-[A-Za-z0-9_-]+\\.txt)["'\`]`,
+  );
+  return bundle.match(pattern)?.[1] ?? null;
+}
+
+function extractPasswordCandidates(bundle: string): string[] {
+  const candidates = new Set<string>();
+  const pattern = /(["'`])([A-Za-z0-9_-]{8,128})\1/g;
+
+  for (const match of bundle.matchAll(pattern)) {
+    if (match[2]) candidates.add(match[2]);
+  }
+
+  return [...candidates];
+}
+
+async function fetchPublicText(
   provider: string,
   url: string,
-  password: string,
-): Promise<Record<string, unknown>> {
+  referer: string,
+  accept: string,
+): Promise<string> {
   const response = await fetch(url, {
     headers: {
-      Accept: 'text/plain,*/*',
-      Referer: 'https://poorvps.com/',
+      Accept: accept,
+      Referer: referer,
       'User-Agent': 'VPSKnow-Stock/1.0',
     },
     signal: AbortSignal.timeout(15_000),
   });
 
-  if (!response.ok) throw new Error(`${provider} PoorVPS source HTTP ${response.status}`);
-  return decodePoorVpsCatalog(await response.text(), password);
+  if (!response.ok) throw new Error(`${provider} PoorVPS discovery HTTP ${response.status}`);
+  return response.text();
+}
+
+export async function fetchDiscoveredPoorVpsCatalog(
+  provider: string,
+  pageUrl: string,
+  catalogName: string,
+): Promise<Record<string, unknown>> {
+  const cacheKey = `${pageUrl}\u0000${catalogName}`;
+  const cachedSource = discoveredSources.get(cacheKey);
+  if (cachedSource && Date.now() - cachedSource.discoveredAt < DISCOVERY_TTL_MS) {
+    try {
+      const encryptedPayload = await fetchPublicText(
+        provider,
+        cachedSource.dataUrl,
+        pageUrl,
+        'text/plain,*/*',
+      );
+      return decodePoorVpsCatalog(encryptedPayload, cachedSource.password);
+    } catch {
+      discoveredSources.delete(cacheKey);
+    }
+  } else if (cachedSource) {
+    discoveredSources.delete(cacheKey);
+  }
+
+  const html = await fetchPublicText(provider, pageUrl, pageUrl, 'text/html,*/*');
+  const assetUrls = extractAssetUrls(html, pageUrl);
+  if (assetUrls.length === 0) {
+    throw new Error(`${provider} PoorVPS discovery found no trusted JavaScript assets`);
+  }
+
+  let dataUrl: string | null = null;
+  const passwordCandidates = new Set<string>();
+
+  for (const assetUrl of assetUrls) {
+    let bundle: string;
+    try {
+      bundle = await fetchPublicText(
+        provider,
+        assetUrl,
+        pageUrl,
+        'text/javascript,application/javascript,*/*',
+      );
+    } catch {
+      continue;
+    }
+    if (bundle.length > MAX_BUNDLE_LENGTH) continue;
+
+    for (const candidate of extractPasswordCandidates(bundle)) {
+      if (passwordCandidates.size >= MAX_PASSWORD_CANDIDATES) break;
+      passwordCandidates.add(candidate);
+    }
+
+    const catalogFile = extractCatalogFile(bundle, catalogName);
+    if (catalogFile) dataUrl = new URL(`/data/${catalogFile}`, assetUrl).href;
+  }
+
+  if (!dataUrl) {
+    throw new Error(`${provider} PoorVPS discovery did not publish ${catalogName}`);
+  }
+  if (passwordCandidates.size === 0) {
+    throw new Error(`${provider} PoorVPS discovery found no decryption candidates`);
+  }
+
+  const encryptedPayload = await fetchPublicText(provider, dataUrl, pageUrl, 'text/plain,*/*');
+  for (const password of passwordCandidates) {
+    try {
+      const catalog = decodePoorVpsCatalog(encryptedPayload, password);
+      discoveredSources.set(cacheKey, { dataUrl, password, discoveredAt: Date.now() });
+      return catalog;
+    } catch {
+      // Public bundles contain many string literals; only one decrypts the current payload.
+    }
+  }
+
+  throw new Error(`${provider} PoorVPS discovery could not decrypt ${catalogName}`);
+}
+
+export function clearPoorVpsDiscoveryCache(): void {
+  discoveredSources.clear();
 }

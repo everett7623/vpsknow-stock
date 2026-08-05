@@ -1077,6 +1077,34 @@ describe('provider adapters', () => {
     ]);
   });
 
+  it('rejects LightLayer products without a matching official source URL', () => {
+    const product = {
+      title: 'LA-VP03',
+      base_specs_text: 'Core:1vCPU\nRAM:1GB\nStorage:50GB NVMe',
+      stock_status: 'In Stock',
+      billing_options: [
+        {
+          is_selected: true,
+          parsed_price: { amount: 4, currency: 'USD' },
+          value: 'monthly',
+        },
+      ],
+    };
+
+    const results = new LightLayerAdapter().parse({
+      '102': {
+        ...product,
+        url: 'https://example.com/?cmd=cart&action=add&id=102',
+      },
+      '103': {
+        ...product,
+        url: 'https://account.lightlayer.net/?cmd=cart&action=add&id=999',
+      },
+    });
+
+    expect(results).toEqual([]);
+  });
+
   it('parses SpeedyPage VPS quantities and keeps display units', () => {
     const results = new SpeedyPageAdapter().parse(fixture('speedypage.html'), {
       slug: 'singapore',

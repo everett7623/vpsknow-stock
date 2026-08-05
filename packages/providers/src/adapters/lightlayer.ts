@@ -1,5 +1,5 @@
 import type { BillingCycle } from '@vpsknow/shared';
-import { fetchPoorVpsCatalog } from '../poorvps.js';
+import { fetchDiscoveredPoorVpsCatalog } from '../poorvps.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface BillingOption {
@@ -20,11 +20,9 @@ interface CatalogProduct {
   raw: Record<string, unknown>;
 }
 
-const DATA_URL =
-  process.env.POORVPS_LIGHTLAYER_DATA_URL?.trim() ||
-  'https://cdn.poorvps.com/data/cache-kpue6a1d5vkjbl8b.txt';
-// 该口令来自 PoorVPS 公开浏览器 bundle，并非凭据。
-const DATA_PASSWORD = 'ahD2EemWoQ6UQMFMoJsjTunHgnI8Udga';
+const CATALOG_PAGE_URL =
+  process.env.POORVPS_LIGHTLAYER_PAGE_URL?.trim() || 'https://lightlayer.cn/';
+const CATALOG_NAME = 'lightlayer.json';
 const ORDER_BASE = 'https://account.lightlayer.net/';
 const AFFILIATE_ID = '647';
 
@@ -187,12 +185,27 @@ function isVirtualServer(product: CatalogProduct): boolean {
   return /^Core\s*:/im.test(product.description);
 }
 
+function hasOfficialSource(product: CatalogProduct, productId: string): boolean {
+  try {
+    const url = new URL(product.sourceUrl);
+    return (
+      url.protocol === 'https:' &&
+      url.hostname === 'account.lightlayer.net' &&
+      url.searchParams.get('cmd') === 'cart' &&
+      url.searchParams.get('action') === 'add' &&
+      url.searchParams.get('id') === productId
+    );
+  } catch {
+    return false;
+  }
+}
+
 export class LightLayerAdapter implements ProviderAdapter {
   readonly slug = 'lightlayer';
   readonly name = 'LightLayer';
 
   async check(): Promise<StockResult[]> {
-    const catalog = await fetchPoorVpsCatalog(this.name, DATA_URL, DATA_PASSWORD);
+    const catalog = await fetchDiscoveredPoorVpsCatalog(this.name, CATALOG_PAGE_URL, CATALOG_NAME);
     const results = this.parse(catalog);
     if (results.length === 0) throw new Error('LightLayer returned no parseable VPS products');
     return results;
@@ -204,7 +217,7 @@ export class LightLayerAdapter implements ProviderAdapter {
     for (const [productId, value] of Object.entries(catalog)) {
       if (!/^\d+$/.test(productId)) continue;
       const product = parseCatalogProduct(value);
-      if (!product || !isVirtualServer(product)) continue;
+      if (!product || !isVirtualServer(product) || !hasOfficialSource(product, productId)) continue;
 
       const normalizedStatus = product.stockStatus.toLowerCase();
       if (normalizedStatus !== 'in stock' && normalizedStatus !== 'out of stock') continue;
