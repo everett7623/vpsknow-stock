@@ -29,6 +29,9 @@ import { ColoCrossingAdapter } from './adapters/colocrossing.js';
 import { ChicagoVPSAdapter } from './adapters/chicagovps.js';
 import { LightLayerAdapter } from './adapters/lightlayer.js';
 import { SpeedyPageAdapter } from './adapters/speedypage.js';
+import { BestVMAdapter } from './adapters/bestvm.js';
+import { NeburstAdapter } from './adapters/neburst.js';
+import { HNCloudAdapter } from './adapters/hncloud.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -61,6 +64,9 @@ const adapters: ProviderAdapter[] = [
   new ChicagoVPSAdapter(),
   new LightLayerAdapter(),
   new SpeedyPageAdapter(),
+  new BestVMAdapter(),
+  new NeburstAdapter(),
+  new HNCloudAdapter(),
 ];
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(

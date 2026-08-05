@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { discoverLetOffers, type OfferDiscoveryDependencies } from './offers-engine.js';
+import {
+  discoverLetOffers,
+  discoverLowEndBoxOffers,
+  discoverLowEndSpiritOffers,
+  discoverOffers,
+  type OfferDiscoveryDependencies,
+} from './offers-engine.js';
 
 const databaseMocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
@@ -12,6 +18,9 @@ const parserMocks = vi.hoisted(() => ({
   parseLetListing: vi.fn(),
   parseLetRss: vi.fn(),
   parseLetOffer: vi.fn(),
+  parseLowEndBoxRss: vi.fn(),
+  parseLowEndBoxOffer: vi.fn(),
+  parseLowEndSpiritRss: vi.fn(),
 }));
 const subscriberMocks = vi.hoisted(() => ({
   notifyOfferSubscribers: vi.fn(),
@@ -58,6 +67,7 @@ const parsedOffer = {
 
 const storedOffer = {
   id: 'offer-1',
+  source: 'lowendtalk',
   ...parsedOffer,
   threadUrl: discussion.url,
   postedAt: discussion.postedAt,
@@ -93,6 +103,9 @@ describe('discoverLetOffers', () => {
     parserMocks.parseLetListing.mockReturnValue([discussion]);
     parserMocks.parseLetRss.mockReturnValue([discussion]);
     parserMocks.parseLetOffer.mockReturnValue(parsedOffer);
+    parserMocks.parseLowEndBoxRss.mockReturnValue([]);
+    parserMocks.parseLowEndBoxOffer.mockReturnValue(parsedOffer);
+    parserMocks.parseLowEndSpiritRss.mockReturnValue([]);
   });
 
   it('establishes a first-run baseline without fetching historical offers', async () => {
@@ -340,7 +353,7 @@ describe('discoverLetOffers', () => {
     });
     expect(sendMessage).toHaveBeenCalledWith(
       '@vpsknow_offers',
-      expect.stringContaining(`🔗 Original: ${discussion.url}`),
+      expect.stringContaining(`🔗 View offer: ${discussion.url}`),
       { disableWebPagePreview: true },
     );
     const message = sendMessage.mock.calls[0]?.[1];
@@ -379,7 +392,7 @@ describe('discoverLetOffers', () => {
     expect(sendMessage).toHaveBeenCalledOnce();
   });
 
-  it('rejects a stored offer whose source URL is not an original LowEndTalk discussion', async () => {
+  it('rejects a stored offer whose URL is not from its original source', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
     databaseMocks.findUnique.mockResolvedValue({
@@ -392,9 +405,177 @@ describe('discoverLetOffers', () => {
     };
 
     await expect(discoverLetOffers(redis, fetcher, dependencies)).rejects.toThrow(
-      'Offer offer-1 has an invalid LowEndTalk URL',
+      'Offer offer-1 has an invalid original source URL',
     );
     expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('establishes independent baselines for all three sources without replaying history', async () => {
+    const redis = connection(null);
+    const fetcher = vi.fn();
+
+    await expect(discoverOffers(redis, fetcher, disabledNotifications)).resolves.toEqual({
+      discovered: 0,
+      stored: 0,
+      pushed: 0,
+      skipped: 0,
+      initialized: true,
+      sources: {
+        lowendtalk: {
+          discovered: 0,
+          stored: 0,
+          pushed: 0,
+          skipped: 0,
+          initialized: true,
+        },
+        lowendbox: {
+          discovered: 0,
+          stored: 0,
+          pushed: 0,
+          skipped: 0,
+          initialized: true,
+        },
+        lowendspirit: {
+          discovered: 0,
+          stored: 0,
+          pushed: 0,
+          skipped: 0,
+          initialized: true,
+        },
+      },
+      failedSources: [],
+    });
+    expect(redis.set).toHaveBeenCalledWith('let:first-run-at', expect.any(String), 'NX');
+    expect(redis.set).toHaveBeenCalledWith(
+      'offers:lowendbox:first-run-at',
+      expect.any(String),
+      'NX',
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      'offers:lowendspirit:first-run-at',
+      expect.any(String),
+      'NX',
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('stores a new LowEndBox article with a globally namespaced source ID', async () => {
+    const lowEndBoxDiscussion = {
+      discussionId: 'lowendbox:53296',
+      title: 'Affordable VPS plan',
+      author: 'raindog308',
+      postedAt: discussion.postedAt,
+      url: 'https://lowendbox.com/blog/affordable-vps-plan/',
+    };
+    const lowEndBoxOffer = { ...parsedOffer, title: lowEndBoxDiscussion.title };
+    const lowEndBoxStored = {
+      ...storedOffer,
+      source: 'lowendbox',
+      title: lowEndBoxDiscussion.title,
+      threadUrl: lowEndBoxDiscussion.url,
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLowEndBoxRss
+      .mockReturnValueOnce([lowEndBoxDiscussion])
+      .mockReturnValueOnce([]);
+    parserMocks.parseLowEndBoxOffer.mockReturnValue(lowEndBoxOffer);
+    databaseMocks.create.mockResolvedValue(lowEndBoxStored);
+
+    await expect(
+      discoverLowEndBoxOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        source: 'lowendbox',
+        sourceId: 'lowendbox:53296',
+        threadUrl: lowEndBoxDiscussion.url,
+      }),
+    });
+  });
+
+  it('stores a new LowEndSpirit discussion from the curated VPS feed', async () => {
+    const lowEndSpiritDiscussion = {
+      discussionId: 'lowendspirit:11151',
+      title: 'New UK KVM VPS Annual Promo',
+      author: 'ExampleHost',
+      postedAt: discussion.postedAt,
+      url: 'https://lowendspirit.com/discussion/11151/new-uk-kvm-vps-annual-promo',
+    };
+    const lowEndSpiritStored = {
+      ...storedOffer,
+      source: 'lowendspirit',
+      title: lowEndSpiritDiscussion.title,
+      threadUrl: lowEndSpiritDiscussion.url,
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLowEndSpiritRss
+      .mockReturnValueOnce([lowEndSpiritDiscussion])
+      .mockReturnValueOnce([]);
+    databaseMocks.create.mockResolvedValue(lowEndSpiritStored);
+
+    await expect(
+      discoverLowEndSpiritOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        source: 'lowendspirit',
+        sourceId: 'lowendspirit:11151',
+        threadUrl: lowEndSpiritDiscussion.url,
+      }),
+    });
+  });
+
+  it('does not fetch an external feed entry whose URL is outside its source domain', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<rss />'));
+    parserMocks.parseLowEndBoxRss
+      .mockReturnValueOnce([
+        {
+          discussionId: 'lowendbox:53296',
+          title: 'Affordable VPS plan',
+          author: 'raindog308',
+          postedAt: discussion.postedAt,
+          url: 'https://example.com/blog/affordable-vps-plan/',
+        },
+      ])
+      .mockReturnValueOnce([]);
+
+    await expect(
+      discoverLowEndBoxOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 0,
+      stored: 0,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(databaseMocks.findUnique).not.toHaveBeenCalled();
   });
 
   it('leaves a newly stored offer eligible for retry when Telegram delivery fails', async () => {

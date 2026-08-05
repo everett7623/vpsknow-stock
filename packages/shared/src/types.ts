@@ -14,7 +14,12 @@ export type EventType = 'restock' | 'sold_out';
 
 export type AdapterStatus = 'healthy' | 'degraded' | 'paused' | 'broken';
 
-export type OfferSource = 'lowendtalk' | 'provider_blog' | 'manual';
+export type OfferSource =
+  | 'lowendtalk'
+  | 'lowendbox'
+  | 'lowendspirit'
+  | 'provider_blog'
+  | 'manual';
 
 export interface NormalizedPrice {
   amountCents: number;

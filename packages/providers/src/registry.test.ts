@@ -32,6 +32,9 @@ const REQUIRED_PROVIDERS = [
   'chicagovps',
   'lightlayer',
   'speedypage',
+  'bestvm',
+  'neburst',
+  'hncloud',
 ] as const;
 
 describe('provider registry', () => {

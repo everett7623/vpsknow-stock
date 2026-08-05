@@ -1,5 +1,9 @@
 import * as cheerio from 'cheerio';
 import type { BillingCycle } from '@vpsknow/shared';
+import {
+  fetchProviderPagesWithBrowser,
+  type BrowserPageResult,
+} from '../browser.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface Category {
@@ -11,12 +15,28 @@ interface Category {
 const PORTAL = 'https://portal.saltyfish.io';
 const CATEGORIES: readonly Category[] = [
   { slug: 'fra-premium', location: 'Frankfurt', url: `${PORTAL}/index.php?rp=/store/fra-premium` },
-  { slug: 'fra-elite', location: 'Frankfurt', url: `${PORTAL}/index.php?rp=/store/fra-elite` },
+  { slug: 'frankfurt-elite', location: 'Frankfurt', url: `${PORTAL}/index.php?rp=/store/frankfurt-elite` },
   { slug: 'sjc-premium', location: 'San Jose', url: `${PORTAL}/index.php?rp=/store/sjc-premium` },
   { slug: 'sjc-elite', location: 'San Jose', url: `${PORTAL}/index.php?rp=/store/sjc-elite` },
   { slug: 'sjc-standard', location: 'San Jose', url: `${PORTAL}/index.php?rp=/store/sjc-standard` },
   { slug: 'ams-premium', location: 'Amsterdam', url: `${PORTAL}/index.php?rp=/store/ams-premium` },
 ] as const;
+
+type FetchHtml = (url: string) => Promise<string>;
+type FetchBrowserPages = (
+  provider: string,
+  urls: readonly string[],
+  readySelector: string,
+) => Promise<BrowserPageResult[]>;
+
+async function fetchDirectHtml(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.text();
+}
 
 function numberFrom(text: string, pattern: RegExp): number {
   const match = text.match(pattern);
@@ -35,33 +55,80 @@ function billingCycle(text: string): BillingCycle {
 export class SaltyFishAdapter implements ProviderAdapter {
   readonly slug = 'saltyfish';
   readonly name = 'SaltyFish';
+  warnings: readonly string[] = [];
+
+  constructor(
+    private readonly fetchHtml: FetchHtml = fetchDirectHtml,
+    private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
+  ) {}
 
   async check(): Promise<StockResult[]> {
-    const results: StockResult[] = [];
-    const seen = new Set<string>();
+    this.warnings = [];
 
-    for (const category of CATEGORIES) {
-      const response = await fetch(category.url, {
-        headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`SaltyFish HTTP ${response.status} for ${category.slug}`);
+    try {
+      const results: StockResult[] = [];
+      const seen = new Set<string>();
 
-      const html = await response.text();
-      if (/cf-chl-|captcha|just a moment|out of stock on this item/i.test(html)) {
-        throw new Error(`SaltyFish returned a challenge or error page for ${category.slug}`);
-      }
+      for (const category of CATEGORIES) {
+        const html = await this.fetchHtml(category.url);
+        const parsed = this.parse(html, category);
+        if (parsed.length === 0) throw new Error(`${category.slug}: no parseable products`);
 
-      for (const result of this.parse(html, category)) {
-        if (!seen.has(result.productId)) {
-          seen.add(result.productId);
-          results.push(result);
+        for (const result of parsed) {
+          if (!seen.has(result.productId)) {
+            seen.add(result.productId);
+            results.push(result);
+          }
         }
       }
-    }
 
-    if (results.length === 0) throw new Error('SaltyFish returned no parseable products');
-    return results;
+      if (results.length === 0) throw new Error('no parseable products');
+      return results;
+    } catch (directError) {
+      const pages = await this.fetchBrowserPages(
+        this.name,
+        CATEGORIES.map((category) => category.url),
+        '.product',
+      );
+      const results: StockResult[] = [];
+      const seen = new Set<string>();
+      const failures: string[] = [];
+
+      for (const [index, page] of pages.entries()) {
+        const category = CATEGORIES[index];
+        if (!category) continue;
+        if (!page.ok) {
+          failures.push(`${category.slug}: ${page.error}`);
+          continue;
+        }
+
+        const parsed = this.parse(page.html, category);
+        if (parsed.length === 0) {
+          failures.push(`${category.slug}: no parseable products`);
+          continue;
+        }
+
+        for (const result of parsed) {
+          if (!seen.has(result.productId)) {
+            seen.add(result.productId);
+            results.push(result);
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        const directMessage = directError instanceof Error
+          ? directError.message
+          : String(directError);
+        throw new Error(
+          `SaltyFish returned no parseable products; direct HTTP: ${directMessage}; `
+          + `browser: ${failures.slice(0, 3).join('; ') || 'no successful categories'}`,
+        );
+      }
+
+      this.warnings = failures;
+      return results;
+    }
   }
 
   parse(html: string, category: Category): StockResult[] {

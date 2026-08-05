@@ -49,14 +49,24 @@ export default async function ProviderDetailPage({
         <header className="space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-4">
             <h1 className="text-2xl font-bold text-white sm:text-3xl">{provider.name}</h1>
-            <a
-              href={provider.website}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-emerald-400 hover:text-emerald-300"
-            >
-              Official website
-            </a>
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href={provider.website}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-emerald-400 hover:text-emerald-300"
+              >
+                Official website
+              </a>
+              <a
+                href="https://t.me/vpsknow_stock_bot?start=subscribe"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-sky-700 bg-sky-950/60 px-3 py-1.5 text-sm font-medium text-sky-300 transition-colors hover:border-sky-500 hover:text-sky-200"
+              >
+                Subscribe on Telegram
+              </a>
+            </div>
           </div>
           <p className="text-sm text-gray-400">
             Last checked: {isStale ? 'Status Unknown' : formatDate(lastCheckedAt)}

@@ -125,8 +125,8 @@ model TelegramMessage {
 
 model Offer {
   id             String   @id @default(cuid())
-  source         String   // lowendtalk, provider_blog, manual
-  sourceId       String?  @unique // e.g. LET discussion ID
+  source         String   // lowendtalk, lowendbox, lowendspirit, provider_blog, manual
+  sourceId       String?  @unique // source-specific ID; external sources use a namespace prefix
   provider       String?
   title          String
   body           String?

@@ -139,8 +139,8 @@ stock_events
 
 offers
 ├── id, provider_id (nullable)
-├── source (lowendtalk|provider_blog|manual)
-├── source_id (discussion_id for LET)
+├── source (lowendtalk|lowendbox|lowendspirit|provider_blog|manual)
+├── source_id (source-specific ID; external feeds use a namespace prefix)
 ├── source_url
 ├── title, body_excerpt
 ├── price_cents, currency, billing_cycle
@@ -262,14 +262,14 @@ A restock event fires ONLY when ALL conditions are met:
 
 ```text
 Layer 1: RSS Feed
-    URL: https://lowendtalk.com/categories/offers/feeds.rss
+    URLs: LowEndTalk Offers RSS, LowEndBox VPS/Dedicated RSS, and LowEndSpirit VPS/Dedicated RSS
     Poll: every 2–3 min
     Extract: discussion ID, title, author, timestamp, URL
 
 Layer 2: HTML Fallback
     URL: https://lowendtalk.com/categories/offers
     Purpose: catch posts missed by RSS (known RSS reliability issues)
-    Dedup by: discussion ID
+    Dedup by: source-specific ID; namespace external IDs before the globally unique database key
 
 Layer 3: Post Detail Fetch
     Trigger: new discussion ID discovered

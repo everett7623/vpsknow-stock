@@ -48,6 +48,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: worker-runtime
     command: pnpm --filter @vpsknow/worker start
     restart: unless-stopped
     environment:

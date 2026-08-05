@@ -5,11 +5,7 @@ import { BandwagonHostAdapter } from '../bandwagonhost.js';
 import { BuyVMAdapter } from '../buyvm.js';
 import { DmitAdapter } from '../dmit.js';
 import { GreenCloudVPSAdapter } from '../greencloudvps.js';
-import {
-  applySpartanWhmcsPids,
-  parseSpartanWhmcsPidMap,
-  SpartanHostAdapter,
-} from '../spartanhost.js';
+import { SpartanHostAdapter } from '../spartanhost.js';
 import { VmissAdapter } from '../vmiss.js';
 import { VpsAdapter } from '../vps.js';
 import { SaltyFishAdapter } from '../saltyfish.js';
@@ -83,6 +79,29 @@ describe('provider adapters', () => {
       inStock: true,
       orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=95',
     });
+  });
+
+  it('falls back to the official BandwagonHost mirror without changing order URLs', async () => {
+    const fetchHtml = vi.fn(async (_provider: string, url: string): Promise<string> => {
+      if (url === 'https://bandwagonhost.com/cart.php') {
+        throw new Error('connection timed out');
+      }
+      return fixture('bandwagonhost-cart.html');
+    });
+    const results = await new BandwagonHostAdapter(fetchHtml).check();
+
+    expect(fetchHtml).toHaveBeenNthCalledWith(
+      1,
+      'BandwagonHost',
+      'https://bandwagonhost.com/cart.php',
+    );
+    expect(fetchHtml).toHaveBeenNthCalledWith(
+      2,
+      'BandwagonHost',
+      'https://bwh81.net/cart.php',
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]?.orderUrl).toBe('https://bandwagonhost.com/cart.php?a=add&pid=95');
   });
 
   it('parses DMIT plan availability and resolves deployment links', () => {
@@ -231,56 +250,95 @@ describe('provider adapters', () => {
     });
   });
 
-  it('parses SpartanHost plans as independent per-location stock results', () => {
-    const results = new SpartanHostAdapter().parse(fixture('spartanhost.html'));
+  it('parses SpartanHost WHMCS quantity as the authoritative stock state', () => {
+    const results = new SpartanHostAdapter().parse(fixture('spartanhost.html'), {
+      slug: 'dallas-premium-vps',
+      location: 'Dallas',
+      category: 'vps',
+      url: 'https://billing.spartanhost.net/store/dallas-premium-vps',
+    });
 
-    expect(results).toHaveLength(3);
+    expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({
       provider: 'spartanhost',
-      productId: 'spartan-premium-kvm-1024mb-seattle',
-      planName: 'Premium KVM 1024MB',
-      location: 'Seattle',
+      productId: 'spartan-1024mb-dalkvm',
+      planName: '1024MB DALKVM',
+      location: 'Dallas',
       cpu: '1 vCore',
       ramMb: 1024,
       storageGb: 25,
       storageType: 'NVMe',
       bandwidthTb: 2,
+      ipv6: true,
       price: 600,
-      inStock: false,
-      orderUrl: 'https://spartanhost.org/vps',
+      inStock: true,
+      orderUrl: 'https://billing.spartanhost.net/cart.php?a=add&pid=317',
+      raw: { available: 10, whmcsPid: '317' },
     });
     expect(results[1]).toMatchObject({
-      productId: 'spartan-1024mb-dalkvm',
-      location: 'Dallas',
-      inStock: true,
-    });
-    expect(results[2]).toMatchObject({
-      productId: 'spartan-2048mb-seabkvm',
-      planName: 'E5 KVM 2048MB',
-      location: 'Seattle',
-      cpu: '2 vCores',
-      price: 1000,
-      inStock: true,
+      productId: 'spartan-20480mb-dalkvm',
+      inStock: false,
+      orderUrl: 'https://billing.spartanhost.net/store/dallas-premium-vps',
+      raw: { available: 0, whmcsPid: '389' },
     });
   });
 
-  it('maps SpartanHost WHMCS card IDs to exact cart order URLs', () => {
-    const results = new SpartanHostAdapter().parse(fixture('spartanhost.html'));
-    const pidByOrderUrl = parseSpartanWhmcsPidMap(`
-      <div class="product clearfix" id="product317">
-        <a href="/store/dallas-premium-vps/1024mb-dalkvm"
-           id="product317-order-button">Order Now</a>
-      </div>
-      <div class="product clearfix" id="product402">
-        <a href="/store/e5-seattle/2048mb-seabkvm"
-           id="product402-order-button">Order Now</a>
-      </div>
-    `);
-    const mapped = applySpartanWhmcsPids(results, pidByOrderUrl);
+  it('parses SpartanHost storage plans without treating their HDD capacity as RAM', () => {
+    const results = new SpartanHostAdapter().parse(
+      `
+        <div class="product" id="product88">
+          <span id="product88-name">1000GB KVM</span>
+          <span class="qty">1 Available</span>
+          <div class="product-desc">
+            1024MB DDR4 ECC RAM
+            1 CPU vCore
+            1000GB Raid 10 HDD Storage
+            3TB bandwidth @ 10Gb/s
+            1 IPv4, /64 IPv6
+          </div>
+          <div class="product-pricing">Starting from $6.00 USD Monthly</div>
+          <a class="btn-order-now" href="/store/storage-kvm-vps-dallas/1000gb-kvm">Order Now</a>
+        </div>
+      `,
+      {
+        slug: 'storage-kvm-vps-dallas',
+        location: 'Dallas',
+        category: 'storage',
+        url: 'https://billing.spartanhost.net/store/storage-kvm-vps-dallas',
+      },
+    );
 
-    expect(mapped[0]?.orderUrl).toBe('https://spartanhost.org/vps');
-    expect(mapped[1]?.orderUrl).toBe('https://billing.spartanhost.net/cart.php?a=add&pid=317');
-    expect(mapped[2]?.orderUrl).toBe('https://billing.spartanhost.net/cart.php?a=add&pid=402');
+    expect(results[0]).toMatchObject({
+      category: 'storage',
+      ramMb: 1024,
+      storageGb: 1000,
+      storageType: 'HDD',
+      bandwidthTb: 3,
+      ipv6: true,
+    });
+  });
+
+  it('continues SpartanHost checks when one official category is invalid', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      const html = url.pathname.includes('cmin2-premium')
+        ? '<html><title>Shopping Cart - Spartan Host Ltd</title></html>'
+        : fixture('spartanhost.html');
+      return new Response(html, { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const adapter = new SpartanHostAdapter();
+      const results = await adapter.check();
+
+      expect(fetchMock).toHaveBeenCalledTimes(7);
+      expect(results).toHaveLength(2);
+      expect(adapter.warnings).toHaveLength(1);
+      expect(adapter.warnings[0]).toContain('cmin2-premium-kvm-vps-seattle');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('parses VMISS WHMCS quantity as authoritative stock state', () => {
@@ -349,6 +407,23 @@ describe('provider adapters', () => {
     });
   });
 
+  it('accepts V.PS order pages that embed checkout Turnstile', async () => {
+    const html = `${fixture('vps.html')}
+      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?compat=recaptcha"></script>`;
+    const fetchMock = vi.fn(async () => new Response(html, { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const results = await new VpsAdapter().check();
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(results).toHaveLength(2);
+      expect(results.map((result) => result.inStock)).toEqual([true, false]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('parses SaltyFish WHMCS quantity and network plans', () => {
     const results = new SaltyFishAdapter().parse(fixture('saltyfish.html'), {
       slug: 'sjc-elite',
@@ -382,6 +457,33 @@ describe('provider adapters', () => {
       inStock: true,
       orderUrl: 'https://portal.saltyfish.io/store/sjc-elite/e1medium',
     });
+  });
+
+  it('falls back to one sequential browser session for SaltyFish categories', async () => {
+    const fetchHtml = vi.fn(async (): Promise<string> => {
+      throw new Error('HTTP 403');
+    });
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[], _readySelector: string) => (
+        urls.map((url) => ({
+          url,
+          ok: true as const,
+          html: fixture('saltyfish.html'),
+        }))
+      ),
+    );
+    const adapter = new SaltyFishAdapter(fetchHtml, fetchBrowserPages);
+    const results = await adapter.check();
+
+    expect(fetchHtml).toHaveBeenCalledTimes(1);
+    expect(fetchBrowserPages).toHaveBeenCalledTimes(1);
+    expect(fetchBrowserPages.mock.calls[0]?.[0]).toBe('SaltyFish');
+    expect(fetchBrowserPages.mock.calls[0]?.[1]).toContain(
+      'https://portal.saltyfish.io/index.php?rp=/store/frankfurt-elite',
+    );
+    expect(fetchBrowserPages.mock.calls[0]?.[2]).toBe('.product');
+    expect(results).toHaveLength(2);
+    expect(adapter.warnings).toHaveLength(0);
   });
 
   // Phase 4 A-Tier tests
@@ -425,6 +527,37 @@ describe('provider adapters', () => {
         orderUrl:
           'https://my.racknerd.com/index.php?rp=/store/dedicated-servers/dual-intel-xeon-e5-2650-v2-128gb-ram-1tb-ssd-3tb-hdd',
       }),
+    ]);
+  });
+
+  it('falls back to one browser session and warns on failed RackNerd categories', async () => {
+    const fetchHtml = vi.fn(async (): Promise<string> => {
+      throw new Error('HTTP 403');
+    });
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[], _readySelector: string) => (
+        urls.map((url, index) => index === 1
+          ? { url, ok: false as const, error: 'HTTP 503' }
+          : { url, ok: true as const, html: fixture('racknerd.html') })
+      ),
+    );
+    const adapter = new RackNerdAdapter(fetchHtml, fetchBrowserPages);
+    const results = await adapter.check();
+
+    expect(fetchHtml).toHaveBeenCalledTimes(1);
+    expect(fetchBrowserPages).toHaveBeenCalledTimes(1);
+    expect(fetchBrowserPages.mock.calls[0]?.[0]).toBe('RackNerd');
+    expect(fetchBrowserPages.mock.calls[0]?.[1]).toHaveLength(8);
+    expect(fetchBrowserPages.mock.calls[0]?.[1]).toContain(
+      'https://my.racknerd.com/index.php?rp=/store/windows-vps-with-nvme-ssd',
+    );
+    expect(fetchBrowserPages.mock.calls[0]?.[1]).toContain(
+      'https://my.racknerd.com/index.php?rp=/store/hybrid-dedicated-servers',
+    );
+    expect(fetchBrowserPages.mock.calls[0]?.[2]).toBe('.product');
+    expect(results.length).toBeGreaterThan(0);
+    expect(adapter.warnings).toEqual([
+      expect.stringContaining('windows-vps-with-nvme-ssd: HTTP 503'),
     ]);
   });
 

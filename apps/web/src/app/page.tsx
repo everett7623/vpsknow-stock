@@ -4,7 +4,7 @@ import {
   getAffiliateUrl,
   getLatestRestocks,
   getLimitedOffers,
-  getRecentLetOffers,
+  getRecentOffers,
   getRecentStockEvents,
   getRecentlySoldOut,
   getStockSummary,
@@ -38,10 +38,17 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
 }
 
 function OfferCard({ offer }: { offer: Offer }) {
+  const sourceLabels: Record<string, string> = {
+    lowendtalk: 'LowEndTalk',
+    lowendbox: 'LowEndBox',
+    lowendspirit: 'LowEndSpirit',
+  };
+  const sourceLabel = sourceLabels[offer.source] || 'Offer';
+
   return (
     <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-gray-500">{offer.provider || 'LowEndTalk'}</span>
+        <span className="text-xs text-gray-500">{offer.provider || sourceLabel}</span>
         {offer.isLimitedStock && (
           <span className="rounded bg-orange-950 px-2 py-1 text-xs text-orange-300">LIMITED</span>
         )}
@@ -60,7 +67,7 @@ function OfferCard({ offer }: { offer: Offer }) {
         )}
         {offer.threadUrl && (
           <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">
-            Thread
+            Source
           </a>
         )}
       </div>
@@ -69,10 +76,10 @@ function OfferCard({ offer }: { offer: Offer }) {
 }
 
 export default async function HomePage() {
-  const [providers, restocks, letOffers, limitedOffers, soldOut, recentEvents] = await Promise.all([
+  const [providers, restocks, offers, limitedOffers, soldOut, recentEvents] = await Promise.all([
     getStockSummary(),
     getLatestRestocks(6),
-    getRecentLetOffers(4),
+    getRecentOffers(4),
     getLimitedOffers(4),
     getRecentlySoldOut(6),
     getRecentStockEvents(10),
@@ -84,7 +91,7 @@ export default async function HomePage() {
         <header className="space-y-4 pb-4 pt-8 text-center">
           <h1 className="text-4xl font-bold text-white">VPSKnow Stock</h1>
           <p className="text-lg text-gray-400">
-            Real-time VPS restock monitoring and LowEndTalk offer alerts.
+            Real-time VPS restock monitoring and curated offer alerts.
           </p>
           <div className="pt-2">
             <a
@@ -136,15 +143,15 @@ export default async function HomePage() {
 
         <section>
           <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-xl font-semibold text-orange-400">LowEndTalk New Offers</h2>
+            <h2 className="text-xl font-semibold text-orange-400">New Offers</h2>
             <Link href="/offers" className="text-sm text-emerald-400 hover:text-emerald-300">
               View all
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {letOffers.length > 0
-              ? letOffers.map((offer) => <OfferCard key={offer.id} offer={offer} />)
-              : <p className="text-gray-500">No new LowEndTalk offers yet.</p>}
+            {offers.length > 0
+              ? offers.map((offer) => <OfferCard key={offer.id} offer={offer} />)
+              : <p className="text-gray-500">No new offers yet.</p>}
           </div>
         </section>
 

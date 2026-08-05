@@ -2,6 +2,30 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// User-approved monitoring allowlist with adapters already present in the registry.
+const ACTIVE_PROVIDER_SLUGS = [
+  'bandwagonhost',
+  'dmit',
+  'buyvm',
+  'greencloudvps',
+  'spartanhost',
+  'vmiss',
+  'vps',
+  'saltyfish',
+  'racknerd',
+  'dedirock',
+  'bagevm',
+  'vmrack',
+  'gomami',
+  'colocrossing',
+  'chicagovps',
+  'lightlayer',
+  'speedypage',
+  'bestvm',
+  'neburst',
+  'hncloud',
+];
+
 async function main() {
   console.log('Seeding database...');
 
@@ -302,8 +326,6 @@ async function main() {
       name: 'LightLayer',
       website: 'https://lightlayer.net',
       tier: 'B',
-      // PoorVPS 库存数据有地域限制；配置可达镜像后再启用。
-      isActive: false,
     },
   });
 
@@ -316,6 +338,75 @@ async function main() {
       website: 'https://speedypage.com',
       tier: 'B',
     },
+  });
+
+  const bestvm = await prisma.provider.upsert({
+    where: { slug: 'bestvm' },
+    update: {
+      name: 'BestVM',
+      website: 'https://bestvm.cloud',
+      tier: 'B',
+    },
+    create: {
+      slug: 'bestvm',
+      name: 'BestVM',
+      website: 'https://bestvm.cloud',
+      tier: 'B',
+    },
+  });
+
+  const neburst = await prisma.provider.upsert({
+    where: { slug: 'neburst' },
+    update: {
+      name: 'Neburst',
+      website: 'https://neburst.com',
+      tier: 'B',
+    },
+    create: {
+      slug: 'neburst',
+      name: 'Neburst',
+      website: 'https://neburst.com',
+      tier: 'B',
+    },
+  });
+
+  const hncloud = await prisma.provider.upsert({
+    where: { slug: 'hncloud' },
+    update: {
+      name: 'HNCloud',
+      website: 'https://www.hncloud.com',
+      tier: 'B',
+    },
+    create: {
+      slug: 'hncloud',
+      name: 'HNCloud',
+      website: 'https://www.hncloud.com',
+      tier: 'B',
+    },
+  });
+
+  const highendnetwork = await prisma.provider.upsert({
+    where: { slug: 'highendnetwork' },
+    update: {
+      name: 'HighEndNetwork',
+      website: 'https://billing.highendnetwork.com',
+      tier: 'B',
+      isActive: false,
+    },
+    create: {
+      slug: 'highendnetwork',
+      name: 'HighEndNetwork',
+      website: 'https://billing.highendnetwork.com',
+      tier: 'B',
+      isActive: false,
+    },
+  });
+
+  // Keep directory records and adapters, but only monitor the approved provider set.
+  await prisma.provider.updateMany({ data: { isActive: false } });
+  await prisma.provider.updateMany({
+    where: { slug: { in: ACTIVE_PROVIDER_SLUGS } },
+    data: { isActive: true },
   });
 
   // Seed known products — BandwagonHost
@@ -409,23 +500,23 @@ async function main() {
 
   // Seed affiliate links
   const affiliateLinks = [
-    { providerId: bandwagonhost.id, slug: 'bandwagonhost', targetUrl: 'https://bandwagonhost.com/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/bwg' },
-    { providerId: dmit.id, slug: 'dmit', targetUrl: 'https://www.dmit.io/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/dmit' },
-    { providerId: buyvm.id, slug: 'buyvm', targetUrl: 'https://my.frantech.ca/aff.php?aff=YOUR_ID', shortUrl: 'https://go.uukk.de/buyvm' },
-    { providerId: spartanhost.id, slug: 'spartanhost', targetUrl: 'https://billing.spartanhost.net', shortUrl: 'https://go.uukk.de/spartanhost' },
-    { providerId: vmiss.id, slug: 'vmiss', targetUrl: 'https://app.vmiss.com', shortUrl: 'https://go.uukk.de/vmiss' },
-    { providerId: vps.id, slug: 'vps', targetUrl: 'https://vps.hosting', shortUrl: 'https://go.uukk.de/vps' },
-    { providerId: saltyfish.id, slug: 'saltyfish', targetUrl: 'https://portal.saltyfish.io', shortUrl: 'https://go.uukk.de/saltyfish' },
-    { providerId: greencloudvps.id, slug: 'greencloudvps', targetUrl: 'https://greencloudvps.com', shortUrl: 'https://go.uukk.de/greencloudvps' },
+    { providerId: bandwagonhost.id, slug: 'bandwagonhost', targetUrl: 'https://bandwagonhost.com/aff.php?aff=68376', shortUrl: 'https://go.uukk.de/bwg' },
+    { providerId: dmit.id, slug: 'dmit', targetUrl: 'https://www.dmit.io/aff.php?aff=6077', shortUrl: 'https://go.uukk.de/dmit' },
+    { providerId: buyvm.id, slug: 'buyvm', targetUrl: 'https://my.frantech.ca/aff.php?aff=6836', shortUrl: 'https://go.uukk.de/buyvm' },
+    { providerId: spartanhost.id, slug: 'spartanhost', targetUrl: 'https://billing.spartanhost.net/aff.php?aff=2459', shortUrl: 'https://go.uukk.de/spartanhost' },
+    { providerId: vmiss.id, slug: 'vmiss', targetUrl: 'https://app.vmiss.com/aff.php?aff=1922', shortUrl: 'https://go.uukk.de/vmiss' },
+    { providerId: vps.id, slug: 'vps', targetUrl: 'https://vps.hosting/?affid=723', shortUrl: 'https://go.uukk.de/vps' },
+    { providerId: saltyfish.id, slug: 'saltyfish', targetUrl: 'https://portal.saltyfish.io/aff.php?aff=575', shortUrl: 'https://go.uukk.de/saltyfish' },
+    { providerId: greencloudvps.id, slug: 'greencloudvps', targetUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807', shortUrl: 'https://go.uukk.de/greencloudvps' },
     // Phase 4 A-Tier
-    { providerId: racknerd.id, slug: 'racknerd', targetUrl: 'https://my.racknerd.com', shortUrl: 'https://go.uukk.de/racknerd' },
+    { providerId: racknerd.id, slug: 'racknerd', targetUrl: 'https://my.racknerd.com/aff.php?aff=5550', shortUrl: 'https://go.uukk.de/racknerd' },
     { providerId: clouvider.id, slug: 'clouvider', targetUrl: 'https://www.clouvider.com', shortUrl: 'https://go.uukk.de/clouvider' },
     { providerId: liteserver.id, slug: 'liteserver', targetUrl: 'https://liteserver.nl', shortUrl: 'https://go.uukk.de/liteserver' },
     { providerId: crunchbits.id, slug: 'crunchbits', targetUrl: 'https://crunchbits.com', shortUrl: 'https://go.uukk.de/crunchbits' },
     { providerId: servarica.id, slug: 'servarica', targetUrl: 'https://servarica.com', shortUrl: 'https://go.uukk.de/servarica' },
     { providerId: evoxt.id, slug: 'evoxt', targetUrl: 'https://evoxt.com', shortUrl: 'https://go.uukk.de/evoxt' },
     { providerId: alwyzon.id, slug: 'alwyzon', targetUrl: 'https://alwyzon.com', shortUrl: 'https://go.uukk.de/alwyzon' },
-    { providerId: dedirock.id, slug: 'dedirock', targetUrl: 'https://dedirock.com', shortUrl: 'https://go.uukk.de/dedirock' },
+    { providerId: dedirock.id, slug: 'dedirock', targetUrl: 'https://billing.dedirock.com/aff.php?aff=77', shortUrl: 'https://go.uukk.de/dedirock' },
     { providerId: onidel.id, slug: 'onidel', targetUrl: 'https://onidel.com', shortUrl: 'https://go.uukk.de/onidel' },
     { providerId: bagevm.id, slug: 'bagevm', targetUrl: 'https://www.bagevm.com/aff.php?aff=10', shortUrl: 'https://go.uukk.de/bagevm' },
     // Phase 4 B-Tier
@@ -439,18 +530,26 @@ async function main() {
     { providerId: chicagovps.id, slug: 'chicagovps', targetUrl: 'https://billing.chicagovps.net/aff.php?aff=2611', shortUrl: 'https://go.uukk.de/chicagovps' },
     { providerId: lightlayer.id, slug: 'lightlayer', targetUrl: 'https://account.lightlayer.net/?affid=647', shortUrl: 'https://go.uukk.de/lightlayer' },
     { providerId: speedypage.id, slug: 'speedypage', targetUrl: 'https://my.speedypage.com/aff.php?aff=405', shortUrl: 'https://go.uukk.de/speedy' },
+    { providerId: bestvm.id, slug: 'bestvm', targetUrl: 'https://bestvm.cloud/aff.php?aff=225', shortUrl: 'https://go.uukk.de/bestvm' },
+    { providerId: neburst.id, slug: 'neburst', targetUrl: 'https://neburst.com/auth/sign-up/?aff=3cvoo', shortUrl: 'https://go.uukk.de/neburst' },
+    { providerId: hncloud.id, slug: 'hncloud', targetUrl: 'https://www.hncloud.com?k=7940T0', shortUrl: 'https://go.uukk.de/hncloud' },
+    { providerId: highendnetwork.id, slug: 'highendnetwork', targetUrl: 'https://billing.highendnetwork.com/aff.php?aff=68', shortUrl: 'https://go.uukk.de/highendnetwork' },
   ];
 
   for (const link of affiliateLinks) {
     await prisma.affiliateLink.upsert({
       where: { slug: link.slug },
-      update: {},
+      update: {
+        providerId: link.providerId,
+        targetUrl: link.targetUrl,
+        shortUrl: link.shortUrl,
+      },
       create: link,
     });
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 28`);
+  console.log(`  Providers: 32`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

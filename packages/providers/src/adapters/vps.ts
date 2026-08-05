@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface ProductPage {
@@ -27,18 +28,13 @@ export class VpsAdapter implements ProviderAdapter {
 
     for (const page of PRODUCT_PAGES) {
       const url = `${ORDER_BASE}?action=add&cmd=cart&id=${page.id}`;
-      const response = await fetch(url, {
-        headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`V.PS HTTP ${response.status} for ${page.location}`);
-
-      const html = await response.text();
-      if (/cloudflare|captcha|just a moment/i.test(html) || !html.includes('cart-product')) {
-        throw new Error(`V.PS returned a challenge or invalid page for ${page.location}`);
+      const html = await fetchProviderHtml(this.name, url);
+      const parsed = this.parse(html, page.location);
+      if (parsed.length === 0) {
+        throw new Error(`V.PS returned no parseable products for ${page.location}`);
       }
 
-      for (const result of this.parse(html, page.location)) {
+      for (const result of parsed) {
         if (!seen.has(result.productId)) {
           seen.add(result.productId);
           results.push(result);

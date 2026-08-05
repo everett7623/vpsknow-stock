@@ -16,10 +16,11 @@ import {
   recordProviderFailure,
   recordProviderSuccess,
 } from './provider-health.js';
-import { discoverLetOffers } from './offers-engine.js';
+import { discoverOffers } from './offers-engine.js';
 import { processStockResults } from './stock-engine.js';
 import { runDataRetention } from './maintenance.js';
 import { startHealthServer, type HealthCheckResult } from './health.js';
+import { PROVIDER_INTERVALS, isMonitoredProvider } from './provider-schedule.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
@@ -31,40 +32,6 @@ const QUEUE_NAME = 'stock-check';
 const OFFER_QUEUE_NAME = 'offer-discovery';
 const MAINTENANCE_QUEUE_NAME = 'maintenance';
 const HEALTH_PORT = Number.parseInt(process.env.HEALTH_PORT || '3001', 10);
-
-const PROVIDER_INTERVALS: Record<string, number> = {
-  // S-Tier
-  bandwagonhost: 90_000,
-  dmit: 120_000,
-  buyvm: 90_000,
-  greencloudvps: 180_000,
-  spartanhost: 150_000,
-  vmiss: 180_000,
-  vps: 300_000,
-  saltyfish: 300_000,
-  // A-Tier
-  racknerd: 180_000,
-  clouvider: 180_000,
-  liteserver: 180_000,
-  crunchbits: 180_000,
-  servarica: 180_000,
-  evoxt: 180_000,
-  alwyzon: 180_000,
-  dedirock: 180_000,
-  onidel: 180_000,
-  bagevm: 180_000,
-  // B-Tier
-  tierhive: 300_000,
-  gullos: 300_000,
-  webhorizon: 300_000,
-  vmrack: 300_000,
-  gomami: 300_000,
-  zgocloud: 300_000,
-  colocrossing: 300_000,
-  chicagovps: 300_000,
-  lightlayer: 300_000,
-  speedypage: 300_000,
-};
 
 async function bootstrap(): Promise<void> {
   logger.info('VPSKnow Stock Worker starting...');
@@ -83,18 +50,31 @@ async function bootstrap(): Promise<void> {
     },
   );
 
+  await offerQueue.removeJobScheduler('discover-lowendtalk-offers');
   await offerQueue.upsertJobScheduler(
-    'discover-lowendtalk-offers',
+    'discover-new-offers',
     { every: Math.round(withJitter(150_000)) },
     {
-      name: 'discover-lowendtalk-offers',
+      name: 'discover-new-offers',
       data: {},
       opts: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
     },
   );
 
   for (const [slug] of registry) {
-    const interval = PROVIDER_INTERVALS[slug] || 180_000;
+    if (!isMonitoredProvider(slug)) {
+      const removed = await queue.removeJobScheduler(`check-${slug}`);
+      if (removed) {
+        logger.info({ provider: slug }, 'Removed out-of-scope provider scheduler');
+      }
+    }
+  }
+
+  for (const [slug, interval] of Object.entries(PROVIDER_INTERVALS)) {
+    if (!registry.has(slug)) {
+      throw new Error(`Approved provider adapter is not registered: ${slug}`);
+    }
+
     const jittered = Math.round(withJitter(interval));
 
     await queue.upsertJobScheduler(
@@ -114,6 +94,11 @@ async function bootstrap(): Promise<void> {
     QUEUE_NAME,
     async (job) => {
       const { provider } = job.data as { provider: string };
+      if (!isMonitoredProvider(provider)) {
+        logger.warn({ provider }, 'Provider is outside the monitoring allowlist, skipping');
+        return;
+      }
+
       const adapter = registry.get(provider);
       if (!adapter) {
         logger.warn({ provider }, 'Unknown provider, skipping');
@@ -210,8 +195,8 @@ async function bootstrap(): Promise<void> {
   const offerWorker = new Worker(
     OFFER_QUEUE_NAME,
     async () => {
-      const summary = await discoverLetOffers(connection);
-      logger.info(summary, 'LowEndTalk offer discovery complete');
+      const summary = await discoverOffers(connection);
+      logger.info(summary, 'Multi-source offer discovery complete');
     },
     { connection, concurrency: 1 },
   );

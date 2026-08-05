@@ -1,5 +1,9 @@
 import * as cheerio from 'cheerio';
 import type { BillingCycle, ProductCategory } from '@vpsknow/shared';
+import {
+  fetchProviderPagesWithBrowser,
+  type BrowserPageResult,
+} from '../browser.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface Category {
@@ -12,72 +16,70 @@ interface Category {
 const PORTAL = 'https://my.racknerd.com';
 const CATEGORIES: readonly Category[] = [
   {
-    slug: 'kvm-los-angeles',
-    location: 'Los Angeles',
+    slug: 'kvm-vps',
+    location: 'Multiple Locations',
     category: 'vps',
     url: `${PORTAL}/index.php?rp=/store/kvm-vps`,
   },
   {
-    slug: 'kvm-chicago',
-    location: 'Chicago',
+    slug: 'windows-vps-with-nvme-ssd',
+    location: 'Multiple Locations',
     category: 'vps',
-    url: `${PORTAL}/index.php?rp=/store/chicago-kvm`,
+    url: `${PORTAL}/index.php?rp=/store/windows-vps-with-nvme-ssd`,
   },
   {
-    slug: 'kvm-new-york',
-    location: 'New York',
+    slug: 'amd-ryzen-vps-linux',
+    location: 'Multiple Locations',
     category: 'vps',
-    url: `${PORTAL}/index.php?rp=/store/new-york-kvm`,
+    url: `${PORTAL}/index.php?rp=/store/amd-ryzen-vps-linux`,
   },
   {
-    slug: 'kvm-seattle',
-    location: 'Seattle',
-    category: 'vps',
-    url: `${PORTAL}/index.php?rp=/store/seattle-kvm`,
+    slug: 'hybrid-dedicated-servers',
+    location: 'Multiple Locations',
+    category: 'dedicated',
+    url: `${PORTAL}/index.php?rp=/store/hybrid-dedicated-servers`,
   },
   {
-    slug: 'kvm-atlanta',
-    location: 'Atlanta',
-    category: 'vps',
-    url: `${PORTAL}/index.php?rp=/store/atlanta-kvm`,
-  },
-  {
-    slug: 'kvm-dallas',
-    location: 'Dallas',
-    category: 'vps',
-    url: `${PORTAL}/index.php?rp=/store/dallas-kvm`,
-  },
-  {
-    slug: 'kvm-san-jose',
-    location: 'San Jose',
-    category: 'vps',
-    url: `${PORTAL}/index.php?rp=/store/sj-kvm`,
-  },
-  {
-    slug: 'dedicated',
+    slug: 'dedicated-servers',
     location: 'Multiple Locations',
     category: 'dedicated',
     url: `${PORTAL}/index.php?rp=/store/dedicated-servers`,
   },
   {
-    slug: 'dedicated-unmetered',
+    slug: 'high-bandwidth-unmetered-dedicated-servers',
     location: 'Multiple Locations',
     category: 'dedicated',
     url: `${PORTAL}/index.php?rp=/store/high-bandwidth-unmetered-dedicated-servers`,
   },
   {
-    slug: 'dedicated-amd',
-    location: 'Utah',
+    slug: 'amd-ryzenepyc-dedicated-servers',
+    location: 'Multiple Locations',
     category: 'dedicated',
     url: `${PORTAL}/index.php?rp=/store/amd-ryzenepyc-dedicated-servers`,
   },
   {
-    slug: 'dedicated-seo',
+    slug: 'seo-dedicated-servers',
     location: 'Multiple Locations',
     category: 'dedicated',
     url: `${PORTAL}/index.php?rp=/store/seo-dedicated-servers`,
   },
 ] as const;
+
+type FetchHtml = (url: string) => Promise<string>;
+type FetchBrowserPages = (
+  provider: string,
+  urls: readonly string[],
+  readySelector: string,
+) => Promise<BrowserPageResult[]>;
+
+async function fetchDirectHtml(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.text();
+}
 
 function numberFrom(text: string, pattern: RegExp): number {
   const match = text.match(pattern);
@@ -126,33 +128,87 @@ function parseStorage(description: string): { sizeGb: number; type: string } {
 export class RackNerdAdapter implements ProviderAdapter {
   readonly slug = 'racknerd';
   readonly name = 'RackNerd';
+  warnings: readonly string[] = [];
+
+  constructor(
+    private readonly fetchHtml: FetchHtml = fetchDirectHtml,
+    private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
+  ) {}
 
   async check(): Promise<StockResult[]> {
-    const results: StockResult[] = [];
-    const seen = new Set<string>();
+    this.warnings = [];
 
-    for (const category of CATEGORIES) {
-      const response = await fetch(category.url, {
-        headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`RackNerd HTTP ${response.status} for ${category.slug}`);
+    try {
+      const results: StockResult[] = [];
+      const seen = new Set<string>();
 
-      const html = await response.text();
-      if (/cf-chl-|captcha|just a moment/i.test(html)) {
-        throw new Error(`RackNerd returned a challenge page for ${category.slug}`);
-      }
+      for (const category of CATEGORIES) {
+        const html = await this.fetchHtml(category.url);
+        if (/cf-chl-|captcha|just a moment/i.test(html)) {
+          throw new Error(`${category.slug}: challenge page`);
+        }
 
-      for (const result of this.parse(html, category)) {
-        if (!seen.has(result.productId)) {
-          seen.add(result.productId);
-          results.push(result);
+        const parsed = this.parse(html, category);
+        if (parsed.length === 0) throw new Error(`${category.slug}: no parseable products`);
+
+        for (const result of parsed) {
+          if (!seen.has(result.productId)) {
+            seen.add(result.productId);
+            results.push(result);
+          }
         }
       }
-    }
 
-    if (results.length === 0) throw new Error('RackNerd returned no parseable products');
-    return results;
+      if (results.length === 0) throw new Error('no parseable products');
+      return results;
+    } catch (directError) {
+      const pages = await this.fetchBrowserPages(
+        this.name,
+        CATEGORIES.map((category) => category.url),
+        '.product',
+      );
+      const results: StockResult[] = [];
+      const seen = new Set<string>();
+      const failures: string[] = [];
+
+      for (const [index, category] of CATEGORIES.entries()) {
+        const page = pages[index];
+        if (!page) {
+          failures.push(`${category.slug}: browser returned no result`);
+          continue;
+        }
+        if (!page.ok) {
+          failures.push(`${category.slug}: ${page.error}`);
+          continue;
+        }
+
+        const parsed = this.parse(page.html, category);
+        if (parsed.length === 0) {
+          failures.push(`${category.slug}: no parseable products`);
+          continue;
+        }
+
+        for (const result of parsed) {
+          if (!seen.has(result.productId)) {
+            seen.add(result.productId);
+            results.push(result);
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        const directMessage = directError instanceof Error
+          ? directError.message
+          : String(directError);
+        throw new Error(
+          `RackNerd returned no parseable products; direct HTTP: ${directMessage}; `
+          + `browser: ${failures.slice(0, 3).join('; ') || 'no successful categories'}`,
+        );
+      }
+
+      this.warnings = failures;
+      return results;
+    }
   }
 
   parse(html: string, category: Category): StockResult[] {

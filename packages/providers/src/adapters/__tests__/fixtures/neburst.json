@@ -1,0 +1,48 @@
+{
+  "code": 0,
+  "data": {
+    "regions": [
+      { "code": "asia-hk", "display": "Hong Kong (HKG)", "available": true },
+      { "code": "asia-jp", "display": "Tokyo (NRT)", "available": true }
+    ],
+    "shapes": {
+      "shape-a": {
+        "id": "shape-a",
+        "display_name": "S3N-1C2G",
+        "group": "Standard (3rd Gen AMD EPYC, Premium Optimized)",
+        "cpu": { "default": 1, "unit": "vCPU" },
+        "memory": { "default": 2, "unit": "GB" },
+        "disk": { "default": 20, "unit": "GB" },
+        "bandwidth": { "default": 500, "unit": "GB" },
+        "network_speed": { "default": 1, "unit": "Gbps" },
+        "metadata": { "group_order": 1 }
+      },
+      "shape-b": {
+        "id": "shape-b",
+        "display_name": "S3N-1C2G",
+        "group": "Standard (3rd Gen AMD EPYC, Premium Optimized)",
+        "cpu": { "default": 1, "unit": "vCPU" },
+        "memory": { "default": 2, "unit": "GB" },
+        "disk": { "default": 20, "unit": "GB" },
+        "bandwidth": { "default": 500, "unit": "GB" },
+        "network_speed": { "default": 1, "unit": "Gbps" },
+        "metadata": { "group_order": 1 }
+      }
+    },
+    "prices": {
+      "shape-a": [
+        { "pay_cycle": "monthly", "price_cents": 3990, "currency": "USD" }
+      ],
+      "shape-b": [
+        { "pay_cycle": "monthly", "price_cents": 3990, "currency": "USD" }
+      ]
+    },
+    "availability": {
+      "asia-hk:shape-a": false,
+      "asia-hk:shape-b": true,
+      "asia-jp:shape-a": false,
+      "asia-jp:shape-b": false
+    },
+    "auto_apply_promotions": []
+  }
+}

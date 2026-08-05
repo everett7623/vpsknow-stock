@@ -1,7 +1,7 @@
 # VPSKnow Stock — Complete Development Document
 
-> Last updated: 2026-07-25
-> Status: Phase 1 — Acceptance Testing; Phase 2 — In Progress
+> Last updated: 2026-08-06
+> Status: Phase 1 — Acceptance Testing; Phase 2/3 — Complete; Phase 4 — In Progress
 
 ---
 
@@ -45,7 +45,7 @@
 | Layer | Choice | Notes |
 |-------|--------|-------|
 | Monorepo | Turborepo + pnpm | `apps/` + `packages/` |
-| Frontend | Next.js (App Router) | Deployed to Vercel |
+| Frontend | Next.js (App Router) | Self-hosted behind Caddy |
 | Language | TypeScript strict | No `any`, no `@ts-ignore` |
 | Database | PostgreSQL | Prisma ORM |
 | Queue | Redis + BullMQ | Job scheduling, retry, dedup |
@@ -78,13 +78,10 @@ vpsknow-stock/
 ### Deployment Topology
 
 ```text
-Vercel ──── apps/web (stock.vpsknow.com)
-
-VPS (Docker Compose)
-├── apps/worker
-├── apps/bot
-├── PostgreSQL
-└── Redis
+Internet → Caddy (:80/:443) → apps/web (stock.vpsknow.com)
+                              ├── PostgreSQL
+                              └── Redis → apps/worker
+Telegram API → apps/bot
 ```
 
 Website, worker, bot are independently deployable. A worker crash does not affect the website or bot.
@@ -386,8 +383,8 @@ A vertical timeline showing state transitions:
 
 #### BandwagonHost
 
-- **URL**: `https://bandwagonhost.com/vps-hosting.php`
-- **Method**: HTTP GET → parse plan table
+- **URL**: `https://bandwagonhost.com/cart.php`; official mirror fallback: `https://bwh81.net/cart.php`
+- **Method**: HTTP GET → parse WHMCS product cards; try the primary cart first, then the provider-documented mirror sequentially
 - **Challenge**: Limited plans often unlisted when OOS, only appear on restock
 - **Products to monitor**:
   - THE PLAN (limited annual)
@@ -442,9 +439,9 @@ Each adapter needs:
 |----------|-----------|----------|
 | BuyVM | None | Direct HTTP |
 | GreenCloudVPS | WHMCS default | Standard HTTP |
-| BandwagonHost | Moderate | Rotate UA, respect rate |
+| BandwagonHost | Moderate | Primary cart with sequential official `bwh81.net` mirror fallback; respect rate |
 | DMIT | Cloudflare (sometimes) | Playwright fallback |
-| SpartanHost | None | Direct HTTP |
+| SpartanHost | Official WHMCS inventory | Sequential category HTTP; `N Available` is authoritative |
 | VMISS | Cloudflare Managed Challenge | Direct HTTP when permitted; reject challenge pages and validate in dry-run |
 | V.PS | None | Direct HTTP |
 | SaltyFish | WHMCS default | Standard HTTP; reject challenge and error pages |
@@ -966,7 +963,7 @@ The website should rank for high-intent searches:
 - **robots.txt**: Allow all, disallow admin routes
 - **Canonical URLs**: No duplicate content across filter combinations
 - **Internal linking**: Every plan links to provider, every provider links to related plans
-- **Page speed**: Target <1.5s FCP, <2.5s LCP (Vercel Edge + static shell)
+- **Page speed**: Target <1.5s FCP, <2.5s LCP (Caddy + optimized Next.js production build)
 
 ### Structured Data Example
 
@@ -1033,7 +1030,7 @@ Use `@vercel/og` or `satori` for generation.
 **Goal**: 3 providers monitored (BandwagonHost, DMIT, BuyVM), restock push to Telegram, minimal website.
 **Duration**: 4–6 weeks.
 
-**Verified 2026-07-25**: 31 unit tests, full TypeScript check, lint, production build, and Prisma Client generation pass. Docker runtime, live PostgreSQL/Redis, real Telegram delivery, and long-running stability validation remain pending because the current environment has no Docker installation or configured secrets.
+**Verified 2026-08-06**: 140 tests, the full strict TypeScript check, lint, and production build pass locally. The production Docker Compose stack is live with four completed Prisma migrations, healthy PostgreSQL/Redis/Web/Worker services, ongoing stock checks, and recorded Telegram deliveries. Formal 24-hour stability and 48-hour false-positive validation remain open. See `docs/PROJECT_STATUS.md` for the current local/remote snapshot.
 
 ### Task 1.1 — Monorepo Scaffold
 
@@ -1066,7 +1063,7 @@ Use `@vercel/og` or `satori` for generation.
 - [x] Tables: `providers`, `products`, `stock_checks`, `stock_events`, `affiliate_links`, `telegram_messages`
 - [x] Seed script: 3 providers (BandwagonHost, DMIT, BuyVM) with known products
 - [x] `packages/database` exports generated Prisma client
-- [ ] Baseline migration runs clean against Docker PostgreSQL
+- [x] Baseline migration runs clean against Docker PostgreSQL
 
 **Done when**: `pnpm --filter database db:push && pnpm --filter database db:seed` succeeds, tables visible in psql.
 
@@ -1195,7 +1192,7 @@ export interface ProviderAdapter {
   - Latest Restocks (from `stock_events`)
   - Popular Providers (static for v1)
   - Recently Sold Out
-- [ ] Provider page:
+- [x] Provider page:
   - In Stock plans (sorted by price)
   - Sold Out plans (greyed)
   - Last check timestamp
@@ -1226,7 +1223,7 @@ export interface ProviderAdapter {
   - `caddy` (HTTPS reverse proxy)
 - [x] Dockerfile builds worker, bot, and web
 - [x] `.env.example` with all required vars
-- [ ] Production Compose starts the full stack on a Docker-enabled host
+- [x] Production Compose starts the full stack on a Docker-enabled host
 - [x] Caddy HTTPS reverse proxy for `stock.vpsknow.com`
 - [x] VPS deployment guide for the complete stack
 
@@ -1249,7 +1246,7 @@ export interface ProviderAdapter {
 - [x] `greencloudvps.ts` — Parse WHMCS store pages, detect stock per location
 - [x] `spartanhost.ts` — Parse official VPS plan cards with independent Seattle, Dallas, and Ashburn availability
 - [x] `vmiss.ts` — Parse WHMCS quantity per route/location and reject Cloudflare challenge pages
-- [x] `vps.ts` (V.PS) — Parse HostBill product cards for Singapore and Tokyo availability
+- [x] `vps.ts` (V.PS) — Parse HostBill product cards for Singapore and Tokyo availability; accept embedded checkout Turnstile while rejecting real challenge/invalid pages
 - [x] `saltyfish.ts` — Parse `portal.saltyfish.io` WHMCS products by location and network tier
 - [x] Unit tests per adapter with HTML fixtures
 - [x] Register all in adapter registry
@@ -1261,7 +1258,7 @@ export interface ProviderAdapter {
 
 ---
 
-### Task 2.2 — LowEndTalk Offer Engine
+### Task 2.2 — Multi-source Offer Engine
 
 | Item | Detail |
 |------|--------|
@@ -1286,8 +1283,17 @@ Discovery pipeline (4 layers):
 - [x] Write to `offers` table
 - [x] Dedup key: LET Discussion ID only (NEVER use "last reply time")
 - [x] Only process discussions created after worker's first-run timestamp
+- [x] Add LowEndBox VPS and Dedicated RSS feeds:
+  - `https://lowendbox.com/category/virtual-servers/feed/`
+  - `https://lowendbox.com/category/dedicated-servers/feed/`
+- [x] Add LowEndSpirit VPS and Dedicated RSS feeds:
+  - `https://lowendspirit.com/categories/vps/feed.rss`
+  - `https://lowendspirit.com/categories/dedicated-server/feed.rss`
+- [x] Keep independent first-run baselines for LowEndTalk, LowEndBox, and LowEndSpirit.
+- [x] Namespace external IDs (`lowendbox:{postId}`, `lowendspirit:{discussionId}`) before writing the globally unique `sourceId`.
+- [x] Keep curated external feeds eligible when category and price are present; retain the stricter title/provider gate for LowEndTalk.
 
-**Done when**: Worker discovers and parses LET Offers, writes to DB, filters correctly.
+**Done when**: Worker discovers and parses offers from all three sources, writes to DB, filters correctly, and does not replay historical posts on first run.
 
 ---
 
@@ -1308,7 +1314,7 @@ Discovery pipeline (4 layers):
 
   ├── Category: {category}
   ├── Billing: {billing}
-  ├── Source: LowEndTalk
+   ├── Source: LowEndTalk / LowEndBox / LowEndSpirit
   └── Posted: {date}
 
   🔗 Order: {affiliateUrl}
@@ -1317,7 +1323,7 @@ Discovery pipeline (4 layers):
 - [x] Push filtered offers to `@vpsknow_offers`
 - [x] Record in `telegram_messages`
 
-**Done when**: New LET offers appear in test Telegram channel with correct formatting.
+**Done when**: New offers from all configured sources appear in the test Telegram channel with correct formatting.
 
 ---
 
@@ -1380,11 +1386,13 @@ Discovery pipeline (4 layers):
 **Goal**: Second batch providers, analytics, admin, hardening.
 **Duration**: Ongoing.
 
-- [ ] Second batch provider adapters (9 Tier A + 3 Tier B)
+- [ ] Approved provider expansion (12 adapters implemented, 1 adapter pending)
+  - [x] RackNerd, DediRock, BageVM, VMRack, GoMami, ColoCrossing, ChicagoVPS, LightLayer, SpeedyPage, BestVM, Neburst, HNCloud
+  - [ ] HighEndNetwork
 - [x] Price history charts on provider/plan pages
 - [x] Admin dashboard: provider management, manual stock override, adapter health
 - [ ] Proxy rotation for CF-protected providers
-- [ ] Playwright integration for JS-rendered pages
+- [x] Playwright integration for SaltyFish/RackNerd HTTP fallback (worker runtime only; 24h dry-run still required)
 - [x] Error alerting (dead adapters, possible API changes, and recovery → admin notification)
 - [x] SEO: meta tags, structured data, sitemap
 - [x] Mobile-responsive refinement
@@ -1410,17 +1418,25 @@ Discovery pipeline (4 layers):
 | 7 | V.PS | JP, SG, EU limited plans | 5 min | Phase 2 |
 | 8 | SaltyFish | San Jose, Frankfurt, Amsterdam, optimized routes | 5 min | Phase 2 |
 
-### A-Tier — Phase 4 (Offers + Limited Stock)
+### Approved Phase 4 Additions — Restock Monitoring
 
-RackNerd, DediRock, Onidel, Evoxt, Crunchbits, ServaRICA, Alwyzon, LiteServer, Clouvider, BageVM.
+Existing adapters enabled by seed: RackNerd, DediRock, BageVM, VMRack, GoMami, ColoCrossing, ChicagoVPS, LightLayer, SpeedyPage, BestVM, Neburst, HNCloud.
 
-### B-Tier — Phase 4 (Additional Limited Stock)
+The worker scheduler and production data migration enforce the same 20-provider implemented subset. Existing jobs for providers outside the allowlist are removed at worker startup and rejected before adapter execution.
 
-TierHive, Gullo's Hosting, WebHorizon, VMRack, GoMami, ZgoCloud, ColoCrossing.
+Latest local dry-run: 18 of the 20 active adapters succeed. V.PS parses 8 official Singapore/Tokyo HostBill products after fixing a false challenge match caused by the normal checkout Turnstile script. BandwagonHost parses 55 products through its provider-documented `bwh81.net` mirror when the primary domain times out, while preserving primary-domain order URLs. SaltyFish uses one sequential Playwright session after direct HTTP failure and parses 19 products across 6 categories with no warnings. RackNerd monitors the 8 categories currently published in its store and parses 59 products with no warnings. Remaining failures are VMISS, whose 14 categories return a Cloudflare managed challenge, and VMRack, whose edge endpoint resets connections; both remain fail-closed. No database writes or Telegram sends were performed.
+
+Adapter pending: HighEndNetwork. All four public store categories currently return a Cloudflare managed challenge to direct HTTP, and an interactive browser remained on the verification page after waiting. The provider and affiliate records are present but inactive. Do not use the indexed origin alias: its TLS chain is untrusted and using it would bypass the site's security layer. Activation requires a stable official API/allowlisted endpoint or a supported browser check that can complete the challenge, followed by a 24-hour dry-run.
+
+Together with the 8 S-Tier providers above, these form the user-approved 21-provider monitoring allowlist. Providers outside this list must remain inactive even if an adapter exists.
+
+### Inactive Adapter Candidates
+
+Clouvider, LiteServer, Crunchbits, ServaRICA, Evoxt, Alwyzon, Onidel, TierHive, Gullo's Hosting, WebHorizon, ZgoCloud.
 
 ### Directory Only (No Monitoring)
 
-Hetzner Cloud, Vultr, DigitalOcean, UpCloud, InterServer, Raksmart, LightLayer, 华纳云, Kinsta, Cloudways, SiteGround.
+Hetzner Cloud, Vultr, DigitalOcean, UpCloud, InterServer, Raksmart, Kinsta, Cloudways, SiteGround.
 
 Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
@@ -1442,7 +1458,7 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 ### Must NOT Do
 
-- ❌ Monitor all providers at once — start with 10
+- ❌ Monitor providers outside the approved 21-provider allowlist
 - ❌ Use 机场/代理-related domains
 - ❌ Conflate Restock and Offer event types because they share one public channel
 - ❌ Treat always-in-stock cloud providers as restock targets
@@ -1459,11 +1475,11 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 ### Phase 1 MVP — Ready When
 
-- [ ] 3 providers (BandwagonHost, DMIT, BuyVM) checked on schedule
+- [x] 3 providers (BandwagonHost, DMIT, BuyVM) checked on schedule
 - [x] Restock correctly detected (consecutive confirmation, dedup)
-- [ ] Telegram restock message sent to channel with correct format
-- [ ] Website shows homepage, provider list, provider detail with live data
-- [ ] Docker Compose runs full local stack
+- [x] Telegram restock message sent to channel with correct format
+- [x] Website shows homepage, provider list, provider detail with live data
+- [x] Docker Compose runs the full production stack
 - [ ] Worker runs >24h without crash or memory leak
 - [ ] False positive rate <5% over 48h test run
 - [x] `pnpm build` passes all apps
@@ -1530,7 +1546,7 @@ LOG_LEVEL=info
 ### Deployment Safety
 
 - Worker auto-restarts on crash (Docker `restart: unless-stopped`)
-- Blue-green deploy for website (Vercel handles this)
+- Planned blue-green or rolling website deploy before multi-node scaling
 - Worker version pinning: don't auto-deploy breaking adapter changes
 - Canary testing: new adapter runs in "dry-run" mode for 24h before activating push
 

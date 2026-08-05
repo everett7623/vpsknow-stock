@@ -47,6 +47,15 @@ function label(value: string): string {
   return value.replace(/[-_]/g, ' ');
 }
 
+function sourceLabel(source: string): string {
+  const labels: Record<string, string> = {
+    lowendtalk: 'LowEndTalk',
+    lowendbox: 'LowEndBox',
+    lowendspirit: 'LowEndSpirit',
+  };
+  return labels[source] || 'Offer';
+}
+
 export default async function OffersPage({
   searchParams,
 }: {
@@ -68,9 +77,9 @@ export default async function OffersPage({
             VPSKnow Stock
           </Link>
           <div>
-            <p className="text-sm font-medium text-orange-400">LOWENDTALK DEALS</p>
+            <p className="text-sm font-medium text-orange-400">CURATED VPS DEALS</p>
             <h1 className="mt-1 text-3xl font-bold text-white">Latest VPS Offers</h1>
-            <p className="mt-2 text-gray-400">Curated offers discovered from LowEndTalk.</p>
+            <p className="mt-2 text-gray-400">Offers from LowEndTalk, LowEndBox, and LowEndSpirit.</p>
           </div>
         </header>
 
@@ -146,7 +155,7 @@ export default async function OffersPage({
             {offers.map((offer) => (
               <article key={offer.id} className="border border-gray-800 bg-[#12121a] p-5">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-gray-400">{offer.provider || 'LowEndTalk'}</span>
+                  <span className="text-xs font-medium text-gray-400">{offer.provider || sourceLabel(offer.source)}</span>
                   {offer.isLimitedStock && <span className="bg-orange-950 px-2 py-1 text-xs font-medium text-orange-300">LIMITED</span>}
                 </div>
                 <h2 className="text-lg font-semibold text-white">{offer.title}</h2>
@@ -171,7 +180,7 @@ export default async function OffersPage({
                   <span className="text-gray-500">{formatPostedAt(offer.postedAt)}</span>
                   <div className="flex gap-3">
                     {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}
-                    {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white">Thread</a>}
+                    {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white">Source</a>}
                   </div>
                 </div>
               </article>

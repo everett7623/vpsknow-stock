@@ -50,7 +50,7 @@ bot.command('start', (ctx) =>
   ctx.reply([
     'Welcome to VPSKnow Stock Bot! 🖥️',
     '',
-    'Get personalized VPS restock and LowEndTalk offer alerts.',
+    'Get personalized VPS restock and curated offer alerts.',
     '',
     '/subscribe — Set up alerts',
     '/providers — See monitored providers',

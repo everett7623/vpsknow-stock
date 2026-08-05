@@ -7,17 +7,17 @@ export const metadata: Metadata = {
     default: 'VPSKnow Stock — VPS Restock Alerts',
     template: '%s | VPSKnow Stock',
   },
-  description: 'Real-time VPS restock monitoring and LowEndTalk offer aggregation.',
+  description: 'Real-time VPS restock monitoring and curated offer aggregation.',
   openGraph: {
     type: 'website',
     siteName: 'VPSKnow Stock',
     title: 'VPSKnow Stock — VPS Restock Alerts',
-    description: 'Real-time VPS restock monitoring and LowEndTalk offer aggregation.',
+    description: 'Real-time VPS restock monitoring and curated offer aggregation.',
   },
   twitter: {
     card: 'summary',
     title: 'VPSKnow Stock — VPS Restock Alerts',
-    description: 'Real-time VPS restock monitoring and LowEndTalk offer aggregation.',
+    description: 'Real-time VPS restock monitoring and curated offer aggregation.',
   },
 };
 

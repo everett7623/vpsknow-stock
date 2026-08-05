@@ -2,11 +2,11 @@
 
 > VPS Restock & Offer Alerts Platform
 
-Real-time VPS restock monitoring and LowEndTalk offer aggregation, powered by [VPSKnow](https://vpsknow.com).
+Real-time VPS restock monitoring and curated offer aggregation, powered by [VPSKnow](https://vpsknow.com).
 
 ## Overview
 
-VPSKnow Stock monitors VPS provider inventory and LowEndTalk offers, delivering instant notifications via Telegram and a public-facing stock status website.
+VPSKnow Stock monitors VPS provider inventory and offers from LowEndTalk, LowEndBox, and LowEndSpirit, delivering instant notifications via Telegram and a public-facing stock status website.
 
 - **Website**: `stock.vpsknow.com`
 - **Alerts Channel**: `@vpsknow_offers`
@@ -17,13 +17,13 @@ VPSKnow Stock monitors VPS provider inventory and LowEndTalk offers, delivering 
 ```text
 apps/
 ├── web/          # Next.js — public stock website
-├── worker/       # Stock monitoring + LET scraping
+├── worker/       # Stock monitoring + multi-source offer discovery
 └── bot/          # Telegram bot
 
 packages/
 ├── database/     # Prisma schema & client
 ├── providers/    # Per-provider stock adapters
-├── parsers/      # LET & product page parsers
+├── parsers/      # Offer feed, post, and product page parsers
 ├── telegram/     # Message templates & send utils
 ├── shared/       # Types, constants, utilities
 └── config/       # Shared ESLint, TSConfig

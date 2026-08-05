@@ -1,7 +1,11 @@
 import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StockResult } from '@vpsknow/providers';
-import { buildProductAffiliateUrl, extractWhmcsPid } from '@vpsknow/shared';
+import {
+  buildProductAffiliateUrl,
+  extractWhmcsPid,
+  generateAffiliateUrl,
+} from '@vpsknow/shared';
 import { processStockResults } from './stock-engine.js';
 
 const databaseMocks = vi.hoisted(() => ({
@@ -857,5 +861,25 @@ describe('product affiliate mapping', () => {
 
     expect(extractWhmcsPid('evoxt', orderUrl, 'evoxt-uk-london-vm-1')).toBeNull();
     expect(buildProductAffiliateUrl('evoxt', orderUrl, null)).toBe(orderUrl);
+  });
+
+  it('keeps affiliate links ready for approved provider expansion', () => {
+    expect(generateAffiliateUrl('hncloud')).toBe('https://www.hncloud.com?k=7940T0');
+    expect(generateAffiliateUrl('neburst')).toBe(
+      'https://neburst.com/auth/sign-up/?aff=3cvoo',
+    );
+    expect(generateAffiliateUrl('bestvm')).toBe('https://bestvm.cloud/aff.php?aff=225');
+    expect(generateAffiliateUrl('highendnetwork')).toBe(
+      'https://billing.highendnetwork.com/aff.php?aff=68',
+    );
+  });
+
+  it('merges the HNCloud referral parameter only into its official origin', () => {
+    expect(
+      buildProductAffiliateUrl('hncloud', 'https://www.hncloud.com/product/cloud-vps', null),
+    ).toBe('https://www.hncloud.com/product/cloud-vps?k=7940T0');
+    expect(buildProductAffiliateUrl('hncloud', 'https://example.com/product/cloud-vps', null)).toBe(
+      'https://example.com/product/cloud-vps',
+    );
   });
 });

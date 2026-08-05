@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <item>
+      <title>New UK KVM VPS Annual Promo</title>
+      <link>https://lowendspirit.com/discussion/11151/new-uk-kvm-vps-annual-promo</link>
+      <guid isPermaLink="false">11151@/discussions</guid>
+      <pubDate>Mon, 03 Aug 2026 15:00:43 +0000</pubDate>
+      <dc:creator>ExampleHost</dc:creator>
+    </item>
+    <item>
+      <title>Mismatched identifier</title>
+      <link>https://lowendspirit.com/discussion/11152/mismatch</link>
+      <guid isPermaLink="false">99999@/discussions</guid>
+      <pubDate>Mon, 03 Aug 2026 15:00:43 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

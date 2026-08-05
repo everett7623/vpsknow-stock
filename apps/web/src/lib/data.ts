@@ -104,11 +104,11 @@ export async function getRecentStockEvents(
   });
 }
 
-export async function getRecentLetOffers(limit = 30) {
+export async function getRecentOffers(limit = 30) {
   if (!hasDatabase) return [];
   return prisma.offer.findMany({
     where: {
-      source: 'lowendtalk',
+      source: { in: ['lowendtalk', 'lowendbox', 'lowendspirit'] },
       confidence: { gte: 0.6 },
       isLimitedStock: false,
     },

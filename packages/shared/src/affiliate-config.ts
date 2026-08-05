@@ -119,6 +119,45 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     originalUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807',
   },
 
+  // ========== Approved Provider Additions ==========
+
+  hncloud: {
+    provider: 'hncloud',
+    affId: '7940T0',
+    urlTemplate: 'https://www.hncloud.com?k={affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'k',
+      allowedOrigin: 'https://www.hncloud.com',
+    },
+    originalUrl: 'https://www.hncloud.com?k=7940T0',
+  },
+
+  neburst: {
+    provider: 'neburst',
+    affId: '3cvoo',
+    urlTemplate: 'https://neburst.com/auth/sign-up/?aff={affId}',
+    supportsPid: false,
+    originalUrl: 'https://neburst.com/auth/sign-up/?aff=3cvoo',
+  },
+
+  bestvm: {
+    provider: 'bestvm',
+    affId: '225',
+    urlTemplate: 'https://bestvm.cloud/aff.php?aff={affId}',
+    supportsPid: false,
+    originalUrl: 'https://bestvm.cloud/aff.php?aff=225',
+  },
+
+  highendnetwork: {
+    provider: 'highendnetwork',
+    affId: '68',
+    urlTemplate: 'https://billing.highendnetwork.com/aff.php?aff={affId}',
+    supportsPid: false,
+    originalUrl: 'https://billing.highendnetwork.com/aff.php?aff=68',
+  },
+
   // ========== A-Tier Providers ==========
 
   racknerd: {

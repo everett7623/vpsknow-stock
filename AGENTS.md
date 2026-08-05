@@ -146,9 +146,9 @@ docker compose down             # Stop all services
 - [x] Activate Prisma/esbuild build scripts and generate Prisma Client
 - [x] Run `pnpm build` with no type errors
 - [x] Add production Docker Compose for the complete stack
-- [ ] Validate production Docker Compose on a Docker-enabled host
+- [x] Validate production Docker Compose on a Docker-enabled host
 - [ ] 24h stability test run
-- [ ] End-to-end integration test
+- [ ] Live end-to-end integration test
 
 ---
 

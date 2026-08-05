@@ -1,181 +1,251 @@
 import * as cheerio from 'cheerio';
+import type { BillingCycle, ProductCategory } from '@vpsknow/shared';
+import type { AnyNode } from 'domhandler';
+import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
-const PRODUCTS_URL = 'https://spartanhost.org/vps';
+interface Category {
+  slug: string;
+  location: string;
+  category: ProductCategory;
+  url: string;
+}
+
 const BILLING_ORIGIN = 'https://billing.spartanhost.net';
+const CATEGORIES: readonly Category[] = [
+  {
+    slug: 'cmin2-premium-kvm-vps-seattle',
+    location: 'Seattle',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/cmin2-premium-kvm-vps-seattle`,
+  },
+  {
+    slug: 'dallas-premium-vps',
+    location: 'Dallas',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/dallas-premium-vps`,
+  },
+  {
+    slug: 'ddos-protected-ssd-e5-kvm-vps-dallas',
+    location: 'Dallas',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/ddos-protected-ssd-e5-kvm-vps-dallas`,
+  },
+  {
+    slug: 'ddos-protected-ssd-e5-kvm-vps-seattle',
+    location: 'Seattle',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/ddos-protected-ssd-e5-kvm-vps-seattle`,
+  },
+  {
+    slug: 'ddos-protected-ssd-premium-kvm-vps-ashburn',
+    location: 'Ashburn',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/ddos-protected-ssd-premium-kvm-vps-ashburn`,
+  },
+  {
+    slug: 'ddos-protected-ssd-premium-kvm-vps-seattle',
+    location: 'Seattle',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/ddos-protected-ssd-premium-kvm-vps-seattle`,
+  },
+  {
+    slug: 'storage-kvm-vps-dallas',
+    location: 'Dallas',
+    category: 'storage',
+    url: `${BILLING_ORIGIN}/store/storage-kvm-vps-dallas`,
+  },
+] as const;
 
-function normalizedOrderUrl(value: string): string {
-  const url = new URL(value, BILLING_ORIGIN);
-  url.hash = '';
-  url.search = '';
-  return url.href.replace(/\/$/, '');
-}
-
-function categoryUrlFromOrderUrl(orderUrl: string): string | null {
-  const url = new URL(orderUrl);
-  const segments = url.pathname.split('/').filter(Boolean);
-  if (url.origin !== BILLING_ORIGIN || segments.length < 3 || segments[0] !== 'store') return null;
-  url.pathname = `/${segments.slice(0, -1).join('/')}`;
-  url.hash = '';
-  url.search = '';
-  return url.href.replace(/\/$/, '');
-}
-
-export function parseSpartanWhmcsPidMap(html: string): ReadonlyMap<string, string> {
-  const $ = cheerio.load(html);
-  const result = new Map<string, string>();
-
-  $('.product[id^="product"]').each((_, element) => {
-    const card = $(element);
-    const pid = card.attr('id')?.match(/^product(\d+)$/)?.[1];
-    const href = card.find('a[id$="-order-button"]').attr('href')?.trim();
-    if (pid && href) result.set(normalizedOrderUrl(href), pid);
-  });
-
-  return result;
-}
-
-export function applySpartanWhmcsPids(
-  results: readonly StockResult[],
-  pidByOrderUrl: ReadonlyMap<string, string>,
-): StockResult[] {
-  return results.map((result) => {
-    const pid = result.inStock ? pidByOrderUrl.get(normalizedOrderUrl(result.orderUrl)) : undefined;
-    return pid ? { ...result, orderUrl: `${BILLING_ORIGIN}/cart.php?a=add&pid=${pid}` } : result;
-  });
-}
-
-function parseNumber(text: string, pattern: RegExp): number {
+function numberFrom(text: string, pattern: RegExp): number {
   const match = text.match(pattern);
   return match ? Number.parseFloat(match[1]!) : 0;
 }
 
-function normalizeLocation(value: string): string | undefined {
-  const location = value.toLowerCase();
-  if (location.includes('seattle')) return 'Seattle';
-  if (location.includes('dallas')) return 'Dallas';
-  if (location.includes('ashburn')) return 'Ashburn';
-  return undefined;
+function capacity(value: number, unit: string): number {
+  if (unit.toUpperCase() === 'TB') return Math.round(value * 1024);
+  if (unit.toUpperCase() === 'GB') return Math.round(value);
+  return Math.round(value / 1024);
 }
 
-function productSlug(href: string, family: string, ramMb: number, location: string): string {
-  const urlSlug = href.split('/').filter(Boolean).at(-1);
-  if (urlSlug && !urlSlug.includes('.php')) return urlSlug.toLowerCase();
-  return `${family}-${ramMb}mb-${location}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+function parseRamMb(description: string): number {
+  const match = description.match(
+    /(\d+(?:\.\d+)?)\s*(MB|GB|TB)\s+(?:DDR\d+\s+)?(?:ECC\s+)?RAM/i,
+  );
+  if (!match) return 0;
+
+  const value = Number.parseFloat(match[1]!);
+  const unit = match[2]!.toUpperCase();
+  if (unit === 'TB') return Math.round(value * 1024 * 1024);
+  if (unit === 'GB') return Math.round(value * 1024);
+  return Math.round(value);
+}
+
+function parseStorage(description: string): { sizeGb: number; type: string } {
+  const match = description.match(
+    /(\d+(?:\.\d+)?)\s*(GB|TB)\s+(?:Raid(?:\s+\d+)?\s+)?(NVMe(?:\s+SSD)?|SSD|HDD)\s+Storage/i,
+  );
+  if (!match) return { sizeGb: 0, type: 'Unknown' };
+
+  return {
+    sizeGb: capacity(Number.parseFloat(match[1]!), match[2]!),
+    type: /^NVMe/i.test(match[3]!) ? 'NVMe' : match[3]!.toUpperCase(),
+  };
+}
+
+function parseBillingCycle(text: string): BillingCycle {
+  if (/quarterly/i.test(text)) return 'quarterly';
+  if (/semi[- ]?annually/i.test(text)) return 'semi-annually';
+  if (/annually|yearly/i.test(text)) return 'annually';
+  if (/biennially/i.test(text)) return 'biennially';
+  if (/triennially/i.test(text)) return 'triennially';
+  return 'monthly';
+}
+
+function normalizedSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function leadingCapacity(slug: string): string | null {
+  return slug.match(/^(\d+(?:\.\d+)?(?:mb|gb|tb))(?:-|$)/)?.[1] ?? null;
+}
+
+function productSlug(planName: string, href: string, numericId: string): string {
+  const planSlug = normalizedSlug(planName);
+
+  try {
+    const url = new URL(href, BILLING_ORIGIN);
+    const orderSlug = normalizedSlug(url.pathname.split('/').filter(Boolean).at(-1) ?? '');
+    const planCapacity = leadingCapacity(planSlug);
+    const orderCapacity = leadingCapacity(orderSlug);
+    if (
+      url.origin === BILLING_ORIGIN
+      && orderSlug
+      && (!planCapacity || !orderCapacity || planCapacity === orderCapacity)
+    ) {
+      return orderSlug;
+    }
+  } catch {
+    // Fall back to the displayed plan identity below.
+  }
+
+  return planSlug || numericId;
+}
+
+function productDescription(
+  $: cheerio.CheerioAPI,
+  card: cheerio.Cheerio<AnyNode>,
+): string {
+  const container = card.find('.product-desc').first();
+  const segments = container
+    .contents()
+    .map((_, node) => $(node).text().replace(/\s+/g, ' ').trim())
+    .get()
+    .filter(Boolean);
+
+  return (segments.length > 0 ? segments.join(' ') : container.text())
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export class SpartanHostAdapter implements ProviderAdapter {
   readonly slug = 'spartanhost';
   readonly name = 'SpartanHost';
+  warnings: readonly string[] = [];
 
   async check(): Promise<StockResult[]> {
-    const response = await fetch(PRODUCTS_URL, {
-      headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-      signal: AbortSignal.timeout(15_000),
-    });
+    const results: StockResult[] = [];
+    const seen = new Set<string>();
+    const failures: string[] = [];
+    let successfulCategories = 0;
+    this.warnings = [];
 
-    if (!response.ok) {
-      throw new Error(`SpartanHost HTTP ${response.status}`);
-    }
+    for (const category of CATEGORIES) {
+      try {
+        const html = await fetchProviderHtml(
+          this.name,
+          `${category.url}?language=english`,
+        );
+        const parsed = this.parse(html, category);
+        if (parsed.length === 0) throw new Error('no parseable products');
+        successfulCategories++;
 
-    const html = await response.text();
-    if (/cloudflare|attention required|captcha/i.test(html) || !html.includes('plan-box')) {
-      throw new Error('SpartanHost returned a challenge or invalid product page');
-    }
-
-    const results = this.parse(html);
-    const categoryUrls = new Set(
-      results
-        .filter((result) => result.inStock)
-        .map((result) => categoryUrlFromOrderUrl(result.orderUrl))
-        .filter((url): url is string => url !== null),
-    );
-    const pidByOrderUrl = new Map<string, string>();
-
-    for (const categoryUrl of categoryUrls) {
-      const categoryResponse = await fetch(categoryUrl, {
-        headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!categoryResponse.ok) {
-        throw new Error(`SpartanHost WHMCS HTTP ${categoryResponse.status} for ${categoryUrl}`);
-      }
-
-      const categoryHtml = await categoryResponse.text();
-      for (const [orderUrl, pid] of parseSpartanWhmcsPidMap(categoryHtml)) {
-        pidByOrderUrl.set(orderUrl, pid);
+        for (const result of parsed) {
+          if (!seen.has(result.productId)) {
+            seen.add(result.productId);
+            results.push(result);
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`${category.slug}: ${message}`);
       }
     }
 
-    return applySpartanWhmcsPids(results, pidByOrderUrl);
+    if (successfulCategories === 0 || results.length === 0) {
+      throw new Error(
+        `SpartanHost returned no parseable products; ${failures.length}/${CATEGORIES.length} categories failed. `
+        + failures.slice(0, 3).join('; '),
+      );
+    }
+
+    this.warnings = failures;
+    return results;
   }
 
-  parse(html: string): StockResult[] {
+  parse(html: string, category: Category): StockResult[] {
     const $ = cheerio.load(html);
     const results: StockResult[] = [];
 
-    $('.tab-pane').each((_, tab) => {
-      const heading = $(tab).find('section h1').first().text().replace(/\s+/g, ' ').trim();
-      const family = /E5 KVM/i.test(heading) ? 'E5 KVM' : 'Premium KVM';
+    $('.product').each((_, element) => {
+      const card = $(element);
+      const numericId = card.attr('id')?.match(/^product(\d+)$/)?.[1];
+      const planName = card.find('[id$="-name"]').first().text().replace(/\s+/g, ' ').trim();
+      const quantityText = card.find('.qty').text().replace(/\s+/g, ' ').trim();
+      const quantity = quantityText.match(/(\d+)\s+Available/i);
+      const orderHref = card.find('.btn-order-now').attr('href')?.trim() ?? '';
+      if (!numericId || !planName || !quantity) return;
 
-      $(tab)
-        .find('.plan-box')
-        .each((__, box) => {
-          const card = $(box);
-          const text = card.text().replace(/\s+/g, ' ').trim();
-          const ramMb = Math.round(parseNumber(text, /(\d+(?:\.\d+)?)\s*MB\s+Memory/i));
-          if (ramMb === 0) return;
+      const description = productDescription($, card);
+      const pricing = card.find('.product-pricing').text().replace(/\s+/g, ' ').trim();
+      const priceText = card.find('.product-pricing .price').first().text() || pricing;
+      const storage = parseStorage(description);
+      const cpuCores = Math.round(
+        numberFrom(description, /(\d+(?:\.\d+)?)\s+CPU\s+vCores?/i),
+      );
+      const available = Number.parseInt(quantity[1]!, 10);
+      const inStock = available > 0;
 
-          const price = Math.round(parseNumber(text, /\$\s*(\d+(?:\.\d+)?)/) * 100);
-          const storageGb = Math.round(
-            parseNumber(text, /(\d+(?:\.\d+)?)\s*GB\s+(?:NVMe\s+)?Disk/i),
-          );
-          const bandwidthGb = parseNumber(text, /(\d+(?:\.\d+)?)\s*GB\s+Transfer/i);
-          const cpuCores = Math.round(parseNumber(text, /(\d+(?:\.\d+)?)\s*vCore/i));
-          const storageType = /\bNVMe\b/i.test(text)
-            ? 'NVMe'
-            : /\bSSD\b/i.test(text)
-              ? 'SSD'
-              : 'HDD';
-          const ipv4 = /\bIPv4\b/i.test(text);
-          const ipv6 = /\bIPv6\b/i.test(text);
-
-          card.find('a.button').each((___, anchor) => {
-            const link = $(anchor);
-            const label = link.text().replace(/\s+/g, ' ').trim();
-            const location = normalizeLocation(label);
-            if (!location) return;
-
-            const href = link.attr('href')?.trim() ?? '';
-            const inStock = href.length > 0 && !/out\s*of\s*stock/i.test(label);
-            const orderUrl = inStock ? new URL(href, PRODUCTS_URL).href : PRODUCTS_URL;
-
-            results.push({
-              provider: this.slug,
-              productId: `spartan-${productSlug(href, family, ramMb, location)}`,
-              planName: `${family} ${ramMb}MB`,
-              location,
-              category: 'vps',
-              cpu: cpuCores > 0 ? `${cpuCores} vCore${cpuCores === 1 ? '' : 's'}` : 'Unknown',
-              ramMb,
-              storageGb,
-              storageType,
-              bandwidthTb: Math.round((bandwidthGb / 1000) * 1000) / 1000,
-              ipv4,
-              ipv6,
-              price,
-              currency: 'USD',
-              billingCycle: 'monthly',
-              inStock,
-              orderUrl,
-            });
-          });
-        });
+      results.push({
+        provider: this.slug,
+        productId: `spartan-${productSlug(planName, orderHref, numericId)}`,
+        planName,
+        location: category.location,
+        category: category.category,
+        cpu: cpuCores > 0 ? `${cpuCores} vCore${cpuCores === 1 ? '' : 's'}` : 'Unknown',
+        ramMb: parseRamMb(description),
+        storageGb: storage.sizeGb,
+        storageType: storage.type,
+        bandwidthTb: numberFrom(description, /(\d+(?:\.\d+)?)\s*TB\s+bandwidth/i),
+        ipv4: /\bIPv4\b/i.test(description),
+        ipv6: /\bIPv6\b/i.test(description) && !/\bno\s+IPv6\b/i.test(description),
+        price: Math.round(numberFrom(priceText, /(\d+(?:\.\d+)?)/) * 100),
+        currency: /\bEUR\b/i.test(pricing) ? 'EUR' : 'USD',
+        billingCycle: parseBillingCycle(pricing),
+        inStock,
+        orderUrl: inStock
+          ? `${BILLING_ORIGIN}/cart.php?a=add&pid=${numericId}`
+          : category.url,
+        raw: {
+          available,
+          category: category.slug,
+          whmcsPid: numericId,
+        },
+      });
     });
-
-    if (results.length === 0) {
-      throw new Error('SpartanHost product page contained no parseable plans');
-    }
 
     return results;
   }

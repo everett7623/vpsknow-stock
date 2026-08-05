@@ -5,6 +5,12 @@ import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 const CART_URL = 'https://bandwagonhost.com/cart.php';
+const OFFICIAL_CART_URLS = [
+  CART_URL,
+  'https://bwh81.net/cart.php',
+] as const;
+
+type FetchHtml = (provider: string, url: string) => Promise<string>;
 
 function slugPart(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -94,11 +100,24 @@ export class BandwagonHostAdapter implements ProviderAdapter {
   readonly slug = 'bandwagonhost';
   readonly name = 'BandwagonHost';
 
+  constructor(private readonly fetchHtml: FetchHtml = fetchProviderHtml) {}
+
   async check(): Promise<StockResult[]> {
-    const html = await fetchProviderHtml(this.name, CART_URL);
-    const results = this.parse(html);
-    if (results.length === 0) throw new Error('BandwagonHost returned no parseable products');
-    return results;
+    const failures: string[] = [];
+
+    for (const url of OFFICIAL_CART_URLS) {
+      try {
+        const html = await this.fetchHtml(this.name, url);
+        const results = this.parse(html);
+        if (results.length > 0) return results;
+        failures.push(`${new URL(url).hostname}: no parseable products`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`${new URL(url).hostname}: ${message}`);
+      }
+    }
+
+    throw new Error(`BandwagonHost official cart endpoints failed; ${failures.join('; ')}`);
   }
 
   parse(html: string): StockResult[] {
