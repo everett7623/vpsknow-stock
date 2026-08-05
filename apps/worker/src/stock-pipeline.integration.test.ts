@@ -115,16 +115,16 @@ describe('stock pipeline integration', () => {
     expect(databaseMocks.stockCheckCreate).toHaveBeenCalledTimes(2);
     expect(databaseMocks.stockEventCreate).toHaveBeenCalledOnce();
     expect(databaseMocks.affiliateLinkUpsert).toHaveBeenCalledWith({
-      where: { slug: 'buyvm-buyvm-slice-1024-las-vegas' },
+      where: { slug: 'buyvm-slice-1024-las-vegas' },
       update: {
         targetUrl: 'https://my.frantech.ca/aff.php?aff=6836&pid=1024',
-        shortUrl: 'https://stock.vpsknow.com/go/buyvm-buyvm-slice-1024-las-vegas',
+        shortUrl: 'https://stock.vpsknow.com/go/buyvm-slice-1024-las-vegas',
       },
       create: {
         providerId: 'provider-buyvm',
-        slug: 'buyvm-buyvm-slice-1024-las-vegas',
+        slug: 'buyvm-slice-1024-las-vegas',
         targetUrl: 'https://my.frantech.ca/aff.php?aff=6836&pid=1024',
-        shortUrl: 'https://stock.vpsknow.com/go/buyvm-buyvm-slice-1024-las-vegas',
+        shortUrl: 'https://stock.vpsknow.com/go/buyvm-slice-1024-las-vegas',
       },
     });
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledWith(

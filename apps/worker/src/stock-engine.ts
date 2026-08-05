@@ -6,6 +6,7 @@ import {
   CONSECUTIVE_CONFIRMS_REQUIRED,
   buildProductAffiliateUrl,
   extractWhmcsPid,
+  generateShortLinkSlug,
 } from '@vpsknow/shared';
 import type { Logger } from 'pino';
 import { notifyRestockSubscribers } from './subscriber-notifications.js';
@@ -19,11 +20,6 @@ interface ProcessResult {
   restocked: number;
   soldOut: number;
   errors: number;
-}
-
-function productLinkSlug(providerSlug: string, productId: string): string {
-  const normalizedProductId = productId.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
-  return `${providerSlug}-${normalizedProductId}`;
 }
 
 function vmrackNotificationGroupKey(result: StockResult): string | null {
@@ -181,7 +177,7 @@ export async function processStockResults(
         },
       });
 
-      const linkSlug = productLinkSlug(providerSlug, result.productId);
+      const linkSlug = generateShortLinkSlug(providerSlug, result.productId);
       const shortUrl = `https://stock.vpsknow.com/go/${linkSlug}`;
       const targetUrl = buildProductAffiliateUrl(providerSlug, result.orderUrl, whmcsPid);
       const existingProductLink = provider.affiliateLinks.find((link) => link.slug === linkSlug);

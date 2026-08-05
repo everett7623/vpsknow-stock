@@ -247,6 +247,37 @@ describe('processStockResults', () => {
     },
   );
 
+  it('does not duplicate a provider prefix already present in the product ID', async () => {
+    const logger = createLogger();
+    const zgoCloudResult: StockResult = {
+      ...stockResult,
+      provider: 'zgocloud',
+      productId: 'zgocloud-121',
+      planName: 'Hong Kong VPS',
+      orderUrl: 'https://clients.zgovps.com/?action=add&cmd=cart&id=121',
+    };
+    databaseMocks.providerFindUnique.mockResolvedValue({
+      id: 'zgocloud-provider',
+      affiliateLinks: [],
+    });
+
+    await processStockResults('zgocloud', [zgoCloudResult], logger);
+
+    expect(databaseMocks.affiliateLinkUpsert).toHaveBeenCalledWith({
+      where: { slug: 'zgocloud-121' },
+      update: {
+        targetUrl: 'https://clients.zgovps.com/?action=add&cmd=cart&id=121&affid=488',
+        shortUrl: 'https://stock.vpsknow.com/go/zgocloud-121',
+      },
+      create: {
+        providerId: 'zgocloud-provider',
+        slug: 'zgocloud-121',
+        targetUrl: 'https://clients.zgovps.com/?action=add&cmd=cart&id=121&affid=488',
+        shortUrl: 'https://stock.vpsknow.com/go/zgocloud-121',
+      },
+    });
+  });
+
   it('records a first in-stock confirmation without notifying', async () => {
     const logger = createLogger();
     const debugSpy = vi.spyOn(logger, 'debug');
@@ -536,13 +567,13 @@ describe('processStockResults', () => {
     expect(telegramMocks.formatRestockMessage).toHaveBeenCalledOnce();
     expect(telegramMocks.formatRestockMessage).toHaveBeenCalledWith(
       lowest,
-      'https://stock.vpsknow.com/go/vmrack-vmrack-l3-vps-dc2-1c1g',
+      'https://stock.vpsknow.com/go/vmrack-l3-vps-dc2-1c1g',
     );
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledOnce();
     expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledOnce();
     expect(subscriberMocks.notifyRestockSubscribers).toHaveBeenCalledWith(
       lowest,
-      'https://stock.vpsknow.com/go/vmrack-vmrack-l3-vps-dc2-1c1g',
+      'https://stock.vpsknow.com/go/vmrack-l3-vps-dc2-1c1g',
       logger,
     );
   });
@@ -609,7 +640,7 @@ describe('processStockResults', () => {
     expect(telegramMocks.formatRestockMessage).toHaveBeenCalledOnce();
     expect(telegramMocks.formatRestockMessage).toHaveBeenCalledWith(
       lowest,
-      'https://stock.vpsknow.com/go/vmrack-vmrack-l3-vps-dc2-1c1g',
+      'https://stock.vpsknow.com/go/vmrack-l3-vps-dc2-1c1g',
     );
     expect(telegramMocks.sendChannelMessage).toHaveBeenCalledOnce();
   });

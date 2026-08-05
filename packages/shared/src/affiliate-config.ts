@@ -367,8 +367,13 @@ export function buildProductAffiliateUrl(
  */
 export function generateShortLinkSlug(providerSlug: string, productId?: string): string {
   if (productId) {
-    // 产品级别: provider-product (例: bwg-dc6-95)
-    return `${providerSlug}-${productId.replace(/[^a-z0-9-]/gi, '-')}`;
+    const normalizedProductId = productId.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+    const providerPrefix = `${providerSlug.toLowerCase()}-`;
+
+    // Adapter 的 productId 可能已包含 provider 前缀，避免生成 provider-provider-product。
+    return normalizedProductId.startsWith(providerPrefix)
+      ? normalizedProductId
+      : `${providerSlug}-${normalizedProductId}`;
   }
   // Provider 级别: provider (例: buyvm)
   return providerSlug;
