@@ -26,6 +26,9 @@ import { VMRackAdapter } from './adapters/vmrack.js';
 import { GoMamiAdapter } from './adapters/gomami.js';
 import { ZgoCloudAdapter } from './adapters/zgocloud.js';
 import { ColoCrossingAdapter } from './adapters/colocrossing.js';
+import { ChicagoVPSAdapter } from './adapters/chicagovps.js';
+import { LightLayerAdapter } from './adapters/lightlayer.js';
+import { SpeedyPageAdapter } from './adapters/speedypage.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -55,6 +58,9 @@ const adapters: ProviderAdapter[] = [
   new GoMamiAdapter(),
   new ZgoCloudAdapter(),
   new ColoCrossingAdapter(),
+  new ChicagoVPSAdapter(),
+  new LightLayerAdapter(),
+  new SpeedyPageAdapter(),
 ];
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(

@@ -779,6 +779,20 @@ describe('product affiliate mapping', () => {
       '63',
       'https://cloud.colocrossing.com/aff.php?aff=467&pid=63',
     ],
+    [
+      'chicagovps',
+      'chicagovps-597',
+      'https://billing.chicagovps.net/index.php?rp=/store/cloud-vps/1gb-ram',
+      '597',
+      'https://billing.chicagovps.net/aff.php?aff=2611&pid=597',
+    ],
+    [
+      'speedypage',
+      'speedypage-116',
+      'https://my.speedypage.com/store/virtual-servers-singapore/sg-kvm-1g',
+      '116',
+      'https://my.speedypage.com/aff.php?aff=405&pid=116',
+    ],
   ])('maps %s to its verified product PID', (provider, productId, orderUrl, pid, expected) => {
     const extracted = extractWhmcsPid(provider, orderUrl, productId);
 
@@ -814,6 +828,15 @@ describe('product affiliate mapping', () => {
     expect(extractWhmcsPid('zgocloud', orderUrl, 'zgocloud-136')).toBeNull();
     expect(buildProductAffiliateUrl('zgocloud', orderUrl, null)).toBe(
       'https://clients.zgovps.com/?action=add&cmd=cart&id=136&affid=488',
+    );
+  });
+
+  it('replaces the PoorVPS LightLayer affiliate ID with the configured project ID', () => {
+    const orderUrl = 'https://account.lightlayer.net/?cmd=cart&action=add&affid=893&id=102';
+
+    expect(extractWhmcsPid('lightlayer', orderUrl, 'lightlayer-102')).toBeNull();
+    expect(buildProductAffiliateUrl('lightlayer', orderUrl, null)).toBe(
+      'https://account.lightlayer.net/?cmd=cart&action=add&affid=647&id=102',
     );
   });
 

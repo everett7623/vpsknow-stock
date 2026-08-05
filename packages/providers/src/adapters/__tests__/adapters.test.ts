@@ -31,6 +31,9 @@ import { VMRackAdapter } from '../vmrack.js';
 import { GoMamiAdapter } from '../gomami.js';
 import { ZgoCloudAdapter } from '../zgocloud.js';
 import { ColoCrossingAdapter } from '../colocrossing.js';
+import { ChicagoVPSAdapter } from '../chicagovps.js';
+import { LightLayerAdapter } from '../lightlayer.js';
+import { SpeedyPageAdapter } from '../speedypage.js';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -770,6 +773,181 @@ describe('provider adapters', () => {
       inStock: true,
       orderUrl:
         'https://cloud.colocrossing.com/index.php?rp=/store/specials/2gb-ram-seattle-special',
+    });
+  });
+
+  it('parses ChicagoVPS public VPS catalogs and excludes Cloud Metal servers', () => {
+    const results = new ChicagoVPSAdapter().parse(fixture('chicagovps.html'), {
+      slug: 'cloud-vps',
+      location: 'United States',
+      url: 'https://billing.chicagovps.net/index.php?rp=/store/cloud-vps',
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'chicagovps',
+      productId: 'chicagovps-597',
+      planName: '1GB RAM',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 25,
+      storageType: 'SSD',
+      bandwidthTb: 0,
+      price: 395,
+      billingCycle: 'monthly',
+      inStock: true,
+      displaySpecs: {
+        storage: '25GB SSD',
+        bandwidth: 'Unmetered',
+        port: '1Gbps',
+      },
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'chicagovps-594',
+      storageType: 'NVMe',
+      bandwidthTb: 20,
+      billingCycle: 'annually',
+      inStock: false,
+    });
+  });
+
+  it('parses the hidden ChicagoVPS Standard VPS by its official PID page', () => {
+    const result = new ChicagoVPSAdapter().parseProductPage(
+      `
+        <form id="frmConfigureProduct">
+          <div class="product-info">
+            <p class="product-title">Standard</p>
+            <p>
+              1GB Dedicated Ram / 30 GB Pure SSD Diskspace /
+              1 CPU Cores on Dual Xeon E5 CPU / 2TB Bandwidth /
+              1000Mbps Port / 1 x IPv4 Address
+            </p>
+          </div>
+          <select id="inputBillingcycle">
+            <option value="monthly" selected>1 Month Price - $6.95 USD</option>
+          </select>
+          <button id="btnCompleteProductConfig">Continue</button>
+        </form>
+      `,
+      {
+        id: '453',
+        location: 'United States',
+        url: 'https://billing.chicagovps.net/cart.php?a=add&pid=453',
+      },
+    );
+
+    expect(result).toMatchObject({
+      productId: 'chicagovps-453',
+      planName: 'Standard',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 30,
+      storageType: 'SSD',
+      bandwidthTb: 2,
+      price: 695,
+      inStock: true,
+      orderUrl: 'https://billing.chicagovps.net/cart.php?a=add&pid=453',
+    });
+  });
+
+  it('parses LightLayer VPS products from PoorVPS without importing its affiliate ID', () => {
+    const results = new LightLayerAdapter().parse({
+      '102': {
+        title: 'LA-VP03',
+        base_specs_text:
+          'LA-VP03\nCore:1vCPU\nRAM:1GB\nStorage:50GB NVMe\nBandwidth:30 Mbps\nData:1T\nIPv4:1 IP\nNetwork:Global\nUpgrade:NOT available',
+        stock_status: 'Out of Stock',
+        url: 'https://account.lightlayer.net/?cmd=cart&action=add&affid=893&id=102',
+        billing_options: [
+          {
+            is_selected: true,
+            parsed_price: { amount: 4, currency: 'USD' },
+            value: 'monthly',
+          },
+        ],
+        configurable_options: {
+          location: {
+            label: 'Location',
+            options: [{ is_selected: true, text: 'Los Angeles', value: 'la' }],
+          },
+        },
+        parsed_base_specs: {
+          cpu_cores_base: '1 CPU Core',
+          ram_base: 1,
+          storage_amount_unit: 50,
+          storage_type: 'NVME',
+          data_transfer: 1024,
+          port_speed: 30,
+        },
+      },
+      '153': {
+        title: 'RTX 4090 - Dallas',
+        base_specs_text: 'CPU:Intel Xeon\nRAM:512GB\nGPU:RTX4090 * 8',
+        stock_status: 'In Stock',
+        url: 'https://account.lightlayer.net/?cmd=cart&action=add&affid=893&id=153',
+        billing_options: [
+          {
+            is_selected: true,
+            parsed_price: { amount: 1000, currency: 'USD' },
+            value: 'monthly',
+          },
+        ],
+      },
+    });
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        provider: 'lightlayer',
+        productId: 'lightlayer-102',
+        planName: 'LA-VP03',
+        location: 'Los Angeles',
+        cpu: '1vCPU',
+        ramMb: 1024,
+        storageGb: 50,
+        storageType: 'NVMe',
+        bandwidthTb: 1,
+        price: 400,
+        inStock: false,
+        orderUrl: 'https://account.lightlayer.net/?cmd=cart&action=add&affid=647&id=102',
+        displaySpecs: {
+          storage: '50GB NVMe',
+          bandwidth: '1TB',
+          port: '30Mbps',
+          remark: 'Network: Global; Upgrade: NOT available',
+        },
+      }),
+    ]);
+  });
+
+  it('parses SpeedyPage VPS quantities and keeps display units', () => {
+    const results = new SpeedyPageAdapter().parse(fixture('speedypage.html'), {
+      slug: 'singapore',
+      location: 'Singapore',
+      url: 'https://my.speedypage.com/store/virtual-servers-singapore?currency=4',
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'speedypage',
+      productId: 'speedypage-116',
+      planName: 'SG-KVM-1G',
+      location: 'Singapore',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 15,
+      storageType: 'NVMe',
+      bandwidthTb: 2,
+      price: 536,
+      inStock: true,
+      displaySpecs: {
+        storage: '15GB NVMe',
+        bandwidth: '2TB',
+        port: '10Gbps',
+      },
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'speedypage-120',
+      inStock: false,
     });
   });
 });

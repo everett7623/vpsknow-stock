@@ -61,6 +61,9 @@ const PROVIDER_INTERVALS: Record<string, number> = {
   gomami: 300_000,
   zgocloud: 300_000,
   colocrossing: 300_000,
+  chicagovps: 300_000,
+  lightlayer: 300_000,
+  speedypage: 300_000,
 };
 
 async function bootstrap(): Promise<void> {

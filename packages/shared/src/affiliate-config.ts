@@ -1,8 +1,8 @@
 /**
  * Affiliate 配置文件 - 从 Excel 导入的真实数据
  *
- * 数据来源: 主机与域名服务商短链接汇总-20260731.xlsx
- * 更新时间: 2026-07-31
+ * 数据来源: 主机与域名服务商短链接汇总-20260801.xlsx
+ * 更新时间: 2026-08-01
  */
 
 interface AffiliateConfigBase {
@@ -273,6 +273,37 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     supportsPid: true,
     pidSource: 'whmcs-card-id',
     originalUrl: 'https://cloud.colocrossing.com/aff.php?aff=467',
+  },
+
+  chicagovps: {
+    provider: 'chicagovps',
+    affId: '2611',
+    urlTemplate: 'https://billing.chicagovps.net/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://billing.chicagovps.net/aff.php?aff=2611',
+  },
+
+  lightlayer: {
+    provider: 'lightlayer',
+    affId: '647',
+    urlTemplate: 'https://account.lightlayer.net/?affid={affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'affid',
+      allowedOrigin: 'https://account.lightlayer.net',
+    },
+    originalUrl: 'https://account.lightlayer.net/?affid=647',
+  },
+
+  speedypage: {
+    provider: 'speedypage',
+    affId: '405',
+    urlTemplate: 'https://my.speedypage.com/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://my.speedypage.com/aff.php?aff=405',
   },
 };
 

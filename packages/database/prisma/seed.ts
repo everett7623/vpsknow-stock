@@ -283,6 +283,41 @@ async function main() {
     },
   });
 
+  const chicagovps = await prisma.provider.upsert({
+    where: { slug: 'chicagovps' },
+    update: {},
+    create: {
+      slug: 'chicagovps',
+      name: 'ChicagoVPS',
+      website: 'https://www.chicagovps.net',
+      tier: 'B',
+    },
+  });
+
+  const lightlayer = await prisma.provider.upsert({
+    where: { slug: 'lightlayer' },
+    update: {},
+    create: {
+      slug: 'lightlayer',
+      name: 'LightLayer',
+      website: 'https://lightlayer.net',
+      tier: 'B',
+      // PoorVPS 库存数据有地域限制；配置可达镜像后再启用。
+      isActive: false,
+    },
+  });
+
+  const speedypage = await prisma.provider.upsert({
+    where: { slug: 'speedypage' },
+    update: {},
+    create: {
+      slug: 'speedypage',
+      name: 'SpeedyPage',
+      website: 'https://speedypage.com',
+      tier: 'B',
+    },
+  });
+
   // Seed known products — BandwagonHost
   const bwgPlans = [
     { productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, billingCycle: 'annually' },
@@ -401,6 +436,9 @@ async function main() {
     { providerId: gomami.id, slug: 'gomami', targetUrl: 'https://gomami.io/aff.php?aff=209', shortUrl: 'https://go.uukk.de/gomami' },
     { providerId: zgocloud.id, slug: 'zgocloud', targetUrl: 'https://clients.zgovps.com/?affid=488', shortUrl: 'https://go.uukk.de/zgovps' },
     { providerId: colocrossing.id, slug: 'colocrossing', targetUrl: 'https://cloud.colocrossing.com/aff.php?aff=467', shortUrl: 'https://go.uukk.de/ccs' },
+    { providerId: chicagovps.id, slug: 'chicagovps', targetUrl: 'https://billing.chicagovps.net/aff.php?aff=2611', shortUrl: 'https://go.uukk.de/chicagovps' },
+    { providerId: lightlayer.id, slug: 'lightlayer', targetUrl: 'https://account.lightlayer.net/?affid=647', shortUrl: 'https://go.uukk.de/lightlayer' },
+    { providerId: speedypage.id, slug: 'speedypage', targetUrl: 'https://my.speedypage.com/aff.php?aff=405', shortUrl: 'https://go.uukk.de/speedy' },
   ];
 
   for (const link of affiliateLinks) {
@@ -412,7 +450,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 25`);
+  console.log(`  Providers: 28`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

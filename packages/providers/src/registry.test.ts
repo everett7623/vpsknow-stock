@@ -29,6 +29,9 @@ const REQUIRED_PROVIDERS = [
   'gomami',
   'zgocloud',
   'colocrossing',
+  'chicagovps',
+  'lightlayer',
+  'speedypage',
 ] as const;
 
 describe('provider registry', () => {
