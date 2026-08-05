@@ -1,10 +1,21 @@
 import * as cheerio from 'cheerio';
 import type { AnyNode } from 'domhandler';
+import {
+  fetchProviderPagesWithBrowser,
+  type BrowserPageResult,
+} from '../browser.js';
 import { fetchProviderHtml } from '../http.js';
 import type { BillingCycle } from '@vpsknow/shared';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 const PRICING_URL = 'https://www.dmit.io/pages/pricing?language=english';
+
+type FetchHtml = (provider: string, url: string) => Promise<string>;
+type FetchBrowserPages = (
+  provider: string,
+  urls: readonly string[],
+  readySelector: string,
+) => Promise<BrowserPageResult[]>;
 
 const LOCATIONS: Readonly<Record<string, string>> = {
   hkg: 'Hong Kong',
@@ -71,8 +82,29 @@ export class DmitAdapter implements ProviderAdapter {
   readonly slug = 'dmit';
   readonly name = 'DMIT';
 
+  constructor(
+    private readonly fetchHtml: FetchHtml = fetchProviderHtml,
+    private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
+  ) {}
+
   async check(): Promise<StockResult[]> {
-    const html = await fetchProviderHtml(this.name, PRICING_URL);
+    let html: string;
+    try {
+      html = await this.fetchHtml(this.name, PRICING_URL);
+    } catch (directError) {
+      const [page] = await this.fetchBrowserPages(this.name, [PRICING_URL], '.plan-group');
+      if (!page?.ok) {
+        const directMessage = directError instanceof Error
+          ? directError.message
+          : String(directError);
+        throw new Error(
+          `DMIT request failed; direct HTTP: ${directMessage}; `
+          + `browser: ${page?.error ?? 'returned no result'}`,
+        );
+      }
+      html = page.html;
+    }
+
     const results = this.parse(html);
     if (results.length === 0) throw new Error('DMIT returned no parseable products');
     return results;

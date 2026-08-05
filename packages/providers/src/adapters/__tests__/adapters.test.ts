@@ -152,6 +152,31 @@ describe('provider adapters', () => {
     });
   });
 
+  it('falls back to one browser page when DMIT direct HTTP is challenged', async () => {
+    const fetchHtml = vi.fn(async (): Promise<string> => {
+      throw new Error('HTTP 403');
+    });
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[], _readySelector: string) => ([{
+        url: urls[0]!,
+        ok: true as const,
+        html: fixture('dmit-modern.html'),
+      }]),
+    );
+    const results = await new DmitAdapter(fetchHtml, fetchBrowserPages).check();
+
+    expect(fetchHtml).toHaveBeenCalledWith(
+      'DMIT',
+      'https://www.dmit.io/pages/pricing?language=english',
+    );
+    expect(fetchBrowserPages).toHaveBeenCalledWith(
+      'DMIT',
+      ['https://www.dmit.io/pages/pricing?language=english'],
+      '.plan-group',
+    );
+    expect(results).toHaveLength(2);
+  });
+
   it('parses BuyVM stock state and resolves cart links', () => {
     const results = new BuyVMAdapter().parseGroup(
       fixture('buyvm.html'),
