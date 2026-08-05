@@ -1,8 +1,8 @@
 # VPSKnow Stock 项目状态报告
 
-> 更新时间：2026-08-06 03:42 (UTC+8)
-> 本地分支：`main` (`4d96743`)
-> 生产版本：`main` (`055d690`)
+> 更新时间：2026-08-06 05:32 (UTC+8)
+> 代码基线：`main` (`4097059`)
+> 生产 Worker：`main` (`4097059`)
 
 ---
 
@@ -17,50 +17,46 @@
 
 ## 本地与 GitHub
 
-- 本地 `main` 与 `origin/main` 均为 `b60476c`，工作开始时无未提交改动。
-- Adapter registry 保留 31 个现有 adapter；seed 保留 32 个 provider 目录记录，其中包括未启用的 HighEndNetwork，但只启用白名单中已有可靠 adapter 的 20 家。
-- Worker 只为这 20 家注册定时器，并在任务执行入口再次拒绝白名单外 provider；启动时会清除旧的白名单外定时器。
-- Production migration 会注册 BestVM、Neburst、HNCloud 以及 inactive HighEndNetwork，把现有数据库同步为 20 家 active，并更新相应 affiliate 目标地址，不依赖手工执行 seed。
-- 白名单尚缺 1 个 adapter：HighEndNetwork；provider 与 affiliate 记录已录入且明确保持 inactive，adapter 完成前不会加入 worker 调度。
-- 未合入的 `origin/codex/integrate-origin-main` 是旧集成测试分支；当前 `main` 已包含并持续维护更新后的 `stock-pipeline.integration.test.ts`。
-- Provider 详情页已支持库存/售罄分组、价格排序、最后检查时间、affiliate 下单链接和 Telegram 订阅入口。
+- `main` 已推送到 `origin/main`；`4097059` 包含生产迁移修复和 DMIT Playwright 回退。
+- Adapter registry 保留 31 个现有 adapter；seed 保留 32 个 provider 目录记录，但 Worker 只调度用户批准且已有 adapter 的 20 家。
+- Worker 启动时会删除白名单外旧调度器，并在任务入口再次拒绝白名单外 provider；生产 Redis 中已只保留 20 个 provider scheduler。
+- 第 7 个 migration 会幂等注册 ChicagoVPS、LightLayer、SpeedyPage 及其 affiliate link；production `migrate` 服务会在 migration 成功后自动执行幂等 seed。
+- HighEndNetwork 的 provider 与 affiliate 记录已录入并保持 inactive；官方 Cloudflare 托管验证无法稳定通过前不启用 adapter。
+- Provider 详情页支持库存/售罄分组、价格排序、最后检查时间、affiliate 下单链接和 Telegram 订阅入口。
 
 ## 生产环境快照
 
-2026-08-05 只读检查结果：
+2026-08-06 部署与验收结果：
 
 | 项目 | 状态 |
 |------|------|
-| Git | `055d690`，工作区干净，比 GitHub 当前 `origin/main` 少 2 个提交 |
+| Git | 生产仓库 `main` 为 `4097059`，工作区干净 |
+| 数据库备份 | `backups/postgres-20260805T194852Z.dump`，27 MiB，SHA-256 `fb3093aa...a7490` 已校验 |
 | Compose | Bot、Caddy、PostgreSQL、Redis、Web、Worker 均为 running |
-| 健康检查 | PostgreSQL、Redis、Web、Worker healthy |
-| 公开网站 | `https://stock.vpsknow.com` 返回 HTTP 200 |
-| 健康 API | `/api/health` 返回 HTTP 200，数据库 healthy |
-| 资源 | Worker 约 121 MiB，Web 约 180 MiB，Bot 约 104 MiB |
+| 健康检查 | PostgreSQL、Redis、Web、Worker healthy；官方 `verify-production.sh` 通过 |
+| 公开网站 | `https://stock.vpsknow.com/api/health` 返回 HTTP 200，数据库 healthy |
+| 资源 | Worker 约 520 MiB，Web 约 193 MiB，Bot 约 105 MiB |
 
 数据库只读统计：
 
 | 指标 | 数值 |
 |------|------|
-| Prisma migrations | 4 completed / 0 incomplete |
-| Providers | 27 total / 25 active |
-| Products | 553 |
-| Stock checks (24h) | 286,818 |
-| Telegram messages | 199 total / 5 in 24h |
-| Notified restock events | 7 |
+| Prisma migrations | 7 completed / 0 incomplete |
+| Providers | 34 total / 20 active |
+| Products | 1,061 |
+| Stock checks (24h) | 287,275 |
+| Telegram messages | 201 total / 7 in 24h |
+| Notified restock events | 194 |
 
-生产环境尚未包含以下本地提交：
+部署期间首次构建的 Playwright Worker 无法启动：Prisma Client 在 Alpine build stage 只生成了 `linux-musl` 引擎，而 Ubuntu Worker runtime 需要 `debian-openssl-3.0.x`。Worker 先回滚到已知健康镜像，再通过 `binaryTargets` 和 Dockerfile 构建断言修复；修复镜像已在 Ubuntu 容器内以 UID 1001 连接 PostgreSQL 验证，并部署为 `27de7c9` 之后的 Worker 基线。
 
-1. `bcbc2e6` - 完善 DediRock 监控与 VPS 补货模板
-2. `b60476c` - 新增 ChicagoVPS、LightLayer 和 SpeedyPage 监控
-
-本次只读取生产状态，没有执行 pull、重建或重启。
+第 6 个 migration 原先只在 active allowlist 中引用 ChicagoVPS、LightLayer、SpeedyPage，没有在旧生产库中创建这 3 条记录，因此首次部署后只有 17 家 active。生产先执行幂等 seed 恢复为 20 家；随后新增 `20260806010000_register_remaining_monitored_providers` 并让 Compose migrate 自动 seed。隔离 PostgreSQL 17 和生产库均验证为 7/7 migration、20 家 active、HighEndNetwork inactive。
 
 ## 质量验证
 
 2026-08-06 本地验证：
 
-- `pnpm test`：17 个测试文件，144 个测试全部通过。
+- `pnpm test`：17 个测试文件，145 个测试全部通过；DMIT 浏览器回退新增 1 条回归测试。
 - `pnpm typecheck`：13 个 Turbo 任务全部通过。
 - `pnpm lint`：13 个 Turbo 任务全部通过。
 - `pnpm build`：8 个 Turbo 任务全部通过，Next.js 生产构建成功。
@@ -79,31 +75,31 @@
 - SaltyFish 已增加 HTTP `403` 后的串行 Playwright 回退；6 个官方 WHMCS 分类官网 dry-run 共解析 19 个商品，当前全部售罄，0 warning。
 - RackNerd 已从过期的按机房分类切换到官网当前 8 个 VPS/Dedicated 分类，并增加 HTTP 失败后的单次串行 Playwright 回退；官网 dry-run 共解析 59 个商品，当前 51 个有货，0 warning。
 - 修复后再次重跑全部 20 家：18 家成功；剩余失败仅为 VMISS（14/14 官方分类均返回 Cloudflare `403` challenge）和 VMRack（官方边缘节点重置连接）。两者均保持失败关闭，不推断库存；全程未写数据库、未发 Telegram。
-- Prisma schema 与 production Compose 配置校验通过。全部 6 个 migration 与当前 seed 已在隔离 PostgreSQL 17 容器实际执行：32 家 provider 中正好 20 家 active，HighEndNetwork 保持 inactive，32 条 affiliate link 均完成写入；临时容器已删除。
+- Prisma schema 与 production Compose 配置校验通过。全部 7 个 migration 与当前 seed 已在隔离 PostgreSQL 17 容器实际执行：32 家 provider 中正好 20 家 active，HighEndNetwork 保持 inactive，32 条 affiliate link 均完成写入；新增 migration SQL 与 seed 均完成重复执行幂等验证，临时容器已删除。
 - Playwright `worker-runtime` 已在 Docker Desktop 29.6.2 上实际构建：镜像以 `pwuser`（UID 1001）运行，Chromium 151 可启动并渲染页面。容器内官网 dry-run 再次解析 SaltyFish 19 个商品、RackNerd 59 个商品，库存结果与宿主机一致且均为 0 warning。
+- 白名单部署后的初始 35 分钟窗口中，17 家 provider 持续完成库存检查；DMIT 回退部署后恢复为 18/20。SpartanHost 每次解析 70 个商品、V.PS 8 个、SaltyFish 19 个、RackNerd 59 个，VMRack 已在生产网络恢复并解析 3 个商品。
+- DMIT 生产直连持续返回 Cloudflare `403`，但生产 Worker 内 Playwright 可加载 14 个官方 `.plan-group`。浏览器回退已部署，宿主机与生产容器 dry-run 均解析 88 个商品、当前 78 个有货；正常调度随后连续 4 次完成 88 个商品检查且 0 错误。
+- LightLayer 使用的 PoorVPS 公共缓存 URL 已返回 `404`，adapter 保持失败关闭；需改为可验证的官方库存入口后才能恢复有效监控。
+- 生产 New Offer 调度持续完成 LowEndBox 与 LowEndSpirit 两个 RSS 来源，最近轮次均无新条目；LowEndTalk 详情请求仍返回 `403`，但不会阻断另外两个来源。
 
 ## 已知运行限制
 
-生产日志显示正常工作的 adapter 持续产出库存检查，但部分 provider 长期处于半开探测/失败状态：
+生产只调度 20 家 approved provider；当前剩余限制集中在以下来源：
 
-- 403 或 challenge：SpartanHost、Crunchbits、Alwyzon、SaltyFish、VMISS、V.PS、DediRock、RackNerd；DMIT 偶发 403 后可恢复。
-- DNS 失效：Clouvider、LiteServer、ServaRICA、Onidel、TierHive、WebHorizon。
-- TLS SNI 错误：Gullos。
-- 产品页 404：Evoxt。
+- VMISS：14/14 官方分类均返回 Cloudflare `403` challenge，保持失败关闭，不推断库存。
+- LightLayer：PoorVPS 公共缓存入口已 `404`；当前没有可重复验证的官方目录库存源，保持失败关闭。
+- LowEndTalk：Offer 详情请求持续 `403`；LowEndBox 与 LowEndSpirit 独立运行，不受该来源失败影响。
+- HighEndNetwork：四个官方 store 分类均停留在 Cloudflare 托管验证页，因此 provider 保持 inactive。
 
-SpartanHost 的上述 403 来自生产旧版本使用的官网营销页；本地 adapter 已切换官方 billing 分类并通过 dry-run。V.PS 的生产失败来自旧版 challenge 误判，本地也已修复并通过 dry-run。BandwagonHost 本地已增加官方镜像回退，SaltyFish 与 RackNerd 已增加 Playwright 回退并通过即时官网 dry-run。这些改动均等待合入和部署；当前仍无法取得可验证官方库存信号的是 VMISS 与 VMRack。
-
-断路器会在连续失败后暂停 5 分钟，并在半开状态做单次恢复探测；日志中的高失败计数是 Redis 中跨重启保留的连续失败次数，并不表示暂停逻辑失效。
-
-上述快照来自尚未应用新白名单的生产版本。白名单部署后，Clouvider、LiteServer、Crunchbits、ServaRICA、Evoxt、Alwyzon、Onidel、TierHive、Gullo's、WebHorizon、ZgoCloud 将停止调度外部库存检查。
+DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost、V.PS、SaltyFish、RackNerd 和 VMRack 已在生产持续成功。断路器在连续失败后暂停 5 分钟，并在半开状态做单次恢复探测；Redis 中的高失败计数会跨 Worker 重启保留，不代表暂停逻辑失效。
 
 ## 下一步
 
 ### P0
 
-- [ ] 审核并提交 21 家监控白名单、20 家 active seed 与 affiliate 更新。
-- [ ] 审核并部署 `bcbc2e6..b60476c` 到生产环境。
-- [ ] 部署后确认仅 20 家已有 adapter 处于 active，非白名单 provider 不再执行外部检查。
+- [x] 审核并提交 21 家监控白名单、20 家 active seed 与 affiliate 更新。
+- [x] 部署白名单、Playwright Worker、7 个 migration 与自动 seed 到生产环境。
+- [x] 确认仅 20 家已有 adapter 处于 active，Worker 只保留 20 个 provider scheduler。
 - [ ] 完成连续 24 小时稳定性观察，并记录容器重启、内存趋势和队列积压。
 - [ ] 完成 48 小时误报率统计，目标低于 5%。
 
@@ -114,8 +110,11 @@ SpartanHost 的上述 403 来自生产旧版本使用的官网营销页；本地
 - [x] 修复 V.PS adapter：区分正常订单页内嵌的 Turnstile 与真实 challenge，并完成官网 dry-run。
 - [x] 修复 BandwagonHost adapter：主域失败时串行回退官方镜像，并保持主域商品订单链接。
 - [x] 为 SaltyFish、RackNerd 引入 worker 专用的串行 Playwright 回退，并完成 fixture 与即时官网 dry-run。
+- [x] 为 DMIT 增加官方定价页 `403` 后的单页 Playwright 回退，并在生产容器完成即时 dry-run。
+- [ ] 为 LightLayer 替换失效的 PoorVPS 缓存入口，改用可验证的官方库存信号并补 fixture/dry-run。
+- [ ] 为 VMISS 寻找可验证的官方库存入口；无法绕过托管验证时继续失败关闭。
 - [ ] 实现 HighEndNetwork adapter，并完成 fixture、dry-run 和启用验收；前置条件是官方提供稳定 API/白名单入口，或受支持浏览器可正常通过托管验证。
-- [ ] 为白名单内现有失败 adapter 修复可验证的官方库存入口；不再扩展白名单外 provider。
+- [ ] 为白名单内其余失败 adapter 修复可验证的官方库存入口；不再扩展白名单外 provider。
 - [ ] 部署前完成 Playwright 回退的 24 小时 dry-run，确认资源占用、失败率与库存信号稳定。
 - [ ] 手工验收 Telegram Bot `/start`、`/subscribe` 和 provider 过滤完整流程。
 - [ ] 根据真实流量决定缓存层和查询性能调优策略。
