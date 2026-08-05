@@ -1,7 +1,7 @@
 # VPSKnow Stock 项目状态报告
 
-> 更新时间：2026-08-06 03:39 (UTC+8)
-> 本地分支：`main` (`1efea71`)
+> 更新时间：2026-08-06 03:42 (UTC+8)
+> 本地分支：`main` (`4d96743`)
 > 生产版本：`main` (`055d690`)
 
 ---
@@ -79,7 +79,7 @@
 - SaltyFish 已增加 HTTP `403` 后的串行 Playwright 回退；6 个官方 WHMCS 分类官网 dry-run 共解析 19 个商品，当前全部售罄，0 warning。
 - RackNerd 已从过期的按机房分类切换到官网当前 8 个 VPS/Dedicated 分类，并增加 HTTP 失败后的单次串行 Playwright 回退；官网 dry-run 共解析 59 个商品，当前 51 个有货，0 warning。
 - 修复后再次重跑全部 20 家：18 家成功；剩余失败仅为 VMISS（14/14 官方分类均返回 Cloudflare `403` challenge）和 VMRack（官方边缘节点重置连接）。两者均保持失败关闭，不推断库存；全程未写数据库、未发 Telegram。
-- Prisma schema 与 production Compose 配置校验通过；本次 migration 尚未在本地 PostgreSQL 实际执行。
+- Prisma schema 与 production Compose 配置校验通过。全部 6 个 migration 与当前 seed 已在隔离 PostgreSQL 17 容器实际执行：32 家 provider 中正好 20 家 active，HighEndNetwork 保持 inactive，32 条 affiliate link 均完成写入；临时容器已删除。
 - Playwright `worker-runtime` 已在 Docker Desktop 29.6.2 上实际构建：镜像以 `pwuser`（UID 1001）运行，Chromium 151 可启动并渲染页面。容器内官网 dry-run 再次解析 SaltyFish 19 个商品、RackNerd 59 个商品，库存结果与宿主机一致且均为 0 warning。
 
 ## 已知运行限制
