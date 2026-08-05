@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BandwagonHostAdapter } from '../bandwagonhost.js';
 import { BuyVMAdapter } from '../buyvm.js';
 import { DmitAdapter } from '../dmit.js';
@@ -183,6 +183,48 @@ describe('provider adapters', () => {
     expect(results[1]).toMatchObject({
       productId: 'gc-102',
       inStock: false,
+    });
+  });
+
+  it('preserves GreenCloudVPS source units and optional VPS specifications', () => {
+    const results = new GreenCloudVPSAdapter().parse(
+      `
+        <div class="product" id="product2305">
+          <span id="product2305-name">CN Premium Optimized Plan Mini (Singapore)</span>
+          <span class="qty">10 Available</span>
+          <ul class="product-desc">
+            <li><span class="feature-value">2GB</span> RAM</li>
+            <li><span class="feature-value">20GB NVMe RAID-10</span> Hard drive</li>
+            <li><span class="feature-value">1 core @ EPYC Milan</span> CPU</li>
+            <li><span class="feature-value">1</span> IPv4</li>
+            <li><span class="feature-value">/64</span> IPv6</li>
+            <li><span class="feature-value">500GB</span> Bandwidth</li>
+            <li><span class="feature-value">500Mbps</span> Port</li>
+            <li><span class="feature-value">Linux</span> OS</li>
+            <li><span class="feature-value">Singapore Premium Line</span> Location</li>
+            <li><span class="feature-value">Virtfusion</span> Control Panel</li>
+            <li><span class="feature-value">Daily Backups</span> Backup/Snapshot</li>
+            <li><span class="feature-value">No refund/Money back on this plan.</span> Note</li>
+          </ul>
+          <div class="product-pricing">$25.00 USD Monthly</div>
+          <a class="btn-order-now" href="/billing/cart.php?a=add&amp;pid=2305">Order</a>
+        </div>
+      `,
+      'vps',
+    );
+
+    expect(results[0]).toMatchObject({
+      productId: 'gc-2305',
+      bandwidthTb: 0.488,
+      storageGb: 20,
+      storageType: 'NVMe',
+      displaySpecs: {
+        storage: '20GB NVMe RAID-10',
+        bandwidth: '500GB',
+        port: '500Mbps',
+        remark:
+          'OS: Linux; Control Panel: Virtfusion; Backup/Snapshot: Daily Backups; Note: No refund/Money back on this plan.',
+      },
     });
   });
 
@@ -461,10 +503,78 @@ describe('provider adapters', () => {
     };
     const results = new DediRockAdapter().parse(fixture('dedirock.html'), category);
 
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]).toHaveProperty('provider', 'dedirock');
-    expect(results[0]).toHaveProperty('planName');
-    expect(results[0]).toHaveProperty('inStock');
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'dedirock',
+      productId: 'dedirock-301',
+      planName: 'DediRock VPS 2G',
+      category: 'vps',
+      ramMb: 2048,
+      storageGb: 20,
+      storageType: 'NVMe',
+      inStock: true,
+      orderUrl: 'https://billing.dedirock.com/cart.php?a=add&pid=301',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'dedirock-302',
+      inStock: false,
+      orderUrl: category.url,
+    });
+  });
+
+  it('parses DediRock storage VPS units without losing MB RAM or TB storage', () => {
+    const category = {
+      slug: 'vps-storage',
+      location: 'United States',
+      url: 'https://billing.dedirock.com/index.php?rp=/store/vps-storage',
+    };
+    const results = new DediRockAdapter().parse(
+      `
+        <div class="product" id="product57">
+          <div id="57-name">Storage Starter</div>
+          <div class="product-desc">
+            512 MB RAM / 1x vCPU core / 1 TB Space / 1 TB Bandwidth
+          </div>
+          <div class="qty">3 Available</div>
+          <div class="product-pricing"><span class="price">3.99</span> USD Monthly</div>
+          <a class="btn-order-now" href="/cart.php?a=add&pid=57">Order Now</a>
+        </div>
+      `,
+      category,
+    );
+
+    expect(results[0]).toMatchObject({
+      productId: 'dedirock-57',
+      ramMb: 512,
+      storageGb: 1024,
+      storageType: 'Storage',
+      orderUrl: 'https://billing.dedirock.com/cart.php?a=add&pid=57',
+    });
+  });
+
+  it('checks every current public DediRock VPS catalog', async () => {
+    const fetchMock = vi.fn(
+      async (_url: string) => new Response(fixture('dedirock.html'), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const results = await new DediRockAdapter().check();
+
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+        'https://billing.dedirock.com/index.php?rp=/store/kvm-vps-hosting',
+        'https://billing.dedirock.com/index.php?rp=/store/buffalo-kvm-vps',
+        'https://billing.dedirock.com/index.php?rp=/store/promo-performance',
+        'https://billing.dedirock.com/index.php?rp=/store/promo-storage-new-york',
+        'https://billing.dedirock.com/index.php?rp=/store/promo-vps-los-angeles',
+        'https://billing.dedirock.com/index.php?rp=/store/promo-vp',
+        'https://billing.dedirock.com/index.php?rp=/store/the-i9-dream',
+        'https://billing.dedirock.com/index.php?rp=/store/vps-storage',
+      ]);
+      expect(results).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('parses Onidel product availability', () => {

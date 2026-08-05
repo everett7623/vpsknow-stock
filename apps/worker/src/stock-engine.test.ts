@@ -305,7 +305,16 @@ describe('processStockResults', () => {
 
   it('creates and notifies a confirmed restock with serializable metadata', async () => {
     const logger = createLogger();
-    const inStockResult = { ...stockResult, inStock: true };
+    const inStockResult = {
+      ...stockResult,
+      inStock: true,
+      displaySpecs: {
+        storage: '20GB NVMe RAID-10',
+        bandwidth: '500GB',
+        port: '500Mbps',
+        remark: 'OS: Linux',
+      },
+    };
     databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 1));
 
     await expect(processStockResults('buyvm', [inStockResult], logger)).resolves.toEqual({
@@ -338,6 +347,12 @@ describe('processStockResults', () => {
             billingCycle: 'monthly',
             inStock: true,
             orderUrl: 'https://buyvm.net/order',
+            displaySpecs: {
+              storage: '20GB NVMe RAID-10',
+              bandwidth: '500GB',
+              port: '500Mbps',
+              remark: 'OS: Linux',
+            },
           },
         },
       },
@@ -554,14 +569,14 @@ describe('processStockResults', () => {
     };
     databaseMocks.productUpsert.mockResolvedValue(createProduct(false, 1));
 
-    await expect(
-      processStockResults('vmrack', [highest, middle, lowest], logger),
-    ).resolves.toEqual({
-      checked: 3,
-      restocked: 3,
-      soldOut: 0,
-      errors: 0,
-    });
+    await expect(processStockResults('vmrack', [highest, middle, lowest], logger)).resolves.toEqual(
+      {
+        checked: 3,
+        restocked: 3,
+        soldOut: 0,
+        errors: 0,
+      },
+    );
 
     expect(databaseMocks.stockEventCreate).toHaveBeenCalledTimes(3);
     expect(telegramMocks.formatRestockMessage).toHaveBeenCalledOnce();

@@ -1,5 +1,12 @@
 import type { BillingCycle, ProductCategory } from '@vpsknow/shared';
 
+export interface StockDisplaySpecs {
+  storage?: string;
+  bandwidth?: string;
+  port?: string;
+  remark?: string;
+}
+
 export interface StockResult {
   provider: string;
   productId: string;
@@ -18,6 +25,7 @@ export interface StockResult {
   billingCycle: BillingCycle;
   inStock: boolean;
   orderUrl: string;
+  displaySpecs?: StockDisplaySpecs;
   raw?: unknown;
 }
 

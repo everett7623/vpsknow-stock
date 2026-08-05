@@ -17,7 +17,10 @@ function messageTags(values: readonly string[]): string {
   const tags = values
     .map(hashtag)
     .filter((tag): tag is string => tag !== null)
-    .filter((tag, index, all) => all.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index);
+    .filter(
+      (tag, index, all) =>
+        all.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index,
+    );
   return tags.join(' ');
 }
 
@@ -27,6 +30,29 @@ function singleLocationTag(locations: string): string | null {
     return null;
   }
   return value;
+}
+
+function formatRam(ramMb: number): string {
+  return ramMb >= 1024 ? `${(ramMb / 1024).toFixed(0)} GB` : `${ramMb} MB`;
+}
+
+function formatSpecificationLines(result: StockResult, price: string): string[] {
+  const display = result.displaySpecs;
+  const rows: Array<readonly [string, string]> = [
+    ['CPU', result.cpu],
+    ['RAM', formatRam(result.ramMb)],
+    ['Storage', display?.storage ?? `${result.storageGb} GB ${result.storageType}`.trim()],
+    ['Bandwidth', display?.bandwidth ?? `${result.bandwidthTb} TB`],
+    ...(display?.port ? [['Port', display.port] as const] : []),
+    ['IPv4', result.ipv4 ? 'Yes' : 'No'],
+    ['IPv6', result.ipv6 ? 'Yes' : 'No'],
+    ...(display?.remark ? [['Remark', display.remark] as const] : []),
+    ['Price', price],
+  ];
+
+  return rows.map(
+    ([label, value], index) => `${index === rows.length - 1 ? '└' : '├'} ${label}: ${value}`,
+  );
 }
 
 /**
@@ -50,6 +76,7 @@ export function formatRestockMessage(
   }
   const detectedAtText = detectedAt.toISOString().replace('T', ' ').slice(0, 19);
   const tags = messageTags(['Restock', result.provider, result.location, result.category]);
+  const specificationLines = formatSpecificationLines(result, price);
 
   return [
     `🟢 RESTOCK · ${result.provider.toUpperCase()}`,
@@ -58,13 +85,7 @@ export function formatRestockMessage(
     `💻 Plan: ${result.planName}`,
     '',
     '⚙️ Specifications',
-    `├ CPU: ${result.cpu}`,
-    `├ RAM: ${result.ramMb >= 1024 ? `${(result.ramMb / 1024).toFixed(0)} GB` : `${result.ramMb} MB`}`,
-    `├ Storage: ${result.storageGb} GB ${result.storageType}`,
-    `├ Bandwidth: ${result.bandwidthTb} TB`,
-    `├ IPv4: ${result.ipv4 ? 'Yes' : 'No'}`,
-    `├ IPv6: ${result.ipv6 ? 'Yes' : 'No'}`,
-    `└ Price: ${price}`,
+    ...specificationLines,
     '',
     `⏱ Detected: ${detectedAtText} UTC`,
     `🔗 Order: ${orderLink}`,

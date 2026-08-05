@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { BillingCycle } from '@vpsknow/shared';
+import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface Category {
@@ -10,13 +11,77 @@ interface Category {
 
 const PORTAL = 'https://billing.dedirock.com';
 const CATEGORIES: readonly Category[] = [
-  { slug: 'vps-us', location: 'Los Angeles', url: `${PORTAL}/index.php?rp=/store/us-vps` },
-  { slug: 'vps-eu', location: 'Frankfurt', url: `${PORTAL}/index.php?rp=/store/eu-vps` },
+  {
+    slug: 'kvm-vps-hosting',
+    location: 'Los Angeles',
+    url: `${PORTAL}/index.php?rp=/store/kvm-vps-hosting`,
+  },
+  {
+    slug: 'buffalo-kvm-vps',
+    location: 'Buffalo, New York',
+    url: `${PORTAL}/index.php?rp=/store/buffalo-kvm-vps`,
+  },
+  {
+    slug: 'promo-performance',
+    location: 'Buffalo, New York',
+    url: `${PORTAL}/index.php?rp=/store/promo-performance`,
+  },
+  {
+    slug: 'promo-storage-new-york',
+    location: 'Buffalo, New York',
+    url: `${PORTAL}/index.php?rp=/store/promo-storage-new-york`,
+  },
+  {
+    slug: 'promo-vps-los-angeles',
+    location: 'Los Angeles',
+    url: `${PORTAL}/index.php?rp=/store/promo-vps-los-angeles`,
+  },
+  {
+    slug: 'promo-vp',
+    location: 'Buffalo, New York',
+    url: `${PORTAL}/index.php?rp=/store/promo-vp`,
+  },
+  {
+    slug: 'the-i9-dream',
+    location: 'Buffalo, New York',
+    url: `${PORTAL}/index.php?rp=/store/the-i9-dream`,
+  },
+  {
+    slug: 'vps-storage',
+    location: 'United States',
+    url: `${PORTAL}/index.php?rp=/store/vps-storage`,
+  },
 ] as const;
 
 function numberFrom(text: string, pattern: RegExp): number {
   const match = text.match(pattern);
   return match ? Number.parseFloat(match[1]!) : 0;
+}
+
+function parseRamMb(description: string): number {
+  const ramMb = numberFrom(description, /(\d+(?:\.\d+)?)\s*MB\s+RAM/i);
+  if (ramMb > 0) return Math.round(ramMb);
+
+  return Math.round(numberFrom(description, /(\d+(?:\.\d+)?)\s*GB\s+RAM/i) * 1024);
+}
+
+function parseStorageGb(description: string): number {
+  const storageTb = numberFrom(
+    description,
+    /(\d+(?:\.\d+)?)\s*TB\s+(?:NVMe|SSD|HDD|Space|Storage)/i,
+  );
+  if (storageTb > 0) return Math.round(storageTb * 1024);
+
+  return Math.round(
+    numberFrom(description, /(\d+(?:\.\d+)?)\s*GB\s+(?:NVMe|SSD|HDD|Space|Storage)/i),
+  );
+}
+
+function parseStorageType(description: string): string {
+  if (/\bNVMe\b/i.test(description)) return 'NVMe';
+  if (/\bSSD\b/i.test(description)) return 'SSD';
+  if (/\bHDD\b/i.test(description)) return 'HDD';
+  return 'Storage';
 }
 
 function parseBillingCycle(text: string): BillingCycle {
@@ -37,16 +102,7 @@ export class DediRockAdapter implements ProviderAdapter {
     const seen = new Set<string>();
 
     for (const category of CATEGORIES) {
-      const response = await fetch(category.url, {
-        headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`DediRock HTTP ${response.status} for ${category.slug}`);
-
-      const html = await response.text();
-      if (/cf-chl-|captcha|just a moment/i.test(html)) {
-        throw new Error(`DediRock returned a challenge page for ${category.slug}`);
-      }
+      const html = await fetchProviderHtml(this.name, category.url);
 
       for (const result of this.parse(html, category)) {
         if (!seen.has(result.productId)) {
@@ -80,8 +136,6 @@ export class DediRockAdapter implements ProviderAdapter {
 
       const pricing = card.find('.product-pricing').text().replace(/\s+/g, ' ').trim();
       const priceText = card.find('.product-pricing .price').first().text();
-      const ramGb = numberFrom(description, /(\d+(?:\.\d+)?)\s*GB\s+RAM/i);
-      const storageGb = numberFrom(description, /(\d+(?:\.\d+)?)\s*GB\s+(?:NVMe|SSD|HDD)/i);
       const cores = Math.round(numberFrom(description, /(\d+(?:\.\d+)?)x?\s*(?:vCPU|vCores?|Cores?)/i));
       const bwTb = numberFrom(description, /(\d+(?:\.\d+)?)\s*TB\s+(?:BW|Bandwidth|Transfer)/i);
 
@@ -90,11 +144,11 @@ export class DediRockAdapter implements ProviderAdapter {
         productId: `dedirock-${numericId}`,
         planName,
         location: category.location,
-        category: /dedi|dedicated/i.test(planName) ? 'dedicated' : 'vps',
+        category: /\bdedicated\b/i.test(planName) ? 'dedicated' : 'vps',
         cpu: cores > 0 ? `${cores} vCPU${cores === 1 ? '' : 's'}` : 'Unknown',
-        ramMb: Math.round(ramGb * 1024),
-        storageGb: Math.round(storageGb),
-        storageType: /\bNVMe\b/i.test(description) ? 'NVMe' : 'SSD',
+        ramMb: parseRamMb(description),
+        storageGb: parseStorageGb(description),
+        storageType: parseStorageType(description),
         bandwidthTb: bwTb,
         ipv4: true,
         ipv6: /ipv6/i.test(description),

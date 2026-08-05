@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { ProviderAdapter, StockResult } from "../types.js";
+import type { ProviderAdapter, StockDisplaySpecs, StockResult } from "../types.js";
 import type { BillingCycle, ProductCategory } from "@vpsknow/shared";
 
 const CATEGORIES: { slug: string; url: string; category: ProductCategory }[] = [
@@ -50,6 +50,27 @@ function storageType(value: string): string {
   if (value.match(/SSD/i)) return "SSD";
   if (value.match(/HDD|SATA/i)) return "HDD";
   return "Unknown";
+}
+
+function displaySpecs(features: Record<string, string>): StockDisplaySpecs | undefined {
+  const remark = [
+    ["OS", features["os"]],
+    ["Control Panel", features["control panel"]],
+    ["Backup/Snapshot", features["backup/snapshot"]],
+    ["Note", features["note"]],
+  ]
+    .filter((entry): entry is [string, string] => Boolean(entry[1]))
+    .map(([label, value]) => `${label}: ${value}`)
+    .join("; ");
+
+  const specs: StockDisplaySpecs = {
+    storage: features["hard drive"] || features["storage"],
+    bandwidth: features["bandwidth"],
+    port: features["port"],
+    remark: remark || undefined,
+  };
+
+  return Object.values(specs).some(Boolean) ? specs : undefined;
 }
 
 export class GreenCloudVPSAdapter implements ProviderAdapter {
@@ -149,6 +170,7 @@ export class GreenCloudVPSAdapter implements ProviderAdapter {
         billingCycle,
         inStock,
         orderUrl: orderHref ? new URL(orderHref, "https://greencloudvps.com").href : "https://greencloudvps.com/billing/store/",
+        displaySpecs: displaySpecs(features),
       });
     });
 

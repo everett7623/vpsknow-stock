@@ -34,11 +34,54 @@ describe('Telegram message formatters', () => {
 
     expect(message).toContain('🔗 Order: https://stock.vpsknow.com/go/buyvm-slice-1024-lv');
     expect(message).toContain('⚙️ Specifications');
+    expect(message).toContain('├ Storage: 20 GB SSD');
+    expect(message).toContain('├ Bandwidth: 1 TB');
     expect(message).toContain('├ IPv4: Yes');
     expect(message).toContain('├ IPv6: Yes');
+    expect(message).not.toContain('├ Port:');
     expect(message).toContain('⏱ Detected: 2026-08-04 05:28:00 UTC');
     expect(message).toContain('#Restock #BuyVM #Las_Vegas #vps');
     expect(message.endsWith(footer)).toBe(true);
+  });
+
+  it('formats optional VPS specifications with provider source units', () => {
+    const message = formatRestockMessage(
+      {
+        ...stockResult,
+        provider: 'greencloudvps',
+        productId: 'gc-2305',
+        planName: 'CN Premium Optimized Plan Mini (Singapore)',
+        location: 'Singapore Premium Line (CN2GIA/CU PREMIUM/CMI)',
+        cpu: '1 core @ EPYC Milan',
+        ramMb: 2048,
+        storageGb: 20,
+        storageType: 'NVMe',
+        bandwidthTb: 0.488,
+        price: 2500,
+        displaySpecs: {
+          storage: '20GB NVMe RAID-10',
+          bandwidth: '500GB',
+          port: '500Mbps',
+          remark:
+            'OS: Linux; Control Panel: Virtfusion; Backup/Snapshot: Daily Backups; Note: No refund/Money back on this plan.',
+        },
+      },
+      'https://stock.vpsknow.com/go/greencloudvps-gc-2305',
+      new Date('2026-08-05T06:51:15.000Z'),
+    );
+
+    expect(message).toContain('├ Storage: 20GB NVMe RAID-10');
+    expect(message).toContain('├ Bandwidth: 500GB');
+    expect(message).toContain('├ Port: 500Mbps');
+    expect(message).not.toContain('├ OS:');
+    expect(message).not.toContain('├ Control Panel:');
+    expect(message).not.toContain('├ Backup/Snapshot:');
+    expect(message).not.toContain('├ Note:');
+    expect(message).toContain(
+      '├ Remark: OS: Linux; Control Panel: Virtfusion; Backup/Snapshot: Daily Backups; Note: No refund/Money back on this plan.',
+    );
+    expect(message).toContain('└ Price: $25.00/mo');
+    expect(message).not.toContain('0.488 TB');
   });
 
   it('formats offers with only the original LowEndTalk URL and the common footer', () => {

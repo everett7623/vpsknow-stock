@@ -41,10 +41,7 @@ function vmrackNotificationGroupKey(result: StockResult): string | null {
   ].join('|');
 }
 
-function restockNotificationProductIds(
-  providerSlug: string,
-  results: StockResult[],
-): Set<string> {
+function restockNotificationProductIds(providerSlug: string, results: StockResult[]): Set<string> {
   const selected = new Set(results.map((result) => result.productId));
   if (providerSlug !== 'vmrack') return selected;
 
@@ -77,6 +74,15 @@ function restockNotificationProductIds(
 }
 
 function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
+  const displaySpecs = result.displaySpecs
+    ? {
+        ...(result.displaySpecs.storage ? { storage: result.displaySpecs.storage } : {}),
+        ...(result.displaySpecs.bandwidth ? { bandwidth: result.displaySpecs.bandwidth } : {}),
+        ...(result.displaySpecs.port ? { port: result.displaySpecs.port } : {}),
+        ...(result.displaySpecs.remark ? { remark: result.displaySpecs.remark } : {}),
+      }
+    : null;
+
   return {
     result: {
       provider: result.provider,
@@ -96,6 +102,7 @@ function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
       billingCycle: result.billingCycle,
       inStock: result.inStock,
       orderUrl: result.orderUrl,
+      ...(displaySpecs ? { displaySpecs } : {}),
     },
   };
 }
@@ -255,7 +262,12 @@ export async function processStockResults(
             });
 
             if (notificationProductIds.has(result.productId)) {
-              const delivered = await deliverRestockNotification(event.id, result, shortUrl, logger);
+              const delivered = await deliverRestockNotification(
+                event.id,
+                result,
+                shortUrl,
+                logger,
+              );
               if (!delivered) summary.errors++;
 
               await notifyRestockSubscribers(result, shortUrl, logger);
