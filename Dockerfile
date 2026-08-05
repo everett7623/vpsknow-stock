@@ -10,6 +10,8 @@ COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @vpsknow/database db:generate
+# Prisma is generated on Alpine, but the Playwright worker runtime is Ubuntu.
+RUN find /app/node_modules -name 'libquery_engine-debian-openssl-3.0.x.so.node' -print -quit | grep -q .
 RUN pnpm --filter @vpsknow/worker... build
 RUN pnpm --filter @vpsknow/bot... build
 RUN pnpm --filter @vpsknow/web build
