@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { getAffiliateUrl, getProviders, type ProviderWithProducts } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'VPS Stock Monitor',
   description: 'Browse monitored VPS providers and live plan availability.',

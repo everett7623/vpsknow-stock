@@ -1,10 +1,13 @@
 import Link from 'next/link';
+import { allowedOfferSourceUrl } from '@vpsknow/shared';
 import {
   getAffiliateUrl,
   getOfferFilterOptions,
   getOffers,
   type OfferFilters,
 } from '@/lib/data';
+
+export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -168,7 +171,12 @@ export default async function OffersPage({
                   <span className="text-gray-500">{formatPostedAt(offer.postedAt)}</span>
                   <div className="flex gap-3">
                     {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}
-                    {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white">Source</a>}
+                    {(() => {
+                      const sourceUrl = allowedOfferSourceUrl(offer.threadUrl);
+                      return sourceUrl ? (
+                        <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white">Source</a>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
               </article>

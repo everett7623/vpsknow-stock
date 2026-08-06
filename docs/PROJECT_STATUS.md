@@ -1,8 +1,8 @@
 # VPSKnow Stock 项目状态报告
 
-> 更新时间：2026-08-06 11:30 (UTC+8)
-> 代码基线：`main` (`105b53f`) + 本地未部署改动（站点左右布局、TG 净化、Bot 20 家同步、BestVM/VMRack aff）
-> 生产环境：`stock.vpsknow.com` → `209.50.227.204`（hostdzire）；站点/Bot/通知净化改动待部署
+> 更新时间：2026-08-06 12:25 (UTC+8)
+> 代码基线：`main`（部署中 / 含 force-dynamic 与 Source 白名单修复）
+> 生产环境：`stock.vpsknow.com` → `209.50.227.204`（hostdzire）；DB 20 active / 1119 products / worker healthy
 
 ---
 

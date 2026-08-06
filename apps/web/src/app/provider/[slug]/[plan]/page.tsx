@@ -5,6 +5,8 @@ import { getAffiliateUrl, getProductDetail } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { PriceHistory } from './price-history';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   params,
 }: {

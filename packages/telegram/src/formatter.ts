@@ -1,4 +1,5 @@
 import type { StockResult } from '@vpsknow/providers';
+import { allowedOfferSourceUrl } from '@vpsknow/shared';
 
 const MESSAGE_FOOTER = [
   '🌐 stock.vpsknow.com',
@@ -108,7 +109,7 @@ export function formatOfferMessage(opts: {
   billing: string;
   postedAt: string;
   couponCode: string | null;
-  /** Forum / discussion source URL (always shown) */
+  /** Forum Source URL — only LowEndTalk / LowEndBox / LowEndSpirit are shown */
   originalUrl: string;
   /** Merchant order URL when the post includes one */
   orderUrl?: string | null;
@@ -121,6 +122,7 @@ export function formatOfferMessage(opts: {
     ...(locationTag ? [locationTag] : []),
   ]);
   const orderUrl = opts.orderUrl?.trim() || null;
+  const sourceUrl = allowedOfferSourceUrl(opts.originalUrl);
 
   return [
     `🔥 NEW OFFER · ${opts.provider}`,
@@ -134,10 +136,11 @@ export function formatOfferMessage(opts: {
     `🕒 Posted: ${opts.postedAt}`,
     '',
     ...(orderUrl ? [`🔗 Order: ${orderUrl}`] : []),
-    `🔗 Source: ${opts.originalUrl}`,
+    ...(sourceUrl ? [`🔗 Source: ${sourceUrl}`] : []),
     '',
     tags,
     '',
     ...MESSAGE_FOOTER,
   ].join('\n');
 }
+

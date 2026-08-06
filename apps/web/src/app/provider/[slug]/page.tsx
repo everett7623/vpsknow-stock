@@ -4,6 +4,8 @@ import type { Metadata } from 'next';
 import { getAffiliateUrl, getProviderBySlug } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   params,
 }: {

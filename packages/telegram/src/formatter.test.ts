@@ -134,6 +134,25 @@ describe('Telegram message formatters', () => {
     expect(message.endsWith(footer)).toBe(true);
   });
 
+  it('omits Source for non-approved forum hosts', () => {
+    const message = formatOfferMessage({
+      provider: 'ExampleHost',
+      title: 'ExampleHost VPS Flash Sale',
+      locations: 'Los Angeles',
+      price: '$12.00',
+      category: 'VPS',
+      billing: 'year',
+      postedAt: '2026-08-04',
+      couponCode: null,
+      originalUrl: 'https://poorvps.com/deal/123',
+      orderUrl: 'https://example.com/order',
+    });
+
+    expect(message).toContain('🔗 Order: https://example.com/order');
+    expect(message).not.toContain('🔗 Source:');
+    expect(message).not.toContain('poorvps');
+  });
+
   it('limits multi-location offers to event, provider, and category tags', () => {
     const message = formatOfferMessage({
       provider: 'JUST.HOSTING',

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Offer } from '@vpsknow/database';
+import { allowedOfferSourceUrl } from '@vpsknow/shared';
 import {
   getAffiliateUrl,
   getLatestRestocks,
@@ -11,6 +12,8 @@ import {
   type StockEventWithProduct,
 } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
 
 function EventCard({ event, badge }: { event: StockEventWithProduct; badge: string }) {
   return (
@@ -51,6 +54,7 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
 }
 
 function OfferCard({ offer }: { offer: Offer }) {
+  const sourceUrl = allowedOfferSourceUrl(offer.threadUrl);
   return (
     <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
       <div className="flex items-center justify-between gap-3">
@@ -71,8 +75,8 @@ function OfferCard({ offer }: { offer: Offer }) {
             Order
           </a>
         )}
-        {offer.threadUrl && (
-          <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">
+        {sourceUrl && (
+          <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">
             Source
           </a>
         )}
