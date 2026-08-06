@@ -33,20 +33,11 @@ export const metadata: Metadata = {
     siteName: 'VPSKnow Stock',
     title: 'VPSKnow Stock — VPS Restock Alerts',
     description: 'Real-time VPS restock monitoring and curated offer aggregation.',
-    images: [
-      {
-        url: '/brand/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'VPSKnow Stock — Restock Alerts, Live Stock, Offers',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'VPSKnow Stock — VPS Restock Alerts',
     description: 'Real-time VPS restock monitoring and curated offer aggregation.',
-    images: ['/brand/og-image.jpg'],
   },
 };
 
