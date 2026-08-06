@@ -185,9 +185,9 @@ function isVirtualServer(product: CatalogProduct): boolean {
   return /^Core\s*:/im.test(product.description);
 }
 
-function hasOfficialSource(product: CatalogProduct, productId: string): boolean {
+function hasOfficialSourceUrl(sourceUrl: string, productId: string): boolean {
   try {
-    const url = new URL(product.sourceUrl);
+    const url = new URL(sourceUrl);
     return (
       url.protocol === 'https:' &&
       url.hostname === 'account.lightlayer.net' &&
@@ -200,12 +200,34 @@ function hasOfficialSource(product: CatalogProduct, productId: string): boolean 
   }
 }
 
+function isOfficialCatalog(catalog: Record<string, unknown>): boolean {
+  const products = Object.entries(catalog).filter(([productId]) => /^\d+$/.test(productId));
+  return (
+    products.length > 0 &&
+    products.every(([productId, value]) => {
+      if (!isRecord(value)) return false;
+      const sourceUrl = stringValue(value.url);
+      const stockStatus = stringValue(value.stock_status)?.toLowerCase();
+      return (
+        sourceUrl !== null &&
+        (stockStatus === 'in stock' || stockStatus === 'out of stock') &&
+        hasOfficialSourceUrl(sourceUrl, productId)
+      );
+    })
+  );
+}
+
 export class LightLayerAdapter implements ProviderAdapter {
   readonly slug = 'lightlayer';
   readonly name = 'LightLayer';
 
   async check(): Promise<StockResult[]> {
-    const catalog = await fetchDiscoveredPoorVpsCatalog(this.name, CATALOG_PAGE_URL, CATALOG_NAME);
+    const catalog = await fetchDiscoveredPoorVpsCatalog(
+      this.name,
+      CATALOG_PAGE_URL,
+      CATALOG_NAME,
+      isOfficialCatalog,
+    );
     const results = this.parse(catalog);
     if (results.length === 0) throw new Error('LightLayer returned no parseable VPS products');
     return results;
@@ -217,7 +239,13 @@ export class LightLayerAdapter implements ProviderAdapter {
     for (const [productId, value] of Object.entries(catalog)) {
       if (!/^\d+$/.test(productId)) continue;
       const product = parseCatalogProduct(value);
-      if (!product || !isVirtualServer(product) || !hasOfficialSource(product, productId)) continue;
+      if (
+        !product ||
+        !isVirtualServer(product) ||
+        !hasOfficialSourceUrl(product.sourceUrl, productId)
+      ) {
+        continue;
+      }
 
       const normalizedStatus = product.stockStatus.toLowerCase();
       if (normalizedStatus !== 'in stock' && normalizedStatus !== 'out of stock') continue;

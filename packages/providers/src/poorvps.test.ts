@@ -7,6 +7,8 @@ import {
 
 const ENCRYPTED_FIXTURE =
   'U2FsdGVkX18xMjM0NTY3OMntQCOYWOBFtway80/I5lSXjoqL6fWYurZ5MlNWaXZBruaDxkehxNMhld3MP4MN1A==';
+const OTHER_CATALOG_FIXTURE =
+  'U2FsdGVkX184NzY1NDMyMbaeqq6zBO9Ikld3jNMY4waSVHpouLpIb+2JWwby1faN';
 
 describe('PoorVPS catalog decoder', () => {
   afterEach(() => {
@@ -81,7 +83,43 @@ describe('PoorVPS catalog decoder', () => {
 
     await expect(
       fetchDiscoveredPoorVpsCatalog('LightLayer', 'https://lightlayer.cn/', 'lightlayer.json'),
-    ).rejects.toThrow('LightLayer PoorVPS discovery could not decrypt lightlayer.json');
+    ).rejects.toThrow(
+      'LightLayer PoorVPS discovery could not decrypt and validate lightlayer.json',
+    );
+  });
+
+  it('selects the validated catalog when its file mapping is obfuscated', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
+      const url = input instanceof Request ? input.url : input.toString();
+      if (url === 'https://lightlayer.cn/?obfuscated-test=1') {
+        return new Response(
+          '<script src="https://cdn.poorvps.com/assets/config.js"></script>',
+        );
+      }
+      if (url === 'https://cdn.poorvps.com/assets/config.js') {
+        return new Response(
+          'const files={"lightlayer.json":e(394)};const values=[`cache-other.txt`,`cache-current.txt`,`test-password`];',
+        );
+      }
+      if (url === 'https://cdn.poorvps.com/data/cache-other.txt') {
+        return new Response(OTHER_CATALOG_FIXTURE);
+      }
+      if (url === 'https://cdn.poorvps.com/data/cache-current.txt') {
+        return new Response(ENCRYPTED_FIXTURE);
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      fetchDiscoveredPoorVpsCatalog(
+        'LightLayer',
+        'https://lightlayer.cn/?obfuscated-test=1',
+        'lightlayer.json',
+        (catalog) => catalog['102'] !== undefined,
+      ),
+    ).resolves.toEqual({ '102': { title: 'LA-VP03' } });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it('rediscovers the catalog after a cached data URL fails', async () => {

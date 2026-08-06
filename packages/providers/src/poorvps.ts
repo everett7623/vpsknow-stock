@@ -8,6 +8,7 @@ const POORVPS_CDN_HOST = 'cdn.poorvps.com';
 const MAX_ASSET_COUNT = 20;
 const MAX_BUNDLE_LENGTH = 2_000_000;
 const MAX_PASSWORD_CANDIDATES = 2_048;
+const MAX_CATALOG_CANDIDATES = 32;
 const DISCOVERY_TTL_MS = 60 * 60 * 1000;
 
 interface DiscoveredCatalogSource {
@@ -107,11 +108,18 @@ function extractAssetUrls(html: string, pageUrl: string): string[] {
   return [...urls].slice(0, MAX_ASSET_COUNT);
 }
 
-function extractCatalogFile(bundle: string, catalogName: string): string | null {
+function extractCatalogFiles(bundle: string, catalogName: string): string[] {
   const pattern = new RegExp(
     `["'\`]${escapeRegExp(catalogName)}["'\`]\\s*:\\s*["'\`](cache-[A-Za-z0-9_-]+\\.txt)["'\`]`,
   );
-  return bundle.match(pattern)?.[1] ?? null;
+  const directFile = bundle.match(pattern)?.[1];
+  if (directFile) return [directFile];
+  if (!bundle.includes(catalogName)) return [];
+
+  return [...new Set(bundle.match(/cache-[A-Za-z0-9_-]+\.txt/g) ?? [])].slice(
+    0,
+    MAX_CATALOG_CANDIDATES,
+  );
 }
 
 function extractPasswordCandidates(bundle: string): string[] {
@@ -148,6 +156,7 @@ export async function fetchDiscoveredPoorVpsCatalog(
   provider: string,
   pageUrl: string,
   catalogName: string,
+  validateCatalog: (catalog: Record<string, unknown>) => boolean = () => true,
 ): Promise<Record<string, unknown>> {
   const cacheKey = `${pageUrl}\u0000${catalogName}`;
   const cachedSource = discoveredSources.get(cacheKey);
@@ -159,7 +168,9 @@ export async function fetchDiscoveredPoorVpsCatalog(
         pageUrl,
         'text/plain,*/*',
       );
-      return decodePoorVpsCatalog(encryptedPayload, cachedSource.password);
+      const catalog = decodePoorVpsCatalog(encryptedPayload, cachedSource.password);
+      if (!validateCatalog(catalog)) throw new Error('Cached catalog failed validation');
+      return catalog;
     } catch {
       discoveredSources.delete(cacheKey);
     }
@@ -173,7 +184,7 @@ export async function fetchDiscoveredPoorVpsCatalog(
     throw new Error(`${provider} PoorVPS discovery found no trusted JavaScript assets`);
   }
 
-  let dataUrl: string | null = null;
+  const dataUrls = new Set<string>();
   const passwordCandidates = new Set<string>();
 
   for (const assetUrl of assetUrls) {
@@ -195,29 +206,40 @@ export async function fetchDiscoveredPoorVpsCatalog(
       passwordCandidates.add(candidate);
     }
 
-    const catalogFile = extractCatalogFile(bundle, catalogName);
-    if (catalogFile) dataUrl = new URL(`/data/${catalogFile}`, assetUrl).href;
+    for (const catalogFile of extractCatalogFiles(bundle, catalogName)) {
+      if (dataUrls.size >= MAX_CATALOG_CANDIDATES) break;
+      dataUrls.add(new URL(`/data/${catalogFile}`, assetUrl).href);
+    }
   }
 
-  if (!dataUrl) {
+  if (dataUrls.size === 0) {
     throw new Error(`${provider} PoorVPS discovery did not publish ${catalogName}`);
   }
   if (passwordCandidates.size === 0) {
     throw new Error(`${provider} PoorVPS discovery found no decryption candidates`);
   }
 
-  const encryptedPayload = await fetchPublicText(provider, dataUrl, pageUrl, 'text/plain,*/*');
-  for (const password of passwordCandidates) {
+  for (const dataUrl of dataUrls) {
+    let encryptedPayload: string;
     try {
-      const catalog = decodePoorVpsCatalog(encryptedPayload, password);
-      discoveredSources.set(cacheKey, { dataUrl, password, discoveredAt: Date.now() });
-      return catalog;
+      encryptedPayload = await fetchPublicText(provider, dataUrl, pageUrl, 'text/plain,*/*');
     } catch {
-      // Public bundles contain many string literals; only one decrypts the current payload.
+      continue;
+    }
+
+    for (const password of passwordCandidates) {
+      try {
+        const catalog = decodePoorVpsCatalog(encryptedPayload, password);
+        if (!validateCatalog(catalog)) continue;
+        discoveredSources.set(cacheKey, { dataUrl, password, discoveredAt: Date.now() });
+        return catalog;
+      } catch {
+        // Public bundles contain many string literals; only one decrypts the current payload.
+      }
     }
   }
 
-  throw new Error(`${provider} PoorVPS discovery could not decrypt ${catalogName}`);
+  throw new Error(`${provider} PoorVPS discovery could not decrypt and validate ${catalogName}`);
 }
 
 export function clearPoorVpsDiscoveryCache(): void {
