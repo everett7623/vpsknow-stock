@@ -8,6 +8,7 @@ interface SubscriptionStatus {
   mutedUntil: Date | null;
 }
 
+/** Must stay aligned with seed ACTIVE_PROVIDER_SLUGS / worker PROVIDER_INTERVALS. */
 export const PROVIDERS = [
   ['bandwagonhost', 'BandwagonHost'],
   ['dmit', 'DMIT'],
@@ -17,6 +18,18 @@ export const PROVIDERS = [
   ['vmiss', 'VMISS'],
   ['vps', 'V.PS'],
   ['saltyfish', 'SaltyFish'],
+  ['racknerd', 'RackNerd'],
+  ['dedirock', 'DediRock'],
+  ['bagevm', 'BageVM'],
+  ['vmrack', 'VMRack'],
+  ['gomami', 'GoMami'],
+  ['colocrossing', 'ColoCrossing'],
+  ['chicagovps', 'ChicagoVPS'],
+  ['lightlayer', 'LightLayer'],
+  ['speedypage', 'SpeedyPage'],
+  ['bestvm', 'BestVM'],
+  ['neburst', 'Neburst'],
+  ['hncloud', 'HNCloud'],
 ] as const;
 
 export const REGIONS = [

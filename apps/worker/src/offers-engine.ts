@@ -243,11 +243,11 @@ async function pushOffer(
   notifySubscribers = false,
 ): Promise<boolean> {
   if (offer.pushed) return false;
-  const originalUrl = originalOfferUrl(offer);
-  const sourceLabel = SOURCE_BY_ID.get(offer.source as DiscoveredOfferSource)?.label ?? 'Offer';
+  // Validate the discovery thread URL for integrity, but never surface forum/source hosts in Telegram.
+  originalOfferUrl(offer);
 
   const message = formatOfferMessage({
-    provider: offer.provider || sourceLabel,
+    provider: offer.provider?.trim() || 'Unknown',
     title: offer.title,
     locations: offer.locations.join(', ') || 'Not specified',
     price: priceSummary(offer),
@@ -255,7 +255,7 @@ async function pushOffer(
     billing: billingSummary(offer.billingCycle),
     postedAt: offer.postedAt?.toISOString().slice(0, 10) || 'Unknown',
     couponCode: offer.couponCode,
-    originalUrl,
+    orderUrl: offer.orderUrl,
   });
   let channelPushed = false;
   let channelError: unknown;

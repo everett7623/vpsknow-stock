@@ -17,38 +17,44 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
     <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
       <div className="mb-2 flex items-center gap-2">
         <span className="rounded bg-gray-800 px-2 py-1 text-xs text-gray-300">{badge}</span>
-        <span className="text-xs text-gray-500">{event.product.provider.name}</span>
+        <Link
+          href={`/providers?p=${event.product.provider.slug}`}
+          className="text-xs text-gray-500 hover:text-emerald-300"
+        >
+          {event.product.provider.name}
+        </Link>
       </div>
       <h3 className="font-semibold text-white">{event.product.planName}</h3>
       <p className="text-sm text-gray-400">
         {event.product.location} - {formatPrice(event.product)}
       </p>
-      {event.product.orderUrl && (
-        <a
-          href={getAffiliateUrl(event.product.orderUrl)}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block text-sm text-emerald-400 hover:text-emerald-300"
+      <div className="mt-2 flex gap-3 text-sm">
+        {event.product.orderUrl && (
+          <a
+            href={getAffiliateUrl(event.product.orderUrl)}
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-400 hover:text-emerald-300"
+          >
+            Order
+          </a>
+        )}
+        <Link
+          href={`/providers?p=${event.product.provider.slug}`}
+          className="text-gray-400 hover:text-white"
         >
-          Order
-        </a>
-      )}
+          Monitor
+        </Link>
+      </div>
     </article>
   );
 }
 
 function OfferCard({ offer }: { offer: Offer }) {
-  const sourceLabels: Record<string, string> = {
-    lowendtalk: 'LowEndTalk',
-    lowendbox: 'LowEndBox',
-    lowendspirit: 'LowEndSpirit',
-  };
-  const sourceLabel = sourceLabels[offer.source] || 'Offer';
-
   return (
     <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-gray-500">{offer.provider || sourceLabel}</span>
+        <span className="text-xs text-gray-500">{offer.provider || 'Offer'}</span>
         {offer.isLimitedStock && (
           <span className="rounded bg-orange-950 px-2 py-1 text-xs text-orange-300">LIMITED</span>
         )}
@@ -63,11 +69,6 @@ function OfferCard({ offer }: { offer: Offer }) {
         {offer.orderUrl && (
           <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">
             Order
-          </a>
-        )}
-        {offer.threadUrl && (
-          <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">
-            Source
           </a>
         )}
       </div>
@@ -107,14 +108,14 @@ export default async function HomePage() {
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="text-xl font-semibold text-white">Provider Status</h2>
             <Link href="/providers" className="text-sm text-emerald-400 hover:text-emerald-300">
-              View all
+              Stock monitor
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {providers.map((provider) => (
               <Link
                 key={provider.id}
-                href={`/provider/${provider.slug}`}
+                href={`/providers?p=${provider.slug}`}
                 className="group rounded-lg border border-gray-800 bg-[#12121a] p-4 transition-colors hover:border-gray-600"
               >
                 <div className="mb-2 flex items-baseline justify-between">

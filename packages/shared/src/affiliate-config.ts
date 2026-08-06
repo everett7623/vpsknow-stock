@@ -145,8 +145,9 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
   bestvm: {
     provider: 'bestvm',
     affId: '225',
-    urlTemplate: 'https://bestvm.cloud/aff.php?aff={affId}',
-    supportsPid: false,
+    urlTemplate: 'https://bestvm.cloud/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
     originalUrl: 'https://bestvm.cloud/aff.php?aff=225',
   },
 
@@ -280,7 +281,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
       parameter: 'ref_code',
       allowedOrigin: 'https://www.vmrack.net',
     },
-    originalUrl: 'https://www.vmrack.net?ref_code=5YrpHKG16xf',
+    originalUrl: 'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf',
   },
 
   gomami: {

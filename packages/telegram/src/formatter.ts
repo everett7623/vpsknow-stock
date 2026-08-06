@@ -1,6 +1,9 @@
 import type { StockResult } from '@vpsknow/providers';
 
-const MESSAGE_FOOTER = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'];
+const MESSAGE_FOOTER = [
+  '🌐 stock.vpsknow.com',
+  '📢 @vpsknow_offers | 🤖 @vpsknow_stock_bot',
+];
 
 function hashtag(value: string): string | null {
   const normalized = value
@@ -105,7 +108,8 @@ export function formatOfferMessage(opts: {
   billing: string;
   postedAt: string;
   couponCode: string | null;
-  originalUrl: string;
+  /** Merchant order / affiliate CTA only — never a forum or competitor source URL */
+  orderUrl?: string | null;
 }): string {
   const locationTag = singleLocationTag(opts.locations);
   const tags = messageTags([
@@ -114,6 +118,7 @@ export function formatOfferMessage(opts: {
     opts.category,
     ...(locationTag ? [locationTag] : []),
   ]);
+  const orderUrl = opts.orderUrl?.trim() || null;
 
   return [
     `🔥 NEW OFFER · ${opts.provider}`,
@@ -125,8 +130,7 @@ export function formatOfferMessage(opts: {
     `🖥 Type: ${opts.category}`,
     ...(opts.couponCode ? [`🎟 Coupon: ${opts.couponCode}`] : []),
     `🕒 Posted: ${opts.postedAt}`,
-    '',
-    `🔗 View offer: ${opts.originalUrl}`,
+    ...(orderUrl ? ['', `🔗 Order: ${orderUrl}`] : []),
     '',
     tags,
     '',

@@ -797,6 +797,13 @@ describe('product affiliate mapping', () => {
       '116',
       'https://my.speedypage.com/aff.php?aff=405&pid=116',
     ],
+    [
+      'bestvm',
+      'bestvm-374',
+      'https://bestvm.cloud/store/jp-b/2t',
+      '374',
+      'https://bestvm.cloud/aff.php?aff=225&pid=374',
+    ],
   ])('maps %s to its verified product PID', (provider, productId, orderUrl, pid, expected) => {
     const extracted = extractWhmcsPid(provider, orderUrl, productId);
 

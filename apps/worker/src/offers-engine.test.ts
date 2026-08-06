@@ -353,15 +353,16 @@ describe('discoverLetOffers', () => {
     });
     expect(sendMessage).toHaveBeenCalledWith(
       '@vpsknow_offers',
-      expect.stringContaining(`🔗 View offer: ${discussion.url}`),
+      expect.stringContaining('🔗 Order: https://example.com/order'),
       { disableWebPagePreview: true },
     );
     const message = sendMessage.mock.calls[0]?.[1];
-    expect(message).not.toContain('🔗 Order:');
-    expect(message).not.toContain('https://example.com/order');
+    expect(message).not.toContain('View offer');
+    expect(message).not.toContain(discussion.url);
+    expect(message).not.toContain('lowendtalk.com');
     expect(message).not.toContain('go.uukk.de');
-    expect(message).toContain('🌐 vpsknow.com');
-    expect(message).toContain('💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot');
+    expect(message).toContain('🌐 stock.vpsknow.com');
+    expect(message).toContain('📢 @vpsknow_offers | 🤖 @vpsknow_stock_bot');
     expect(databaseMocks.telegramMessageCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ channelId: '@vpsknow_offers', messageId: 1001 }),
     });

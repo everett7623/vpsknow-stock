@@ -46,39 +46,64 @@ function filterKeyboard(
     .text('Done', `${prefix}:done`);
 }
 
-bot.command('start', (ctx) =>
-  ctx.reply([
-    'Welcome to VPSKnow Stock Bot! 🖥️',
+function subscribePrompt() {
+  const keyboard = new InlineKeyboard()
+    .text('Restocks + Offers', 'events:both').row()
+    .text('Restocks only', 'events:restock')
+    .text('Offers only', 'events:offers');
+
+  return {
+    text: 'Choose which alerts you want. This initial subscription includes all providers, regions, and categories.',
+    reply_markup: keyboard,
+  };
+}
+
+bot.command('start', async (ctx) => {
+  const payload = ctx.match?.trim().toLowerCase() ?? '';
+  if (payload === 'subscribe') {
+    const prompt = subscribePrompt();
+    await ctx.reply(prompt.text, { reply_markup: prompt.reply_markup });
+    return;
+  }
+
+  await ctx.reply([
+    'Welcome to VPSKnow Stock Bot!',
     '',
     'Get personalized VPS restock and curated offer alerts.',
     '',
     '/subscribe — Set up alerts',
     '/providers — See monitored providers',
     '/status — View your subscription',
+    '/settings — Shortcut to subscription status',
     '/help — Show all commands',
-  ].join('\n')),
-);
+  ].join('\n'));
+});
 
 bot.command('providers', (ctx) =>
   ctx.reply([
-    '📋 Currently monitored providers:',
+    'Currently monitored providers:',
     '',
     ...PROVIDERS.map(([, name], index) => `${index + 1}. ${name}`),
     '',
-    'Netcup is offers-only and is not monitored for stock.',
+    `Total: ${PROVIDERS.length} providers.`,
   ].join('\n')),
 );
 
 bot.command('subscribe', (ctx) => {
-  const keyboard = new InlineKeyboard()
-    .text('Restocks + Offers', 'events:both').row()
-    .text('Restocks only', 'events:restock')
-    .text('Offers only', 'events:offers');
+  const prompt = subscribePrompt();
+  return ctx.reply(prompt.text, { reply_markup: prompt.reply_markup });
+});
 
-  return ctx.reply(
-    'Choose which alerts you want. This initial subscription includes all providers, regions, and categories.',
-    { reply_markup: keyboard },
-  );
+bot.command('settings', async (ctx) => {
+  if (!ctx.from) return;
+  const subscription = await prisma.subscription.findUnique({
+    where: { telegramUserId: BigInt(ctx.from.id) },
+  });
+  await ctx.reply([
+    formatSubscriptionStatus(subscription),
+    '',
+    'Adjust filters with /subscribe, /regions, /categories, /maxprice.',
+  ].join('\n'));
 });
 
 bot.callbackQuery(/^events:(both|restock|offers)$/, async (ctx) => {
@@ -306,6 +331,7 @@ bot.command('help', (ctx) =>
     '/categories — Choose product categories',
     '/maxprice [amount|off] — Set or clear maximum USD price',
     '/status — Show subscription filters',
+    '/settings — Alias for /status with filter tips',
     '/mute [hours] — Pause alerts (default: 8 hours)',
     '/unmute — Resume alerts',
     '/unsubscribe — Disable your subscription',

@@ -98,6 +98,20 @@ docker compose -f docker-compose.production.yml down
 Do not remove the named volumes unless the PostgreSQL and Redis data is
 backed up first.
 
+## Cold standby migration
+
+Keep daily Postgres dumps off the application VPS. To move to a replacement host:
+
+1. Provision a new VPS and install Docker Engine + Compose
+2. Clone this repository and copy the production `.env`
+3. Restore the latest dump with `RESTORE_CONFIRM=YES ./scripts/restore-postgres.sh …`
+4. Start the stack with `docker compose -f docker-compose.production.yml up -d --build`
+5. Point `stock.vpsknow.com` at the new IP after `./scripts/verify-production.sh` passes
+
+Do not run Worker/Bot on both hosts at the same time or Telegram alerts will duplicate.
+A same-provider panel snapshot is useful for emergency rollback on that provider, but
+cross-provider migration should use Compose + database restore, not a full disk image.
+
 ## Database backups
 
 Create a compressed PostgreSQL backup and checksum:

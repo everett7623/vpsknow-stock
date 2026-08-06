@@ -523,7 +523,7 @@ async function main() {
     { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com', shortUrl: 'https://go.uukk.de/tierhive' },
     { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://gullos.com', shortUrl: 'https://go.uukk.de/gullos' },
     { providerId: webhorizon.id, slug: 'webhorizon', targetUrl: 'https://webhorizon.in', shortUrl: 'https://go.uukk.de/webhorizon' },
-    { providerId: vmrack.id, slug: 'vmrack', targetUrl: 'https://www.vmrack.net?ref_code=5YrpHKG16xf', shortUrl: 'https://go.uukk.de/vmrack' },
+    { providerId: vmrack.id, slug: 'vmrack', targetUrl: 'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf', shortUrl: 'https://go.uukk.de/vmrack' },
     { providerId: gomami.id, slug: 'gomami', targetUrl: 'https://gomami.io/aff.php?aff=209', shortUrl: 'https://go.uukk.de/gomami' },
     { providerId: zgocloud.id, slug: 'zgocloud', targetUrl: 'https://clients.zgovps.com/?affid=488', shortUrl: 'https://go.uukk.de/zgovps' },
     { providerId: colocrossing.id, slug: 'colocrossing', targetUrl: 'https://cloud.colocrossing.com/aff.php?aff=467', shortUrl: 'https://go.uukk.de/ccs' },

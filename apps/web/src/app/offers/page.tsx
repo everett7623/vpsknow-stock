@@ -47,15 +47,6 @@ function label(value: string): string {
   return value.replace(/[-_]/g, ' ');
 }
 
-function sourceLabel(source: string): string {
-  const labels: Record<string, string> = {
-    lowendtalk: 'LowEndTalk',
-    lowendbox: 'LowEndBox',
-    lowendspirit: 'LowEndSpirit',
-  };
-  return labels[source] || 'Offer';
-}
-
 export default async function OffersPage({
   searchParams,
 }: {
@@ -72,14 +63,11 @@ export default async function OffersPage({
   return (
     <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
       <div className="mx-auto max-w-6xl space-y-8">
-        <header className="space-y-4">
-          <Link href="/" className="text-sm text-gray-400 transition-colors hover:text-white">
-            VPSKnow Stock
-          </Link>
+        <header className="space-y-2">
           <div>
             <p className="text-sm font-medium text-orange-400">CURATED VPS DEALS</p>
             <h1 className="mt-1 text-3xl font-bold text-white">Latest VPS Offers</h1>
-            <p className="mt-2 text-gray-400">Offers from LowEndTalk, LowEndBox, and LowEndSpirit.</p>
+            <p className="mt-2 text-gray-400">Curated VPS deals with pricing, locations, and order links.</p>
           </div>
         </header>
 
@@ -155,11 +143,11 @@ export default async function OffersPage({
             {offers.map((offer) => (
               <article key={offer.id} className="border border-gray-800 bg-[#12121a] p-5">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-gray-400">{offer.provider || sourceLabel(offer.source)}</span>
+                  <span className="text-xs font-medium text-gray-400">{offer.provider || 'Offer'}</span>
                   {offer.isLimitedStock && <span className="bg-orange-950 px-2 py-1 text-xs font-medium text-orange-300">LIMITED</span>}
                 </div>
                 <h2 className="text-lg font-semibold text-white">{offer.title}</h2>
-                <p className="mt-2 line-clamp-3 text-sm text-gray-400">{offer.body || 'Offer details available in the discussion.'}</p>
+                <p className="mt-2 line-clamp-3 text-sm text-gray-400">{offer.body || 'Offer details available after opening the order link.'}</p>
                 <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-800 pt-4 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-gray-500">Price</p>
@@ -180,7 +168,6 @@ export default async function OffersPage({
                   <span className="text-gray-500">{formatPostedAt(offer.postedAt)}</span>
                   <div className="flex gap-3">
                     {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}
-                    {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white">Source</a>}
                   </div>
                 </div>
               </article>

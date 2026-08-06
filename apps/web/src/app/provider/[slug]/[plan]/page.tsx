@@ -77,9 +77,9 @@ export default async function ProductDetailPage({
       />
       <div className="mx-auto max-w-4xl space-y-8">
         <nav className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
-          <Link href="/providers" className="hover:text-white">Providers</Link>
+          <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-white">Stock</Link>
           <span>/</span>
-          <Link href={`/provider/${product.provider.slug}`} className="hover:text-white">
+          <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-white">
             {product.provider.name}
           </Link>
           <span>/</span>

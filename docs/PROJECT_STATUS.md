@@ -1,8 +1,8 @@
 # VPSKnow Stock 项目状态报告
 
-> 更新时间：2026-08-06 08:45 (UTC+8)
-> 代码基线：`main` (`66b260a`)
-> 生产 Worker：`main` (`66b260a`，容器健康；LightLayer 正常调度待最终验收)
+> 更新时间：2026-08-06 11:30 (UTC+8)
+> 代码基线：`main` (`105b53f`) + 本地未部署改动（站点左右布局、TG 净化、Bot 20 家同步、BestVM/VMRack aff）
+> 生产环境：`stock.vpsknow.com` → `209.50.227.204`（hostdzire）；站点/Bot/通知净化改动待部署
 
 ---
 
@@ -102,8 +102,13 @@ DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost
 - [x] 审核并提交 21 家监控白名单、20 家 active seed 与 affiliate 更新。
 - [x] 部署白名单、Playwright Worker、7 个 migration 与自动 seed 到生产环境。
 - [x] 确认仅 20 家已有 adapter 处于 active，Worker 只保留 20 个 provider scheduler。
+- [x] 站点补货页改为左右结构（`/providers`：左列表 / 右筛选+套餐表），并统一顶部导航。
+- [x] Telegram 通知去掉论坛 Source / 竞品来源链接，仅保留商家 Order CTA 与官方频道页脚。
+- [x] Bot 订阅列表同步到 20 家 active provider；支持 `/start subscribe` 与 `/settings`。
+- [x] 对齐 BestVM PID（whmcs-card-id）与 VMRack affiliate landing URL。
 - [ ] 完成连续 24 小时稳定性观察，并记录容器重启、内存趋势和队列积压。
 - [ ] 完成 48 小时误报率统计，目标低于 5%。
+- [ ] 将上述站点/通知/Bot/aff 改动部署到生产（需明确部署授权）。
 
 ### P1
 
@@ -126,6 +131,7 @@ DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost
 
 - [ ] Hetzner Server Auction 特殊库存监控。
 - [ ] 代理轮换与更细粒度业务指标。
+- [ ] 冷备切换演练：离机 Postgres dump → 新 VPS Compose 恢复 → DNS 切换。
 
 ---
 
