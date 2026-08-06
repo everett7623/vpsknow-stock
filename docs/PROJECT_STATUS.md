@@ -108,7 +108,9 @@ DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost
 - [x] 对齐 BestVM PID（whmcs-card-id）与 VMRack affiliate landing URL。
 - [ ] 完成连续 24 小时稳定性观察，并记录容器重启、内存趋势和队列积压。
 - [ ] 完成 48 小时误报率统计，目标低于 5%。
-- [ ] 将上述站点/通知/Bot/aff 改动部署到生产（需明确部署授权）。
+- [x] 将上述站点/通知/Bot/aff 改动部署到生产。
+- [x] 修复站点空数据：公开页在 Docker build 期静态预渲染为空；改为 `force-dynamic`。
+- [x] Offer Source 仅允许 LowEndTalk / LowEndBox / LowEndSpirit；不在前台展示竞品站名。
 
 ### P1
 
