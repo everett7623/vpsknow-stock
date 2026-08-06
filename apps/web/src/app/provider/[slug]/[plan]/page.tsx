@@ -72,42 +72,42 @@ export default async function ProductDetailPage({
   };
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
+    <main className="min-h-screen bg-background px-4 py-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
       />
       <div className="mx-auto max-w-4xl space-y-8">
-        <nav className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
-          <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-white">Stock</Link>
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-foreground">Stock</Link>
           <span>/</span>
-          <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-white">
+          <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-foreground">
             {product.provider.name}
           </Link>
           <span>/</span>
-          <span className="min-w-0 break-words text-gray-200">{product.planName}</span>
+          <span className="min-w-0 break-words text-foreground">{product.planName}</span>
         </nav>
 
-        <header className="rounded-xl border border-gray-800 bg-[#12121a] p-6">
+        <header className="rounded-xl border border-border bg-card p-6">
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
             <div>
               <div className="mb-3 flex items-center gap-3">
-                <span className={`h-2.5 w-2.5 rounded-full ${product.inStock ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                <span className={product.inStock ? 'text-emerald-400' : 'text-red-400'}>
+                <span className={`h-2.5 w-2.5 rounded-full ${product.inStock ? 'bg-stock' : 'bg-danger'}`} />
+                <span className={product.inStock ? 'text-stock' : 'text-danger'}>
                   {product.inStock ? 'In Stock' : 'Out of Stock'}
                 </span>
               </div>
-              <h1 className="break-words text-2xl font-bold text-white sm:text-3xl">{product.planName}</h1>
-              <p className="mt-2 text-gray-400">{product.location} · {product.provider.name}</p>
+              <h1 className="break-words text-2xl font-bold text-foreground sm:text-3xl">{product.planName}</h1>
+              <p className="mt-2 text-muted-foreground">{product.location} · {product.provider.name}</p>
             </div>
             <div className="sm:text-right">
-              <p className="font-mono text-2xl font-bold text-emerald-400">{formatPrice(product)}</p>
+              <p className="font-mono text-2xl font-bold text-stock">{formatPrice(product)}</p>
               {product.inStock && product.orderUrl && (
                 <a
                   href={getProductOrderUrl(product.provider.slug, product.productId)}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-block rounded-lg bg-emerald-600 px-5 py-2 font-medium text-white hover:bg-emerald-500"
+                  className="mt-3 inline-block rounded-lg bg-accent px-5 py-2 font-medium text-accent-foreground hover:bg-stock-strong"
                 >
                   Order Now
                 </a>
@@ -117,27 +117,27 @@ export default async function ProductDetailPage({
         </header>
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold text-white">Specifications</h2>
-          <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-gray-800 bg-gray-800 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 className="mb-4 text-xl font-semibold text-foreground">Specifications</h2>
+          <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-muted sm:grid-cols-2 lg:grid-cols-3">
             {specs.map(([label, value]) => (
-              <div key={label} className="bg-[#12121a] p-4">
-                <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
-                <dd className="mt-1 font-mono text-sm text-gray-200">{value}</dd>
+              <div key={label} className="bg-card p-4">
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground/80">{label}</dt>
+                <dd className="mt-1 font-mono text-sm text-foreground">{value}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-xs text-gray-500">Last checked: {formatDate(product.lastCheckedAt)}</p>
+          <p className="mt-3 text-xs text-muted-foreground/80">Last checked: {formatDate(product.lastCheckedAt)}</p>
         </section>
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold text-white">Price History</h2>
+          <h2 className="mb-4 text-xl font-semibold text-foreground">Price History</h2>
           <PriceHistory points={product.stockChecks} currency={product.currency} />
         </section>
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold text-white">Stock Timeline</h2>
+          <h2 className="mb-4 text-xl font-semibold text-foreground">Stock Timeline</h2>
           {product.stockEvents.length === 0 ? (
-            <div className="rounded-xl border border-gray-800 bg-[#12121a] p-6 text-gray-500">
+            <div className="rounded-xl border border-border bg-card p-6 text-muted-foreground/80">
               No stock transitions recorded yet.
             </div>
           ) : (
@@ -146,12 +146,12 @@ export default async function ProductDetailPage({
                 const restock = event.eventType === 'restock';
                 const manual = event.eventType === 'manual_override';
                 return (
-                  <li key={event.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-gray-800 bg-[#12121a] px-4 py-3">
-                    <span className={`h-2.5 w-2.5 rounded-full ${restock ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                    <span className={restock ? 'text-emerald-400' : manual ? 'text-amber-300' : 'text-red-400'}>
+                  <li key={event.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-card px-4 py-3">
+                    <span className={`h-2.5 w-2.5 rounded-full ${restock ? 'bg-stock' : 'bg-danger'}`} />
+                    <span className={restock ? 'text-stock' : manual ? 'text-warning' : 'text-danger'}>
                       {restock ? 'Restocked' : manual ? 'Manual Override' : 'Sold Out'}
                     </span>
-                    <time className="w-full font-mono text-xs text-gray-500 sm:ml-auto sm:w-auto">
+                    <time className="w-full font-mono text-xs text-muted-foreground/80 sm:ml-auto sm:w-auto">
                       {formatDate(event.detectedAt)}
                     </time>
                   </li>

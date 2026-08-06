@@ -18,28 +18,28 @@ export default async function AdminPage() {
   });
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
+    <main className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-7xl space-y-8">
         <header>
-          <p className="text-sm font-medium text-red-400">RESTRICTED</p>
-          <h1 className="mt-1 text-3xl font-bold text-white">Stock Administration</h1>
-          <p className="mt-2 text-gray-400">Provider health, monitoring state, and manual stock overrides.</p>
+          <p className="text-sm font-medium text-danger">RESTRICTED</p>
+          <h1 className="mt-1 text-3xl font-bold text-foreground">Stock Administration</h1>
+          <p className="mt-2 text-muted-foreground">Provider health, monitoring state, and manual stock overrides.</p>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
-            <p className="text-xs uppercase text-gray-500">Providers</p>
-            <p className="mt-1 font-mono text-2xl text-white">{providers.length}</p>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs uppercase text-muted-foreground/80">Providers</p>
+            <p className="mt-1 font-mono text-2xl text-foreground">{providers.length}</p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
-            <p className="text-xs uppercase text-gray-500">Active</p>
-            <p className="mt-1 font-mono text-2xl text-emerald-400">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs uppercase text-muted-foreground/80">Active</p>
+            <p className="mt-1 font-mono text-2xl text-stock">
               {providers.filter((provider) => provider.isActive).length}
             </p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
-            <p className="text-xs uppercase text-gray-500">Products</p>
-            <p className="mt-1 font-mono text-2xl text-white">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs uppercase text-muted-foreground/80">Products</p>
+            <p className="mt-1 font-mono text-2xl text-foreground">
               {providers.reduce((total, provider) => total + provider.products.length, 0)}
             </p>
           </div>
@@ -52,11 +52,11 @@ export default async function AdminPage() {
           }, null);
           const stale = !lastCheckedAt || Date.now() - lastCheckedAt.getTime() > 30 * 60 * 1_000;
           return (
-            <section key={provider.id} className="overflow-hidden rounded-xl border border-gray-800 bg-[#12121a]">
-              <div className="flex flex-wrap items-center gap-4 border-b border-gray-800 p-4">
+            <section key={provider.id} className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="flex flex-wrap items-center gap-4 border-b border-border p-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">{provider.name}</h2>
-                  <p className={`text-xs ${stale ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  <h2 className="text-lg font-semibold text-foreground">{provider.name}</h2>
+                  <p className={`text-xs ${stale ? 'text-amber-400' : 'text-stock'}`}>
                     {stale ? 'Stale or unchecked' : `Healthy · ${formatDate(lastCheckedAt)}`}
                   </p>
                 </div>
@@ -65,7 +65,7 @@ export default async function AdminPage() {
                   <input type="hidden" name="isActive" value={provider.isActive ? 'false' : 'true'} />
                   <button
                     type="submit"
-                    className={`rounded px-3 py-2 text-sm font-medium ${provider.isActive ? 'bg-red-950 text-red-300' : 'bg-emerald-900 text-emerald-200'}`}
+                    className={`rounded px-3 py-2 text-sm font-medium ${provider.isActive ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'}`}
                   >
                     {provider.isActive ? 'Disable monitoring' : 'Enable monitoring'}
                   </button>
@@ -73,7 +73,7 @@ export default async function AdminPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-[760px] w-full text-sm">
-                  <thead className="text-left text-xs uppercase text-gray-500">
+                  <thead className="text-left text-xs uppercase text-muted-foreground/80">
                     <tr>
                       <th className="px-4 py-3">Plan</th>
                       <th className="px-4 py-3">Location</th>
@@ -84,20 +84,20 @@ export default async function AdminPage() {
                   </thead>
                   <tbody>
                     {provider.products.map((product) => (
-                      <tr key={product.id} className="border-t border-gray-800/70">
-                        <td className="px-4 py-3 text-white">{product.planName}</td>
-                        <td className="px-4 py-3 text-gray-400">{product.location}</td>
-                        <td className={`px-4 py-3 ${product.inStock ? 'text-emerald-400' : 'text-red-400'}`}>
+                      <tr key={product.id} className="border-t border-border/70">
+                        <td className="px-4 py-3 text-foreground">{product.planName}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{product.location}</td>
+                        <td className={`px-4 py-3 ${product.inStock ? 'text-stock' : 'text-danger'}`}>
                           {product.inStock ? 'In stock' : 'Out of stock'}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground/80">
                           {formatDate(product.lastCheckedAt)}
                         </td>
                         <td className="px-4 py-3">
                           <form action={overrideProductStock}>
                             <input type="hidden" name="productId" value={product.id} />
                             <input type="hidden" name="inStock" value={product.inStock ? 'false' : 'true'} />
-                            <button type="submit" className="text-xs text-amber-300 hover:text-amber-200">
+                            <button type="submit" className="text-xs text-warning hover:text-amber-200">
                               Mark {product.inStock ? 'sold out' : 'in stock'}
                             </button>
                           </form>

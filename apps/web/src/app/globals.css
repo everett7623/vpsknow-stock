@@ -1,1 +1,81 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-stock: var(--stock);
+  --color-stock-strong: var(--stock-strong);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-purple: var(--brand-purple);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  --background: #f4f6fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #e8edf7;
+  --muted-foreground: #64748b;
+  --border: #d7dee9;
+  --input: #ffffff;
+  --ring: #10b981;
+  --accent: #059669;
+  --accent-foreground: #ffffff;
+  --stock: #059669;
+  --stock-strong: #047857;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --brand-cyan: #0891b2;
+  --brand-purple: #7c3aed;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0a0a0f;
+  --foreground: #f3f4f6;
+  --card: #12121a;
+  --card-foreground: #f3f4f6;
+  --muted: #1a1a24;
+  --muted-foreground: #9ca3af;
+  --border: #1f2937;
+  --input: #12121a;
+  --ring: #34d399;
+  --accent: #10b981;
+  --accent-foreground: #ffffff;
+  --stock: #34d399;
+  --stock-strong: #059669;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --brand-cyan: #22d3ee;
+  --brand-purple: #a78bfa;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in oklab, var(--brand-cyan) 12%, transparent), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in oklab, var(--brand-purple) 10%, transparent), transparent);
+    background-attachment: fixed;
+  }
+}
