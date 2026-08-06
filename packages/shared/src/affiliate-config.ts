@@ -32,7 +32,13 @@ export type AffiliateConfig = AffiliateConfigBase &
         productAffiliate?: {
           strategy: 'query-param';
           parameter: string;
-          allowedOrigin: string;
+          /** Order URL origins that may receive the affiliate query param */
+          allowedOrigins: readonly string[];
+          /**
+           * When the order URL origin is not allowed, fall back to the provider
+           * affiliate landing URL so attribution is not dropped entirely.
+           */
+          fallbackToLanding?: boolean;
         };
       }
   );
@@ -96,7 +102,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'affid',
-      allowedOrigin: 'https://vps.hosting',
+      allowedOrigins: ['https://vps.hosting'],
     },
     originalUrl: 'https://vps.hosting/?affid=723',
   },
@@ -129,7 +135,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'k',
-      allowedOrigin: 'https://www.hncloud.com',
+      allowedOrigins: ['https://www.hncloud.com'],
     },
     originalUrl: 'https://www.hncloud.com?k=7940T0',
   },
@@ -142,7 +148,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'aff',
-      allowedOrigin: 'https://neburst.com',
+      allowedOrigins: ['https://neburst.com'],
     },
     originalUrl: 'https://neburst.com/auth/sign-up/?aff=3cvoo',
   },
@@ -178,8 +184,10 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
   clouvider: {
     provider: 'clouvider',
     affId: '543',
-    urlTemplate: 'https://console.clouvider.co.uk/?affid={affId}',
-    supportsPid: false,
+    // WHMCS billing portal — product Order links use pid when available.
+    urlTemplate: 'https://client.clouvider.net/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
     originalUrl: 'https://console.clouvider.co.uk/?affid=543',
   },
 
@@ -213,6 +221,12 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     affId: '994',
     urlTemplate: 'https://console.evoxt.com/aff.php?aff={affId}',
     supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'aff',
+      allowedOrigins: ['https://console.evoxt.com', 'https://evoxt.com'],
+      fallbackToLanding: true,
+    },
     originalUrl: 'https://console.evoxt.com/aff.php?aff=994',
   },
 
@@ -238,6 +252,12 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     affId: '1572199',
     urlTemplate: 'https://onidel.com/?referral={affId}',
     supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'referral',
+      allowedOrigins: ['https://billing.onidel.com', 'https://onidel.com'],
+      fallbackToLanding: true,
+    },
     originalUrl: 'https://onidel.com/?referral=1572199',
   },
 
@@ -257,6 +277,13 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     affId: '4FB89FE7369E',
     urlTemplate: 'https://tierhive.com/r/{affId}',
     supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'ref',
+      // Marketing site uses /r/{code}; billing carts fall back to that landing.
+      allowedOrigins: ['https://tierhive.com'],
+      fallbackToLanding: true,
+    },
     originalUrl: 'https://tierhive.com/r/4FB89FE7369E',
   },
 
@@ -284,7 +311,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'ref_code',
-      allowedOrigin: 'https://www.vmrack.net',
+      allowedOrigins: ['https://www.vmrack.net'],
     },
     originalUrl: 'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf',
   },
@@ -306,7 +333,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'affid',
-      allowedOrigin: 'https://clients.zgovps.com',
+      allowedOrigins: ['https://clients.zgovps.com'],
     },
     originalUrl: 'https://clients.zgovps.com/?affid=488',
   },
@@ -337,7 +364,7 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'affid',
-      allowedOrigin: 'https://account.lightlayer.net',
+      allowedOrigins: ['https://account.lightlayer.net'],
     },
     originalUrl: 'https://account.lightlayer.net/?affid=647',
   },
@@ -424,10 +451,18 @@ export function buildProductAffiliateUrl(
   if (config.productAffiliate?.strategy === 'query-param') {
     try {
       const url = new URL(orderUrl);
-      if (url.origin !== config.productAffiliate.allowedOrigin) return orderUrl;
-      url.searchParams.set(config.productAffiliate.parameter, config.affId);
-      return url.href;
+      if (config.productAffiliate.allowedOrigins.includes(url.origin)) {
+        url.searchParams.set(config.productAffiliate.parameter, config.affId);
+        return url.href;
+      }
+      if (config.productAffiliate.fallbackToLanding && config.affId !== 'PLACEHOLDER') {
+        return generateAffiliateUrl(providerSlug);
+      }
+      return orderUrl;
     } catch {
+      if (config.productAffiliate.fallbackToLanding && config.affId !== 'PLACEHOLDER') {
+        return generateAffiliateUrl(providerSlug);
+      }
       return orderUrl;
     }
   }

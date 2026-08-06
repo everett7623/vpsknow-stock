@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  PROVIDERS,
   formatSubscriptionStatus,
   parseMaxPriceCents,
   parseMuteHours,
@@ -8,6 +9,19 @@ import {
 } from './subscriptions.js';
 
 describe('subscription helpers', () => {
+  it('exposes the full active monitoring provider set', () => {
+    const slugs = PROVIDERS.map(([slug]) => slug);
+    expect(slugs).toHaveLength(26);
+    expect(slugs).toEqual(expect.arrayContaining([
+      'clouvider',
+      'liteserver',
+      'evoxt',
+      'onidel',
+      'tierhive',
+      'zgocloud',
+      'hncloud',
+    ]));
+  });
   it('parses mute duration with an eight-hour default and safe bounds', () => {
     expect(parseMuteHours('')).toBe(8);
     expect(parseMuteHours(' 24 ')).toBe(24);

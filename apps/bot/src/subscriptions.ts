@@ -30,6 +30,12 @@ export const PROVIDERS = [
   ['bestvm', 'BestVM'],
   ['neburst', 'Neburst'],
   ['hncloud', 'HNCloud'],
+  ['clouvider', 'Clouvider'],
+  ['liteserver', 'LiteServer'],
+  ['evoxt', 'Evoxt'],
+  ['onidel', 'Onidel'],
+  ['tierhive', 'TierHive'],
+  ['zgocloud', 'ZgoCloud'],
 ] as const;
 
 export const REGIONS = [

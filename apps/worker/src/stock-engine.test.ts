@@ -866,11 +866,45 @@ describe('product affiliate mapping', () => {
     );
   });
 
-  it('keeps Evoxt on its exact deploy URL without guessing a legacy WHMCS PID', () => {
+  it('merges Evoxt affiliate into console/deploy URLs and falls back to landing otherwise', () => {
     const orderUrl = 'https://console.evoxt.com/deploy.php';
 
     expect(extractWhmcsPid('evoxt', orderUrl, 'evoxt-uk-london-vm-1')).toBeNull();
-    expect(buildProductAffiliateUrl('evoxt', orderUrl, null)).toBe(orderUrl);
+    expect(buildProductAffiliateUrl('evoxt', orderUrl, null)).toBe(
+      'https://console.evoxt.com/deploy.php?aff=994',
+    );
+    expect(buildProductAffiliateUrl('evoxt', 'https://billing.example.com/cart', null)).toBe(
+      'https://console.evoxt.com/aff.php?aff=994',
+    );
+  });
+
+  it('maps Clouvider WHMCS product IDs through the client portal aff link', () => {
+    const orderUrl = 'https://client.clouvider.net/cart.php?a=add&pid=42';
+    const extracted = extractWhmcsPid('clouvider', orderUrl, 'clouvider-42');
+
+    expect(extracted).toBe('42');
+    expect(buildProductAffiliateUrl('clouvider', orderUrl, extracted)).toBe(
+      'https://client.clouvider.net/aff.php?aff=543&pid=42',
+    );
+  });
+
+  it('merges Onidel referral into billing carts and falls back to landing otherwise', () => {
+    expect(
+      buildProductAffiliateUrl(
+        'onidel',
+        'https://billing.onidel.com/cart.php?a=add&pid=12',
+        null,
+      ),
+    ).toBe('https://billing.onidel.com/cart.php?a=add&pid=12&referral=1572199');
+    expect(buildProductAffiliateUrl('onidel', 'https://example.com/cart', null)).toBe(
+      'https://onidel.com/?referral=1572199',
+    );
+  });
+
+  it('falls TierHive billing carts back to the /r/ affiliate landing', () => {
+    expect(
+      buildProductAffiliateUrl('tierhive', 'https://billing.tierhive.com/cart.php?a=add&pid=9', null),
+    ).toBe('https://tierhive.com/r/4FB89FE7369E');
   });
 
   it('keeps affiliate links ready for approved provider expansion', () => {
