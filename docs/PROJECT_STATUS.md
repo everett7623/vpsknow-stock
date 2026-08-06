@@ -1,8 +1,8 @@
 # VPSKnow Stock 项目状态报告
 
-> 更新时间：2026-08-06 05:32 (UTC+8)
-> 代码基线：`main` (`4097059`)
-> 生产 Worker：`main` (`4097059`)
+> 更新时间：2026-08-06 08:45 (UTC+8)
+> 代码基线：`main` (`66b260a`)
+> 生产 Worker：`main` (`66b260a`，容器健康；LightLayer 正常调度待最终验收)
 
 ---
 
@@ -17,7 +17,8 @@
 
 ## 本地与 GitHub
 
-- `main` 已推送到 `origin/main`；`4097059` 包含生产迁移修复和 DMIT Playwright 回退。
+- `main` 已推送到 `origin/main`；`66b260a` 包含 LightLayer 动态目录发现、官方来源校验及混淆 bundle 兼容。
+- 常规开发交付只更新文档/代码、提交并 push；除非用户在当前任务明确要求部署，否则不得连接 VPS、运行 Docker、重建容器、重启服务或执行其他生产变更。
 - Adapter registry 保留 31 个现有 adapter；seed 保留 32 个 provider 目录记录，但 Worker 只调度用户批准且已有 adapter 的 20 家。
 - Worker 启动时会删除白名单外旧调度器，并在任务入口再次拒绝白名单外 provider；生产 Redis 中已只保留 20 个 provider scheduler。
 - 第 7 个 migration 会幂等注册 ChicagoVPS、LightLayer、SpeedyPage 及其 affiliate link；production `migrate` 服务会在 migration 成功后自动执行幂等 seed。
@@ -30,7 +31,7 @@
 
 | 项目 | 状态 |
 |------|------|
-| Git | 生产仓库 `main` 为 `4097059`，工作区干净 |
+| Git | 生产仓库 `main` 为 `66b260a`，工作区干净 |
 | 数据库备份 | `backups/postgres-20260805T194852Z.dump`，27 MiB，SHA-256 `fb3093aa...a7490` 已校验 |
 | Compose | Bot、Caddy、PostgreSQL、Redis、Web、Worker 均为 running |
 | 健康检查 | PostgreSQL、Redis、Web、Worker healthy；官方 `verify-production.sh` 通过 |
@@ -56,7 +57,7 @@
 
 2026-08-06 本地验证：
 
-- `pnpm test`：17 个测试文件，145 个测试全部通过；DMIT 浏览器回退新增 1 条回归测试。
+- `pnpm test`：17 个测试文件，150 个测试全部通过；LightLayer 新增动态发现、缓存回退、失败关闭、混淆映射与官方来源校验覆盖。
 - `pnpm typecheck`：13 个 Turbo 任务全部通过。
 - `pnpm lint`：13 个 Turbo 任务全部通过。
 - `pnpm build`：8 个 Turbo 任务全部通过，Next.js 生产构建成功。
@@ -79,7 +80,8 @@
 - Playwright `worker-runtime` 已在 Docker Desktop 29.6.2 上实际构建：镜像以 `pwuser`（UID 1001）运行，Chromium 151 可启动并渲染页面。容器内官网 dry-run 再次解析 SaltyFish 19 个商品、RackNerd 59 个商品，库存结果与宿主机一致且均为 0 warning。
 - 白名单部署后的初始 35 分钟窗口中，17 家 provider 持续完成库存检查；DMIT 回退部署后恢复为 18/20。SpartanHost 每次解析 70 个商品、V.PS 8 个、SaltyFish 19 个、RackNerd 59 个，VMRack 已在生产网络恢复并解析 3 个商品。
 - DMIT 生产直连持续返回 Cloudflare `403`，但生产 Worker 内 Playwright 可加载 14 个官方 `.plan-group`。浏览器回退已部署，宿主机与生产容器 dry-run 均解析 88 个商品、当前 78 个有货；正常调度随后连续 4 次完成 88 个商品检查且 0 错误。
-- LightLayer 使用的 PoorVPS 公共缓存 URL 已返回 `404`，adapter 保持失败关闭；需改为可验证的官方库存入口后才能恢复有效监控。
+- LightLayer 已从硬编码缓存 URL/口令改为读取 `lightlayer.cn` 公共页面并动态发现 CDN 目录；直接映射优先，混淆映射仅在受限候选集中逐个解密，并要求目录内全部商品 URL 为 `account.lightlayer.net`、商品 ID 一致且 `stock_status` 明确，否则整轮失败关闭。发现结果缓存 1 小时，缓存 404/解密失败会自动重新发现。
+- LightLayer 本地实时 dry-run 解析 58 个 VPS（54 有货、4 售罄）；针对生产网络返回的混淆配置 bundle，独立端到端验证得到 148 条原始目录记录（143 有货、5 售罄），全部通过官方域名与商品 ID 校验。首版 `8bd34ad` 在生产正常调度中因地域 bundle 使用 `e(index)` 映射而失败关闭，`66b260a` 已补兼容并保持 Worker 健康，但按用户要求停止生产操作前尚未取得新版本正常 scheduler 的最终成功记录。
 - 生产 New Offer 调度持续完成 LowEndBox 与 LowEndSpirit 两个 RSS 来源，最近轮次均无新条目；LowEndTalk 详情请求仍返回 `403`，但不会阻断另外两个来源。
 
 ## 已知运行限制
@@ -87,7 +89,7 @@
 生产只调度 20 家 approved provider；当前剩余限制集中在以下来源：
 
 - VMISS：14/14 官方分类均返回 Cloudflare `403` challenge，保持失败关闭，不推断库存。
-- LightLayer：PoorVPS 公共缓存入口已 `404`；当前没有可重复验证的官方目录库存源，保持失败关闭。
+- LightLayer：动态目录发现与生产地域 bundle 兼容已实现；当前剩余事项仅为记录 `66b260a` 正常 scheduler 的首次成功结果。验收前任何发现、解密或官方来源校验失败仍会整轮失败关闭。
 - LowEndTalk：Offer 详情请求持续 `403`；LowEndBox 与 LowEndSpirit 独立运行，不受该来源失败影响。
 - HighEndNetwork：四个官方 store 分类均停留在 Cloudflare 托管验证页，因此 provider 保持 inactive。
 
@@ -111,7 +113,8 @@ DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost
 - [x] 修复 BandwagonHost adapter：主域失败时串行回退官方镜像，并保持主域商品订单链接。
 - [x] 为 SaltyFish、RackNerd 引入 worker 专用的串行 Playwright 回退，并完成 fixture 与即时官网 dry-run。
 - [x] 为 DMIT 增加官方定价页 `403` 后的单页 Playwright 回退，并在生产容器完成即时 dry-run。
-- [ ] 为 LightLayer 替换失效的 PoorVPS 缓存入口，改用可验证的官方库存信号并补 fixture/dry-run。
+- [x] 为 LightLayer 替换失效的硬编码 PoorVPS 缓存入口，实现动态发现、官方 URL/商品 ID/状态校验、缓存失效重发现、fixture 与实时 dry-run。
+- [ ] 在不人工触发队列、不绕过 stock engine 的前提下，记录 `66b260a` 后 LightLayer 首次正常 scheduler 成功结果并确认失败计数自动清零。
 - [ ] 为 VMISS 寻找可验证的官方库存入口；无法绕过托管验证时继续失败关闭。
 - [ ] 实现 HighEndNetwork adapter，并完成 fixture、dry-run 和启用验收；前置条件是官方提供稳定 API/白名单入口，或受支持浏览器可正常通过托管验证。
 - [ ] 为白名单内其余失败 adapter 修复可验证的官方库存入口；不再扩展白名单外 provider。

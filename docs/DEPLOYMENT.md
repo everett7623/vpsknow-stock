@@ -12,6 +12,17 @@ Telegram Bot -> Bot
 PostgreSQL and Redis are not published to the VPS host. Only Caddy exposes
 ports `80` and `443`.
 
+## Deployment authorization
+
+Routine development ends after the requested documentation/code changes are committed and
+pushed to `main`. A request to continue development, update documentation, commit, or push does
+not authorize a production deployment.
+
+Do not connect to the VPS, run Docker, pull production code, rebuild containers, restart
+services, or otherwise change production unless the user explicitly requests deployment in the
+current task. Local Docker is also not required for routine code/documentation updates unless a
+specific validation step needs it and the user has asked for that validation.
+
 ## Requirements
 
 - A Linux VPS with Docker Engine and the Compose plugin
@@ -65,6 +76,9 @@ dependencies, and the public Web database health endpoint. A real Telegram
 message to a test chat remains a manual deployment acceptance step.
 
 ## Updates
+
+Run the following production commands only after an explicit deployment request. They are
+operational references, not automatic follow-up steps after pushing `main`.
 
 ```bash
 git pull --ff-only
