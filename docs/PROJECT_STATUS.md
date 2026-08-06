@@ -106,6 +106,7 @@ DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost
 - [x] Telegram 通知去掉论坛 Source / 竞品来源链接，仅保留商家 Order CTA 与官方频道页脚。
 - [x] Bot 订阅列表同步到 20 家 active provider；支持 `/start subscribe` 与 `/settings`。
 - [x] 对齐 BestVM PID（whmcs-card-id）与 VMRack affiliate landing URL。
+- [x] 站点 Order 统一为 `https://stock.vpsknow.com/go/{provider}-{productId}`，不再使用 `go.uukk.de`。
 - [ ] 完成连续 24 小时稳定性观察，并记录容器重启、内存趋势和队列积压。
 - [ ] 完成 48 小时误报率统计，目标低于 5%。
 - [x] 将上述站点/通知/Bot/aff 改动部署到生产。
@@ -121,8 +122,8 @@ DMIT 的直连 `403` 已通过单页串行 Playwright 回退处理；SpartanHost
 - [x] 为 SaltyFish、RackNerd 引入 worker 专用的串行 Playwright 回退，并完成 fixture 与即时官网 dry-run。
 - [x] 为 DMIT 增加官方定价页 `403` 后的单页 Playwright 回退，并在生产容器完成即时 dry-run。
 - [x] 为 LightLayer 替换失效的硬编码 PoorVPS 缓存入口，实现动态发现、官方 URL/商品 ID/状态校验、缓存失效重发现、fixture 与实时 dry-run。
-- [ ] 在不人工触发队列、不绕过 stock engine 的前提下，记录 `66b260a` 后 LightLayer 首次正常 scheduler 成功结果并确认失败计数自动清零。
-- [ ] 为 VMISS 寻找可验证的官方库存入口；无法绕过托管验证时继续失败关闭。
+- [x] 生产记录 LightLayer 正常 scheduler：解析 58 个商品、持续成功、失败计数可清零。
+- [ ] 为 VMISS 增加 HTTP `403` 后的串行 Playwright 回退（与 SaltyFish 同类），部署后验收。
 - [ ] 实现 HighEndNetwork adapter，并完成 fixture、dry-run 和启用验收；前置条件是官方提供稳定 API/白名单入口，或受支持浏览器可正常通过托管验证。
 - [ ] 为白名单内其余失败 adapter 修复可验证的官方库存入口；不再扩展白名单外 provider。
 - [ ] 部署前完成 Playwright 回退的 24 小时 dry-run，确认资源占用、失败率与库存信号稳定。

@@ -404,6 +404,33 @@ describe('provider adapters', () => {
     });
   });
 
+  it('falls back to one sequential browser session for VMISS categories', async () => {
+    const fetchHtml = vi.fn(async (): Promise<string> => {
+      throw new Error('HTTP 403');
+    });
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[], _readySelector: string) => (
+        urls.map((url) => ({
+          url,
+          ok: true as const,
+          html: fixture('vmiss.html'),
+        }))
+      ),
+    );
+    const adapter = new VmissAdapter(fetchHtml, fetchBrowserPages);
+    const results = await adapter.check();
+
+    expect(fetchHtml).toHaveBeenCalled();
+    expect(fetchBrowserPages).toHaveBeenCalledTimes(1);
+    expect(fetchBrowserPages.mock.calls[0]?.[0]).toBe('VMISS');
+    expect(fetchBrowserPages.mock.calls[0]?.[1]?.[0]).toBe(
+      'https://app.vmiss.com/store/cn-hong-kong-bgp?language=english',
+    );
+    expect(fetchBrowserPages.mock.calls[0]?.[2]).toBe('.product');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.provider).toBe('vmiss');
+  });
+
   it('parses V.PS HostBill products and out-of-stock class', () => {
     const results = new VpsAdapter().parse(fixture('vps.html'), 'Singapore');
 

@@ -1,5 +1,9 @@
 import * as cheerio from 'cheerio';
 import type { BillingCycle } from '@vpsknow/shared';
+import {
+  fetchProviderPagesWithBrowser,
+  type BrowserPageResult,
+} from '../browser.js';
 import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
@@ -25,6 +29,13 @@ const CATEGORIES: readonly Category[] = [
   { slug: 'la-cmin2', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cmin2' },
   { slug: 'la-cn2-gia', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cn2' },
 ] as const;
+
+type FetchHtml = (provider: string, url: string) => Promise<string>;
+type FetchBrowserPages = (
+  provider: string,
+  urls: readonly string[],
+  readySelector: string,
+) => Promise<BrowserPageResult[]>;
 
 function parseNumber(text: string, pattern: RegExp): number {
   const match = text.match(pattern);
@@ -56,25 +67,83 @@ function idFrom(cardId: string, href: string, categorySlug: string, planName: st
   return `vmiss-${base.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 }
 
+function englishUrl(category: Category): string {
+  return `${category.url}?language=english`;
+}
+
 export class VmissAdapter implements ProviderAdapter {
   readonly slug = 'vmiss';
   readonly name = 'VMISS';
   warnings: readonly string[] = [];
 
+  constructor(
+    private readonly fetchHtml: FetchHtml = fetchProviderHtml,
+    private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
+  ) {}
+
   async check(): Promise<StockResult[]> {
+    this.warnings = [];
+
+    const direct = await this.checkDirect();
+    if (direct.results.length > 0) {
+      this.warnings = direct.failures;
+      return direct.results;
+    }
+
+    const pages = await this.fetchBrowserPages(
+      this.name,
+      CATEGORIES.map(englishUrl),
+      '.product',
+    );
     const results: StockResult[] = [];
     const seen = new Set<string>();
     const failures: string[] = [];
-    let successfulCategories = 0;
-    this.warnings = [];
+
+    for (const [index, page] of pages.entries()) {
+      const category = CATEGORIES[index];
+      if (!category) continue;
+      if (!page.ok) {
+        failures.push(`${category.slug}: ${page.error}`);
+        continue;
+      }
+
+      const parsed = this.parse(page.html, { ...category, url: englishUrl(category) });
+      if (parsed.length === 0) {
+        failures.push(`${category.slug}: no parseable products`);
+        continue;
+      }
+
+      for (const result of parsed) {
+        const key = `${result.productId}:${result.location}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push(result);
+        }
+      }
+    }
+
+    if (results.length === 0) {
+      throw new Error(
+        `VMISS returned no parseable products; direct HTTP: ${direct.failures.slice(0, 3).join('; ') || 'all categories failed'}; `
+        + `browser: ${failures.slice(0, 3).join('; ') || 'no successful categories'}`,
+      );
+    }
+
+    this.warnings = failures;
+    return results;
+  }
+
+  private async checkDirect(): Promise<{ results: StockResult[]; failures: string[] }> {
+    const results: StockResult[] = [];
+    const seen = new Set<string>();
+    const failures: string[] = [];
 
     for (const category of CATEGORIES) {
       try {
-        const url = `${category.url}?language=english`;
-        const html = await fetchProviderHtml(this.name, url);
+        const url = englishUrl(category);
+        const html = await this.fetchHtml(this.name, url);
         const parsed = this.parse(html, { ...category, url });
         if (parsed.length === 0) throw new Error('no parseable products');
-        successfulCategories++;
 
         for (const result of parsed) {
           const key = `${result.productId}:${result.location}`;
@@ -89,16 +158,7 @@ export class VmissAdapter implements ProviderAdapter {
       }
     }
 
-    if (successfulCategories === 0 || results.length === 0) {
-      throw new Error(
-        `VMISS returned no parseable products; ${failures.length}/${CATEGORIES.length} categories failed. `
-        + failures.slice(0, 3).join('; '),
-      );
-    }
-
-    this.warnings = failures;
-
-    return results;
+    return { results, failures };
   }
 
   parse(html: string, category: Category): StockResult[] {
