@@ -13,7 +13,7 @@ import {
   getStockSummary,
   type StockEventWithProduct,
 } from '@/lib/data';
-import { formatDate, formatPrice } from '@/lib/utils';
+import { formatDate, formatPrice, formatRelativeTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -206,7 +206,9 @@ export default async function HomePage() {
                   <span className="font-medium text-foreground">{event.product.provider.name}</span>
                   <span className="text-muted-foreground">{event.product.planName}</span>
                   <span className="text-muted-foreground/80">{event.product.location}</span>
-                  <span className="w-full font-mono text-xs text-muted-foreground/70 sm:ml-auto sm:w-auto">{formatDate(event.detectedAt)}</span>
+                  <span className="w-full text-xs text-muted-foreground/70 sm:ml-auto sm:w-auto" title={formatDate(event.detectedAt)}>
+                    {formatRelativeTime(event.detectedAt)}
+                  </span>
                 </div>
               ))}
             </div>

@@ -448,6 +448,7 @@ describe('provider adapters', () => {
 
     expect(results.length).toBeGreaterThanOrEqual(60);
     expect(results.every((item) => item.provider === 'vmiss')).toBe(true);
+    expect(results.every((item) => item.inStock === false)).toBe(true);
     expect(results.some((item) => item.productId === 'vmiss-32' && item.orderUrl.includes('pid=32'))).toBe(
       true,
     );

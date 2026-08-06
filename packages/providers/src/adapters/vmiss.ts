@@ -133,18 +133,18 @@ export class VmissAdapter implements ProviderAdapter {
     }
 
     // Cloudflare often blocks app.vmiss.com from the worker IP. Fall back to the
-    // published WHMCS PID catalog so the site still has orderable plans/PIDs.
-    // Treat catalog rows as in-stock for display/order; live stock resumes when scrape works.
+    // published WHMCS PID catalog so order URLs / PIDs stay available, but never
+    // claim live stock — stock-engine skips transitions for catalog-only rows.
     const catalog = this.parseCatalog();
     this.warnings = [
-      `live scrape blocked; using published PID catalog (${catalog.length} plans)`,
+      `live scrape blocked; using published PID catalog without stock claims (${catalog.length} plans)`,
       ...direct.failures.slice(0, 2),
       ...failures.slice(0, 2),
     ];
     return catalog;
   }
 
-  /** Build StockResult rows from the published PID catalog. */
+  /** Build StockResult rows from the published PID catalog (stock unknown). */
   parseCatalog(): StockResult[] {
     return VMISS_CATALOG.map((plan) => ({
       provider: this.slug,
@@ -162,7 +162,7 @@ export class VmissAdapter implements ProviderAdapter {
       price: plan.priceCents,
       currency: plan.currency,
       billingCycle: plan.billingCycle,
-      inStock: true,
+      inStock: false,
       orderUrl: orderUrlForPid(plan.pid),
       displaySpecs: {
         port: `${plan.portMbps}Mbps`,

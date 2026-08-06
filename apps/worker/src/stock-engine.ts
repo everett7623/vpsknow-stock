@@ -23,6 +23,11 @@ interface ProcessResult {
   errors: number;
 }
 
+function isPublishedCatalogResult(result: StockResult): boolean {
+  if (!result.raw || typeof result.raw !== 'object' || Array.isArray(result.raw)) return false;
+  return (result.raw as { source?: unknown }).source === 'published-catalog';
+}
+
 function vmrackNotificationGroupKey(result: StockResult): string | null {
   const planSeries = result.planName.match(/\b((?:L\d\.)?B?VPS)\.(DC\d+)(?:\.|$)/i);
   if (!planSeries) return null;
@@ -204,6 +209,15 @@ export async function processStockResults(
             shortUrl,
           },
         });
+      }
+
+      // Catalog-only rows refresh metadata / affiliate links without claiming stock.
+      if (isPublishedCatalogResult(result)) {
+        logger.debug(
+          { provider: providerSlug, product: result.planName },
+          'Published catalog refresh — skipped stock checks and state transitions',
+        );
+        continue;
       }
 
       // Record stock check

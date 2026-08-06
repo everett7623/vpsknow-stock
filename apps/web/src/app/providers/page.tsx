@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { listRegions, resolveRegion } from '@vpsknow/shared';
 import {
   getProductOrderUrl,
   getProviderSiteUrl,
@@ -12,7 +13,7 @@ import {
   offerTagLabel,
   type PlanOfferTag,
 } from '@/lib/plan-tags';
-import { formatDate, formatPrice } from '@/lib/utils';
+import { formatDate, formatPrice, formatRelativeTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,12 +26,25 @@ type StockFilter = 'all' | 'in' | 'out';
 type OfferFilter = 'all' | 'special' | 'promo' | 'limited' | 'regular';
 type SortKey = 'price_asc' | 'price_desc' | 'name';
 
+const RAM_PRESETS = [
+  { value: 'all', label: 'Any RAM' },
+  { value: '1024', label: '≥ 1 GB' },
+  { value: '2048', label: '≥ 2 GB' },
+  { value: '4096', label: '≥ 4 GB' },
+  { value: '8192', label: '≥ 8 GB' },
+] as const;
+
 interface SearchParams {
   p?: string;
   stock?: string;
   location?: string;
+  region?: string;
   category?: string;
   offer?: string;
+  ram?: string;
+  billing?: string;
+  minPrice?: string;
+  maxPrice?: string;
   q?: string;
   sort?: string;
 }
@@ -52,6 +66,19 @@ function parseSort(value: string | undefined): SortKey {
   return 'price_asc';
 }
 
+function parseRamMin(value: string | undefined): number | null {
+  if (!value || value === 'all') return null;
+  const mb = Number.parseInt(value, 10);
+  return Number.isFinite(mb) && mb > 0 ? mb : null;
+}
+
+function parsePriceCents(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const dollars = Number(value);
+  if (!Number.isFinite(dollars) || dollars < 0) return undefined;
+  return Math.round(dollars * 100);
+}
+
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -65,8 +92,13 @@ function filterProducts(
   provider: ProviderWithProducts,
   stock: StockFilter,
   location: string,
+  region: string,
   category: string,
   offer: OfferFilter,
+  ramMinMb: number | null,
+  billing: string,
+  minPriceCents: number | undefined,
+  maxPriceCents: number | undefined,
   query: string,
   sort: SortKey,
 ) {
@@ -75,7 +107,12 @@ function filterProducts(
     if (stock === 'in' && !product.inStock) return false;
     if (stock === 'out' && product.inStock) return false;
     if (location !== 'all' && product.location !== location) return false;
+    if (region !== 'all' && resolveRegion(product.location) !== region) return false;
     if (category !== 'all' && product.category !== category) return false;
+    if (billing !== 'all' && product.billingCycle !== billing) return false;
+    if (ramMinMb !== null && (product.ramMb ?? 0) < ramMinMb) return false;
+    if (minPriceCents !== undefined && product.priceCents < minPriceCents) return false;
+    if (maxPriceCents !== undefined && product.priceCents > maxPriceCents) return false;
 
     const tag = detectPlanOfferTag(product.planName, product.productId);
     if (offer === 'regular' && tag !== null) return false;
@@ -141,8 +178,16 @@ export default async function ProvidersPage({
   const stock = parseStock(params.stock);
   const sort = parseSort(params.sort);
   const location = params.location?.trim() || 'all';
+  const region = params.region?.trim() || 'all';
   const category = params.category?.trim() || 'all';
   const offer = parseOffer(params.offer);
+  const ram = params.ram?.trim() || 'all';
+  const ramMinMb = parseRamMin(ram);
+  const billing = params.billing?.trim() || 'all';
+  const minPrice = params.minPrice?.trim() || '';
+  const maxPrice = params.maxPrice?.trim() || '';
+  const minPriceCents = parsePriceCents(minPrice || undefined);
+  const maxPriceCents = parsePriceCents(maxPrice || undefined);
   const query = params.q?.trim() || '';
 
   const locations = selected
@@ -151,8 +196,24 @@ export default async function ProvidersPage({
   const categories = selected
     ? [...new Set(selected.products.map((product) => product.category))].sort()
     : [];
+  const billingCycles = selected
+    ? [...new Set(selected.products.map((product) => product.billingCycle))].sort()
+    : [];
   const products = selected
-    ? filterProducts(selected, stock, location, category, offer, query, sort)
+    ? filterProducts(
+        selected,
+        stock,
+        location,
+        region,
+        category,
+        offer,
+        ramMinMb,
+        billing,
+        minPriceCents,
+        maxPriceCents,
+        query,
+        sort,
+      )
     : [];
   const inStockCount = selected?.products.filter((product) => product.inStock).length ?? 0;
   const lastCheckedAt =
@@ -165,8 +226,13 @@ export default async function ProvidersPage({
     p: selected?.slug,
     stock: stock === 'all' ? undefined : stock,
     location: location === 'all' ? undefined : location,
+    region: region === 'all' ? undefined : region,
     category: category === 'all' ? undefined : category,
     offer: offer === 'all' ? undefined : offer,
+    ram: ram === 'all' ? undefined : ram,
+    billing: billing === 'all' ? undefined : billing,
+    minPrice: minPrice || undefined,
+    maxPrice: maxPrice || undefined,
     q: query || undefined,
     sort: sort === 'price_asc' ? undefined : sort,
   };
@@ -192,6 +258,7 @@ export default async function ProvidersPage({
                       ...sharedParams,
                       p: provider.slug,
                       location: undefined,
+                      region: undefined,
                       category: undefined,
                       offer: undefined,
                     })}`}
@@ -241,13 +308,15 @@ export default async function ProvidersPage({
                 </div>
                 <p className="text-sm text-muted-foreground/80">
                   {inStockCount} in stock · {selected.products.length} plans · Last checked:{' '}
-                  {lastCheckedAt ? formatDate(lastCheckedAt) : 'Unknown'}
+                  {lastCheckedAt
+                    ? `${formatRelativeTime(lastCheckedAt)} (${formatDate(lastCheckedAt)})`
+                    : 'Unknown'}
                 </p>
               </header>
 
               <form
                 method="get"
-                className="grid gap-3 rounded-lg border border-border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-6"
+                className="grid gap-3 rounded-lg border border-border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
               >
                 <input type="hidden" name="p" value={selected.slug} />
                 <label className="space-y-1 text-xs text-muted-foreground/80">
@@ -263,6 +332,36 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Region
+                  <select
+                    name="region"
+                    defaultValue={region}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">All regions</option>
+                    {listRegions().map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Location
+                  <select
+                    name="location"
+                    defaultValue={location}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">All locations</option>
+                    {locations.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
                   Category
                   <select
                     name="category"
@@ -273,6 +372,35 @@ export default async function ProvidersPage({
                     {categories.map((item) => (
                       <option key={item} value={item}>
                         {categoryLabel(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  RAM
+                  <select
+                    name="ram"
+                    defaultValue={ram}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    {RAM_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Billing
+                  <select
+                    name="billing"
+                    defaultValue={billing}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">All cycles</option>
+                    {billingCycles.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
                       </option>
                     ))}
                   </select>
@@ -292,19 +420,28 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Location
-                  <select
-                    name="location"
-                    defaultValue={location}
+                  Min price
+                  <input
+                    name="minPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    defaultValue={minPrice}
+                    placeholder="Any"
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  >
-                    <option value="all">All locations</option>
-                    {locations.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Max price
+                  <input
+                    name="maxPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    defaultValue={maxPrice}
+                    placeholder="Any"
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
                   Sort
@@ -318,7 +455,7 @@ export default async function ProvidersPage({
                     <option value="name">Plan name</option>
                   </select>
                 </label>
-                <label className="space-y-1 text-xs text-muted-foreground/80">
+                <label className="space-y-1 text-xs text-muted-foreground/80 sm:col-span-2 xl:col-span-2">
                   Search
                   <input
                     name="q"
@@ -327,13 +464,20 @@ export default async function ProvidersPage({
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </label>
-                <div className="sm:col-span-2 lg:col-span-3 xl:col-span-6">
+                <div className="flex flex-wrap items-end gap-3 sm:col-span-2 xl:col-span-2 2xl:col-span-1">
                   <button
                     type="submit"
                     className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-stock-strong"
                   >
                     Apply filters
                   </button>
+                  <Link
+                    href={`/providers?p=${selected.slug}`}
+                    className="rounded px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Reset
+                  </Link>
+                  <span className="pb-2 text-xs text-muted-foreground/80">{products.length} shown</span>
                 </div>
               </form>
 
@@ -402,7 +546,7 @@ export default async function ProvidersPage({
                               <StockBadge inStock={product.inStock} />
                             </td>
                             <td className="px-4 py-3">
-                              {product.orderUrl ? (
+                              {product.orderUrl && product.inStock ? (
                                 <a
                                   href={getProductOrderUrl(selected.slug, product.productId)}
                                   target="_blank"
@@ -410,6 +554,15 @@ export default async function ProvidersPage({
                                   className="text-stock hover:text-stock"
                                 >
                                   Order
+                                </a>
+                              ) : !product.inStock ? (
+                                <a
+                                  href="https://t.me/vpsknow_stock_bot?start=subscribe"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-sky-600 hover:text-sky-500 dark:text-sky-300"
+                                >
+                                  Notify Me
                                 </a>
                               ) : (
                                 <span className="text-muted-foreground/70">—</span>

@@ -139,6 +139,11 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     affId: '3cvoo',
     urlTemplate: 'https://neburst.com/auth/sign-up/?aff={affId}',
     supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'aff',
+      allowedOrigin: 'https://neburst.com',
+    },
     originalUrl: 'https://neburst.com/auth/sign-up/?aff=3cvoo',
   },
 
