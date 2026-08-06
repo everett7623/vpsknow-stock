@@ -99,8 +99,8 @@ export default async function HomePage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-[1200px] space-y-10">
+    <main className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
+      <div className="mx-auto w-full max-w-[1400px] space-y-10">
         <header className="space-y-4 pb-4 pt-8 text-center">
           <div className="flex justify-center py-2">
             <BrandLogo size="lg" />

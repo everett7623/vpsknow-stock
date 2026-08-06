@@ -64,8 +64,8 @@ export default async function OffersPage({
   const maxPrice = filters.maxPriceCents === undefined ? '' : (filters.maxPriceCents / 100).toString();
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-[1400px] space-y-8">
+    <main className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-8">
         <header className="space-y-2">
           <div>
             <p className="text-sm font-medium text-warning">CURATED VPS DEALS</p>

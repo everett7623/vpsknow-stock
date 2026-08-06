@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getProductOrderUrl, getProviderBySlug } from '@/lib/data';
+import { getProductOrderUrl, getProviderBySlug, getProviderSiteUrl } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -42,8 +42,8 @@ export default async function ProviderDetailPage({
   const isStale = !lastCheckedAt || Date.now() - lastCheckedAt.getTime() > 30 * 60 * 1_000;
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-[1200px] space-y-8">
+    <main className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-8">
         <Link href={`/providers?p=${provider.slug}`} className="text-muted-foreground transition-colors hover:text-foreground">
           Stock monitor
         </Link>
@@ -53,10 +53,10 @@ export default async function ProviderDetailPage({
             <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{provider.name}</h1>
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href={provider.website}
+                href={getProviderSiteUrl(provider.slug, provider.website)}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-stock hover:text-stock"
+                className="text-sm text-stock hover:opacity-90"
               >
                 Official website
               </a>

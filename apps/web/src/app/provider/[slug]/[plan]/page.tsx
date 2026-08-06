@@ -72,12 +72,12 @@ export default async function ProductDetailPage({
   };
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
+    <main className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
       />
-      <div className="mx-auto max-w-4xl space-y-8">
+      <div className="mx-auto w-full max-w-5xl space-y-8">
         <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Link href={`/providers?p=${product.provider.slug}`} className="hover:text-foreground">Stock</Link>
           <span>/</span>

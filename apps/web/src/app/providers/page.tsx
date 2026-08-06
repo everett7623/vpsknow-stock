@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getProductOrderUrl, getProviders, type ProviderWithProducts } from '@/lib/data';
+import {
+  getProductOrderUrl,
+  getProviderSiteUrl,
+  getProviders,
+  type ProviderWithProducts,
+} from '@/lib/data';
 import {
   categoryLabel,
   detectPlanOfferTag,
@@ -168,15 +173,15 @@ export default async function ProvidersPage({
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
-        <aside className="border-b border-border lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r">
-          <div className="sticky top-0 space-y-4 p-4 sm:p-5">
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold text-foreground">Providers</h1>
+      <div className="flex min-h-[calc(100vh-3.5rem)] w-full flex-col lg:flex-row">
+        <aside className="border-b border-border lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r xl:w-72">
+          <div className="space-y-3 p-3 sm:p-4 lg:sticky lg:top-14 lg:max-h-[calc(100vh-3.5rem)] lg:space-y-4 lg:overflow-hidden lg:p-5">
+            <div className="flex items-baseline justify-between gap-3 lg:block lg:space-y-1">
+              <h1 className="text-lg font-bold text-foreground sm:text-xl">Providers</h1>
               <p className="text-xs text-muted-foreground/80">{providers.length} monitored</p>
             </div>
 
-            <nav className="max-h-[40vh] space-y-1 overflow-y-auto lg:max-h-[calc(100vh-8rem)]">
+            <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:max-h-[calc(100vh-9rem)] lg:flex-col lg:gap-1 lg:overflow-y-auto lg:px-0 lg:pb-0">
               {providers.map((provider) => {
                 const inStock = provider.products.filter((product) => product.inStock).length;
                 const active = provider.slug === selected?.slug;
@@ -190,14 +195,16 @@ export default async function ProvidersPage({
                       category: undefined,
                       offer: undefined,
                     })}`}
-                    className={`block rounded-md px-3 py-2 transition-colors ${
+                    className={`shrink-0 rounded-md px-3 py-2 transition-colors lg:block lg:w-full ${
                       active
                         ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'text-foreground/80 hover:bg-muted hover:text-foreground'
+                        : 'bg-muted/60 text-foreground/80 hover:bg-muted hover:text-foreground lg:bg-transparent'
                     }`}
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-medium">{provider.name}</span>
+                      <span className="whitespace-nowrap text-sm font-medium lg:truncate">
+                        {provider.name}
+                      </span>
                       <span className="shrink-0 font-mono text-xs text-muted-foreground/80">
                         {inStock}/{provider.products.length}
                       </span>
@@ -209,19 +216,19 @@ export default async function ProvidersPage({
           </div>
         </aside>
 
-        <section className="min-w-0 flex-1 space-y-5 p-4 sm:p-6">
+        <section className="min-w-0 flex-1 space-y-5 p-3 sm:p-5 lg:p-6">
           {!selected ? (
             <p className="text-muted-foreground/80">No active providers.</p>
           ) : (
             <>
               <header className="space-y-2">
-                <div className="flex flex-wrap items-baseline gap-3">
-                  <h2 className="text-2xl font-bold text-foreground">{selected.name}</h2>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <h2 className="text-xl font-bold text-foreground sm:text-2xl">{selected.name}</h2>
                   <a
-                    href={selected.website}
+                    href={getProviderSiteUrl(selected.slug, selected.website)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-stock hover:text-stock"
+                    className="text-sm text-stock hover:opacity-90"
                   >
                     Official site
                   </a>
@@ -240,7 +247,7 @@ export default async function ProvidersPage({
 
               <form
                 method="get"
-                className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+                className="grid gap-3 rounded-lg border border-border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-6"
               >
                 <input type="hidden" name="p" value={selected.slug} />
                 <label className="space-y-1 text-xs text-muted-foreground/80">
@@ -330,8 +337,8 @@ export default async function ProvidersPage({
                 </div>
               </form>
 
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="min-w-[1080px] w-full text-sm">
+              <div className="overflow-x-auto rounded-lg border border-border [-webkit-overflow-scrolling:touch]">
+                <table className="min-w-[960px] w-full text-sm">
                   <thead className="bg-card text-left text-muted-foreground">
                     <tr className="border-b border-border">
                       <th className="px-4 py-3">Plan</th>

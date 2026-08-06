@@ -274,6 +274,19 @@ export function getProductOrderUrl(providerSlug: string, productId: string): str
 }
 
 /**
+ * Provider Official site CTA → /go/{slug} when affiliate is configured,
+ * otherwise fall back to the provider website URL.
+ */
+export function getProviderSiteUrl(
+  providerSlug: string,
+  websiteFallback?: string | null,
+): string {
+  const slug = resolveAffiliateProviderSlug(providerSlug);
+  if (slug) return buildStockGoUrl(slug);
+  return websiteFallback?.trim() || '#';
+}
+
+/**
  * Offer Order CTA: prefer provider-level /go/{slug} when the merchant maps to a
  * configured affiliate. Otherwise omit Order (Source forum link remains).
  */
