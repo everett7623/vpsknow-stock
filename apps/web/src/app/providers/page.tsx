@@ -32,6 +32,43 @@ const RAM_PRESETS = [
   { value: '2048', label: '≥ 2 GB' },
   { value: '4096', label: '≥ 4 GB' },
   { value: '8192', label: '≥ 8 GB' },
+  { value: '16384', label: '≥ 16 GB' },
+] as const;
+
+const STORAGE_PRESETS = [
+  { value: 'all', label: 'Any disk' },
+  { value: '20', label: '≥ 20 GB' },
+  { value: '40', label: '≥ 40 GB' },
+  { value: '80', label: '≥ 80 GB' },
+  { value: '160', label: '≥ 160 GB' },
+  { value: '320', label: '≥ 320 GB' },
+  { value: '500', label: '≥ 500 GB' },
+  { value: '1000', label: '≥ 1 TB' },
+] as const;
+
+const BANDWIDTH_PRESETS = [
+  { value: 'all', label: 'Any bandwidth' },
+  { value: '0.5', label: '≥ 0.5 TB' },
+  { value: '1', label: '≥ 1 TB' },
+  { value: '2', label: '≥ 2 TB' },
+  { value: '5', label: '≥ 5 TB' },
+  { value: '10', label: '≥ 10 TB' },
+  { value: '100', label: 'Unmetered / ≥ 100 TB' },
+] as const;
+
+const CPU_PRESETS = [
+  { value: 'all', label: 'Any CPU' },
+  { value: '1', label: '≥ 1 vCPU' },
+  { value: '2', label: '≥ 2 vCPU' },
+  { value: '4', label: '≥ 4 vCPU' },
+  { value: '8', label: '≥ 8 vCPU' },
+] as const;
+
+const DISK_TYPE_PRESETS = [
+  { value: 'all', label: 'Any disk type' },
+  { value: 'nvme', label: 'NVMe' },
+  { value: 'ssd', label: 'SSD' },
+  { value: 'hdd', label: 'HDD' },
 ] as const;
 
 interface SearchParams {
@@ -42,6 +79,10 @@ interface SearchParams {
   category?: string;
   offer?: string;
   ram?: string;
+  storage?: string;
+  disk?: string;
+  bw?: string;
+  cpu?: string;
   billing?: string;
   minPrice?: string;
   maxPrice?: string;
@@ -66,10 +107,10 @@ function parseSort(value: string | undefined): SortKey {
   return 'price_asc';
 }
 
-function parseRamMin(value: string | undefined): number | null {
+function parsePositiveNumber(value: string | undefined): number | null {
   if (!value || value === 'all') return null;
-  const mb = Number.parseInt(value, 10);
-  return Number.isFinite(mb) && mb > 0 ? mb : null;
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
 function parsePriceCents(value: string | undefined): number | undefined {
@@ -77,6 +118,33 @@ function parsePriceCents(value: string | undefined): number | undefined {
   const dollars = Number(value);
   if (!Number.isFinite(dollars) || dollars < 0) return undefined;
   return Math.round(dollars * 100);
+}
+
+function parseCpuCores(cpu: string | null | undefined): number {
+  if (!cpu) return 0;
+  const match = cpu.match(/(\d+(?:\.\d+)?)/);
+  return match ? Number.parseFloat(match[1]!) : 0;
+}
+
+function matchesDiskType(storageType: string | null | undefined, disk: string): boolean {
+  if (disk === 'all') return true;
+  const normalized = (storageType ?? '').toLowerCase();
+  if (!normalized || normalized === 'unknown') return false;
+  if (disk === 'nvme') return normalized.includes('nvme');
+  // SSD filter includes NVMe — both are flash storage vs HDD.
+  if (disk === 'ssd') return normalized.includes('ssd') || normalized.includes('nvme');
+  if (disk === 'hdd') return normalized.includes('hdd') || normalized.includes('hard');
+  return true;
+}
+
+function formatBandwidth(bandwidthTb: number | null | undefined): string {
+  if (bandwidthTb == null || bandwidthTb <= 0) return 'N/A';
+  if (bandwidthTb >= 100) return 'Unmetered';
+  if (bandwidthTb >= 1) {
+    const rounded = Number.isInteger(bandwidthTb) ? bandwidthTb.toFixed(0) : bandwidthTb.toFixed(1);
+    return `${rounded} TB`;
+  }
+  return `${Math.round(bandwidthTb * 1000)} GB`;
 }
 
 function buildQuery(params: Record<string, string | undefined>): string {
@@ -96,6 +164,10 @@ function filterProducts(
   category: string,
   offer: OfferFilter,
   ramMinMb: number | null,
+  storageMinGb: number | null,
+  diskType: string,
+  bandwidthMinTb: number | null,
+  cpuMinCores: number | null,
   billing: string,
   minPriceCents: number | undefined,
   maxPriceCents: number | undefined,
@@ -111,6 +183,10 @@ function filterProducts(
     if (category !== 'all' && product.category !== category) return false;
     if (billing !== 'all' && product.billingCycle !== billing) return false;
     if (ramMinMb !== null && (product.ramMb ?? 0) < ramMinMb) return false;
+    if (storageMinGb !== null && (product.storageGb ?? 0) < storageMinGb) return false;
+    if (!matchesDiskType(product.storageType, diskType)) return false;
+    if (bandwidthMinTb !== null && (product.bandwidthTb ?? 0) < bandwidthMinTb) return false;
+    if (cpuMinCores !== null && parseCpuCores(product.cpu) < cpuMinCores) return false;
     if (minPriceCents !== undefined && product.priceCents < minPriceCents) return false;
     if (maxPriceCents !== undefined && product.priceCents > maxPriceCents) return false;
 
@@ -123,7 +199,9 @@ function filterProducts(
       product.planName.toLowerCase().includes(needle) ||
       product.location.toLowerCase().includes(needle) ||
       product.productId.toLowerCase().includes(needle) ||
-      product.category.toLowerCase().includes(needle)
+      product.category.toLowerCase().includes(needle) ||
+      (product.storageType ?? '').toLowerCase().includes(needle) ||
+      (product.cpu ?? '').toLowerCase().includes(needle)
     );
   });
 
@@ -182,7 +260,14 @@ export default async function ProvidersPage({
   const category = params.category?.trim() || 'all';
   const offer = parseOffer(params.offer);
   const ram = params.ram?.trim() || 'all';
-  const ramMinMb = parseRamMin(ram);
+  const ramMinMb = parsePositiveNumber(ram);
+  const storage = params.storage?.trim() || 'all';
+  const storageMinGb = parsePositiveNumber(storage);
+  const disk = params.disk?.trim() || 'all';
+  const bw = params.bw?.trim() || 'all';
+  const bandwidthMinTb = parsePositiveNumber(bw);
+  const cpu = params.cpu?.trim() || 'all';
+  const cpuMinCores = parsePositiveNumber(cpu);
   const billing = params.billing?.trim() || 'all';
   const minPrice = params.minPrice?.trim() || '';
   const maxPrice = params.maxPrice?.trim() || '';
@@ -208,6 +293,10 @@ export default async function ProvidersPage({
         category,
         offer,
         ramMinMb,
+        storageMinGb,
+        disk,
+        bandwidthMinTb,
+        cpuMinCores,
         billing,
         minPriceCents,
         maxPriceCents,
@@ -230,6 +319,10 @@ export default async function ProvidersPage({
     category: category === 'all' ? undefined : category,
     offer: offer === 'all' ? undefined : offer,
     ram: ram === 'all' ? undefined : ram,
+    storage: storage === 'all' ? undefined : storage,
+    disk: disk === 'all' ? undefined : disk,
+    bw: bw === 'all' ? undefined : bw,
+    cpu: cpu === 'all' ? undefined : cpu,
     billing: billing === 'all' ? undefined : billing,
     minPrice: minPrice || undefined,
     maxPrice: maxPrice || undefined,
@@ -261,6 +354,11 @@ export default async function ProvidersPage({
                       region: undefined,
                       category: undefined,
                       offer: undefined,
+                      ram: undefined,
+                      storage: undefined,
+                      disk: undefined,
+                      bw: undefined,
+                      cpu: undefined,
                     })}`}
                     className={`shrink-0 rounded-md px-3 py-2 transition-colors lg:block lg:w-full ${
                       active
@@ -391,6 +489,62 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Storage
+                  <select
+                    name="storage"
+                    defaultValue={storage}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    {STORAGE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Disk type
+                  <select
+                    name="disk"
+                    defaultValue={disk}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    {DISK_TYPE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Bandwidth
+                  <select
+                    name="bw"
+                    defaultValue={bw}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    {BANDWIDTH_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  CPU
+                  <select
+                    name="cpu"
+                    defaultValue={cpu}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    {CPU_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
                   Billing
                   <select
                     name="billing"
@@ -482,7 +636,7 @@ export default async function ProvidersPage({
               </form>
 
               <div className="overflow-x-auto rounded-lg border border-border [-webkit-overflow-scrolling:touch]">
-                <table className="min-w-[960px] w-full text-sm">
+                <table className="min-w-[1080px] w-full text-sm">
                   <thead className="bg-card text-left text-muted-foreground">
                     <tr className="border-b border-border">
                       <th className="px-4 py-3">Plan</th>
@@ -491,6 +645,7 @@ export default async function ProvidersPage({
                       <th className="px-4 py-3">CPU</th>
                       <th className="px-4 py-3">RAM</th>
                       <th className="px-4 py-3">Storage</th>
+                      <th className="px-4 py-3">Bandwidth</th>
                       <th className="px-4 py-3">Offer</th>
                       <th className="px-4 py-3">Price</th>
                       <th className="px-4 py-3">Status</th>
@@ -500,7 +655,7 @@ export default async function ProvidersPage({
                   <tbody>
                     {products.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground/80">
+                        <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground/80">
                           No plans match the current filters.
                         </td>
                       </tr>
@@ -535,6 +690,9 @@ export default async function ProvidersPage({
                               {product.storageGb
                                 ? `${product.storageGb} GB ${product.storageType || ''}`.trim()
                                 : 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-foreground/80">
+                              {formatBandwidth(product.bandwidthTb)}
                             </td>
                             <td className="px-4 py-3">
                               <OfferBadge tag={tag} />
