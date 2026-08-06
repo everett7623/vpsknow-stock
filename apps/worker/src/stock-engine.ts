@@ -149,6 +149,9 @@ export async function processStockResults(
       const isNewProduct = existingProduct === null;
       const whmcsPid = extractWhmcsPid(providerSlug, result.orderUrl, result.productId);
 
+      const availabilitySource = isPublishedCatalogResult(result) ? 'catalog' : 'live';
+      const bandwidthLabel = result.displaySpecs?.bandwidth?.trim() || null;
+
       // Upsert product
       const product = await prisma.product.upsert({
         where: productIdentity,
@@ -161,6 +164,9 @@ export async function processStockResults(
           storageGb: result.storageGb,
           storageType: result.storageType,
           bandwidthTb: result.bandwidthTb,
+          bandwidthLabel,
+          ipv4: result.ipv4,
+          availabilitySource,
           priceCents: result.price,
           currency: result.currency,
           billingCycle: result.billingCycle,
@@ -179,6 +185,9 @@ export async function processStockResults(
           storageGb: result.storageGb,
           storageType: result.storageType,
           bandwidthTb: result.bandwidthTb,
+          bandwidthLabel,
+          ipv4: result.ipv4,
+          availabilitySource,
           priceCents: result.price,
           currency: result.currency,
           billingCycle: result.billingCycle,

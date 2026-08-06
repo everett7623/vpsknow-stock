@@ -13,7 +13,7 @@ import {
   offerTagLabel,
   type PlanOfferTag,
 } from '@/lib/plan-tags';
-import { formatDate, formatPrice, formatRelativeTime, botSubscribeUrl } from '@/lib/utils';
+import { formatDate, formatPrice, formatRelativeTime, botSubscribeUrl, formatBandwidth, formatIpv4, resolveStockAvailability } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: 'Browse monitored VPS providers and live plan availability.',
 };
 
-type StockFilter = 'all' | 'in' | 'out';
+type StockFilter = 'all' | 'in' | 'out' | 'unknown';
 type OfferFilter = 'all' | 'special' | 'promo' | 'limited' | 'regular';
 type SortKey = 'price_asc' | 'price_desc' | 'name';
 
@@ -84,6 +84,7 @@ interface SearchParams {
   bw?: string;
   cpu?: string;
   billing?: string;
+  ipv4?: string;
   minPrice?: string;
   maxPrice?: string;
   q?: string;
@@ -91,7 +92,7 @@ interface SearchParams {
 }
 
 function parseStock(value: string | undefined): StockFilter {
-  if (value === 'in' || value === 'out') return value;
+  if (value === 'in' || value === 'out' || value === 'unknown') return value;
   return 'all';
 }
 
@@ -137,16 +138,6 @@ function matchesDiskType(storageType: string | null | undefined, disk: string): 
   return true;
 }
 
-function formatBandwidth(bandwidthTb: number | null | undefined): string {
-  if (bandwidthTb == null || bandwidthTb <= 0) return 'N/A';
-  if (bandwidthTb >= 100) return 'Unmetered';
-  if (bandwidthTb >= 1) {
-    const rounded = Number.isInteger(bandwidthTb) ? bandwidthTb.toFixed(0) : bandwidthTb.toFixed(1);
-    return `${rounded} TB`;
-  }
-  return `${Math.round(bandwidthTb * 1000)} GB`;
-}
-
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -154,6 +145,18 @@ function buildQuery(params: Record<string, string | undefined>): string {
   }
   const query = search.toString();
   return query ? `?${query}` : '';
+}
+
+function matchesBandwidthMin(
+  bandwidthTb: number | null | undefined,
+  bandwidthLabel: string | null | undefined,
+  bandwidthMinTb: number | null,
+): boolean {
+  if (bandwidthMinTb === null) return true;
+  const label = bandwidthLabel ?? '';
+  if (/unmetered|unlimited/i.test(label) || (bandwidthTb ?? 0) >= 100) return true;
+  if (bandwidthMinTb >= 100) return false;
+  return (bandwidthTb ?? 0) >= bandwidthMinTb;
 }
 
 function filterProducts(
@@ -168,6 +171,7 @@ function filterProducts(
   diskType: string,
   bandwidthMinTb: number | null,
   cpuMinCores: number | null,
+  ipv4Filter: string,
   billing: string,
   minPriceCents: number | undefined,
   maxPriceCents: number | undefined,
@@ -176,16 +180,20 @@ function filterProducts(
 ) {
   const needle = query.trim().toLowerCase();
   let products = provider.products.filter((product) => {
-    if (stock === 'in' && !product.inStock) return false;
-    if (stock === 'out' && product.inStock) return false;
+    const availability = resolveStockAvailability(product.inStock, product.availabilitySource);
+    if (stock === 'in' && availability !== 'in') return false;
+    if (stock === 'out' && availability !== 'out') return false;
+    if (stock === 'unknown' && availability !== 'unknown') return false;
     if (location !== 'all' && product.location !== location) return false;
     if (region !== 'all' && resolveRegion(product.location) !== region) return false;
     if (category !== 'all' && product.category !== category) return false;
     if (billing !== 'all' && product.billingCycle !== billing) return false;
+    if (ipv4Filter === 'yes' && product.ipv4 !== true) return false;
+    if (ipv4Filter === 'no' && product.ipv4 !== false) return false;
     if (ramMinMb !== null && (product.ramMb ?? 0) < ramMinMb) return false;
     if (storageMinGb !== null && (product.storageGb ?? 0) < storageMinGb) return false;
     if (!matchesDiskType(product.storageType, diskType)) return false;
-    if (bandwidthMinTb !== null && (product.bandwidthTb ?? 0) < bandwidthMinTb) return false;
+    if (!matchesBandwidthMin(product.bandwidthTb, product.bandwidthLabel, bandwidthMinTb)) return false;
     if (cpuMinCores !== null && parseCpuCores(product.cpu) < cpuMinCores) return false;
     if (minPriceCents !== undefined && product.priceCents < minPriceCents) return false;
     if (maxPriceCents !== undefined && product.priceCents > maxPriceCents) return false;
@@ -201,7 +209,8 @@ function filterProducts(
       product.productId.toLowerCase().includes(needle) ||
       product.category.toLowerCase().includes(needle) ||
       (product.storageType ?? '').toLowerCase().includes(needle) ||
-      (product.cpu ?? '').toLowerCase().includes(needle)
+      (product.cpu ?? '').toLowerCase().includes(needle) ||
+      (product.bandwidthLabel ?? '').toLowerCase().includes(needle)
     );
   });
 
@@ -215,12 +224,29 @@ function filterProducts(
   return products;
 }
 
-function StockBadge({ inStock }: { inStock: boolean }) {
-  return inStock ? (
-    <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-      In Stock
-    </span>
-  ) : (
+function StockBadge({
+  inStock,
+  availabilitySource,
+}: {
+  inStock: boolean;
+  availabilitySource?: string | null;
+}) {
+  const availability = resolveStockAvailability(inStock, availabilitySource);
+  if (availability === 'in') {
+    return (
+      <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+        In Stock
+      </span>
+    );
+  }
+  if (availability === 'unknown') {
+    return (
+      <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+        Unknown
+      </span>
+    );
+  }
+  return (
     <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/60 dark:text-red-300">
       Sold Out
     </span>
@@ -268,6 +294,7 @@ export default async function ProvidersPage({
   const bandwidthMinTb = parsePositiveNumber(bw);
   const cpu = params.cpu?.trim() || 'all';
   const cpuMinCores = parsePositiveNumber(cpu);
+  const ipv4Filter = params.ipv4?.trim() || 'all';
   const billing = params.billing?.trim() || 'all';
   const minPrice = params.minPrice?.trim() || '';
   const maxPrice = params.maxPrice?.trim() || '';
@@ -297,6 +324,7 @@ export default async function ProvidersPage({
         disk,
         bandwidthMinTb,
         cpuMinCores,
+        ipv4Filter,
         billing,
         minPriceCents,
         maxPriceCents,
@@ -304,7 +332,9 @@ export default async function ProvidersPage({
         sort,
       )
     : [];
-  const inStockCount = selected?.products.filter((product) => product.inStock).length ?? 0;
+  const inStockCount = selected?.products.filter(
+    (product) => resolveStockAvailability(product.inStock, product.availabilitySource) === 'in',
+  ).length ?? 0;
   const lastCheckedAt =
     selected?.products.reduce<Date | null>((latest, product) => {
       if (!product.lastCheckedAt) return latest;
@@ -323,6 +353,7 @@ export default async function ProvidersPage({
     disk: disk === 'all' ? undefined : disk,
     bw: bw === 'all' ? undefined : bw,
     cpu: cpu === 'all' ? undefined : cpu,
+    ipv4: ipv4Filter === 'all' ? undefined : ipv4Filter,
     billing: billing === 'all' ? undefined : billing,
     minPrice: minPrice || undefined,
     maxPrice: maxPrice || undefined,
@@ -342,7 +373,6 @@ export default async function ProvidersPage({
 
             <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:max-h-[calc(100vh-9rem)] lg:flex-col lg:gap-1 lg:overflow-y-auto lg:px-0 lg:pb-0">
               {providers.map((provider) => {
-                const inStock = provider.products.filter((product) => product.inStock).length;
                 const active = provider.slug === selected?.slug;
                 return (
                   <Link
@@ -359,6 +389,7 @@ export default async function ProvidersPage({
                       disk: undefined,
                       bw: undefined,
                       cpu: undefined,
+                      ipv4: undefined,
                     })}`}
                     className={`shrink-0 rounded-md px-3 py-2 transition-colors lg:block lg:w-full ${
                       active
@@ -371,7 +402,11 @@ export default async function ProvidersPage({
                         {provider.name}
                       </span>
                       <span className="shrink-0 font-mono text-xs text-muted-foreground/80">
-                        {inStock}/{provider.products.length}
+                        {provider.products.filter(
+                          (product) =>
+                            resolveStockAvailability(product.inStock, product.availabilitySource) === 'in',
+                        ).length}
+                        /{provider.products.length}
                       </span>
                     </div>
                   </Link>
@@ -427,6 +462,7 @@ export default async function ProvidersPage({
                     <option value="all">All</option>
                     <option value="in">In stock</option>
                     <option value="out">Sold out</option>
+                    <option value="unknown">Unknown</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
@@ -545,6 +581,18 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
+                  IPv4
+                  <select
+                    name="ipv4"
+                    defaultValue={ipv4Filter}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">Any</option>
+                    <option value="yes">Included</option>
+                    <option value="no">Not included</option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
                   Billing
                   <select
                     name="billing"
@@ -636,7 +684,7 @@ export default async function ProvidersPage({
               </form>
 
               <div className="overflow-x-auto rounded-lg border border-border [-webkit-overflow-scrolling:touch]">
-                <table className="min-w-[1080px] w-full text-sm">
+                <table className="min-w-[1180px] w-full text-sm">
                   <thead className="bg-card text-left text-muted-foreground">
                     <tr className="border-b border-border">
                       <th className="px-4 py-3">Plan</th>
@@ -646,6 +694,7 @@ export default async function ProvidersPage({
                       <th className="px-4 py-3">RAM</th>
                       <th className="px-4 py-3">Storage</th>
                       <th className="px-4 py-3">Bandwidth</th>
+                      <th className="px-4 py-3">IPv4</th>
                       <th className="px-4 py-3">Offer</th>
                       <th className="px-4 py-3">Price</th>
                       <th className="px-4 py-3">Status</th>
@@ -655,13 +704,17 @@ export default async function ProvidersPage({
                   <tbody>
                     {products.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="px-4 py-8 text-center text-muted-foreground/80">
+                        <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground/80">
                           No plans match the current filters.
                         </td>
                       </tr>
                     ) : (
                       products.map((product) => {
                         const tag = detectPlanOfferTag(product.planName, product.productId);
+                        const availability = resolveStockAvailability(
+                          product.inStock,
+                          product.availabilitySource,
+                        );
                         return (
                           <tr key={product.id} className="border-b border-border/60">
                             <td className="px-4 py-3 font-medium text-foreground">
@@ -692,7 +745,10 @@ export default async function ProvidersPage({
                                 : 'N/A'}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
-                              {formatBandwidth(product.bandwidthTb)}
+                              {formatBandwidth(product.bandwidthTb, product.bandwidthLabel)}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-foreground/80">
+                              {formatIpv4(product.ipv4)}
                             </td>
                             <td className="px-4 py-3">
                               <OfferBadge tag={tag} />
@@ -701,10 +757,13 @@ export default async function ProvidersPage({
                               {formatPrice(product)}
                             </td>
                             <td className="px-4 py-3">
-                              <StockBadge inStock={product.inStock} />
+                              <StockBadge
+                                inStock={product.inStock}
+                                availabilitySource={product.availabilitySource}
+                              />
                             </td>
                             <td className="px-4 py-3">
-                              {product.orderUrl && product.inStock ? (
+                              {product.orderUrl && availability === 'in' ? (
                                 <a
                                   href={getProductOrderUrl(selected.slug, product.productId)}
                                   target="_blank"
@@ -713,7 +772,7 @@ export default async function ProvidersPage({
                                 >
                                   Order
                                 </a>
-                              ) : !product.inStock ? (
+                              ) : availability !== 'in' ? (
                                 <a
                                   href={botSubscribeUrl(selected.slug)}
                                   target="_blank"

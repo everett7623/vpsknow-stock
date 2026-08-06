@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductOrderUrl, getProviderBySlug, getProviderSiteUrl } from '@/lib/data';
-import { formatDate, formatPrice, botSubscribeUrl } from '@/lib/utils';
+import { formatDate, formatPrice, botSubscribeUrl, formatBandwidth, resolveStockAvailability } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,8 +33,15 @@ export default async function ProviderDetailPage({
   const provider = await getProviderBySlug(slug);
   if (!provider) notFound();
 
-  const inStockProducts = provider.products.filter((product) => product.inStock);
-  const outOfStockProducts = provider.products.filter((product) => !product.inStock);
+  const inStockProducts = provider.products.filter(
+    (product) => resolveStockAvailability(product.inStock, product.availabilitySource) === 'in',
+  );
+  const outOfStockProducts = provider.products.filter(
+    (product) => resolveStockAvailability(product.inStock, product.availabilitySource) === 'out',
+  );
+  const unknownProducts = provider.products.filter(
+    (product) => resolveStockAvailability(product.inStock, product.availabilitySource) === 'unknown',
+  );
   const lastCheckedAt = provider.products.reduce<Date | null>((latest, product) => {
     if (!product.lastCheckedAt) return latest;
     return !latest || product.lastCheckedAt > latest ? product.lastCheckedAt : latest;
@@ -80,6 +87,10 @@ export default async function ProviderDetailPage({
             <span className="font-mono text-lg font-bold text-stock">{inStockProducts.length}</span>
             <span className="ml-2 text-sm text-stock/70">In Stock</span>
           </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 dark:border-amber-800 dark:bg-amber-950/40">
+            <span className="font-mono text-lg font-bold text-amber-800 dark:text-amber-300">{unknownProducts.length}</span>
+            <span className="ml-2 text-sm text-amber-700/80 dark:text-amber-300/80">Unknown</span>
+          </div>
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 dark:border-red-900/50 dark:bg-red-950/30">
             <span className="font-mono text-lg font-bold text-danger">{outOfStockProducts.length}</span>
             <span className="ml-2 text-sm text-danger/70">Out of Stock</span>
@@ -90,12 +101,13 @@ export default async function ProviderDetailPage({
           <h2 className="mb-4 text-xl font-semibold text-foreground">Available Plans</h2>
           {inStockProducts.length === 0 ? <p className="text-muted-foreground/80">No in-stock plans.</p> : (
             <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-sm">
+              <table className="min-w-[980px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
                     <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
                     <th className="pb-2 pr-4">CPU</th><th className="pb-2 pr-4">RAM</th>
-                    <th className="pb-2 pr-4">Storage</th><th className="pb-2 pr-4">Price</th>
+                    <th className="pb-2 pr-4">Storage</th><th className="pb-2 pr-4">Bandwidth</th>
+                    <th className="pb-2 pr-4">Price</th>
                     <th className="pb-2 pr-4">Last Checked</th><th className="pb-2">Action</th>
                   </tr>
                 </thead>
@@ -118,6 +130,9 @@ export default async function ProviderDetailPage({
                       <td className="py-3 pr-4 font-mono text-xs text-foreground/80">
                         {product.storageGb ? `${product.storageGb} GB ${product.storageType || ''}` : 'N/A'}
                       </td>
+                      <td className="py-3 pr-4 font-mono text-xs text-foreground/80">
+                        {formatBandwidth(product.bandwidthTb, product.bandwidthLabel)}
+                      </td>
                       <td className="py-3 pr-4 font-mono text-stock">{formatPrice(product)}</td>
                       <td className="py-3 pr-4 text-xs text-muted-foreground/80">{formatDate(product.lastCheckedAt)}</td>
                       <td className="py-3">
@@ -139,6 +154,44 @@ export default async function ProviderDetailPage({
             </div>
           )}
         </section>
+
+        {unknownProducts.length > 0 && (
+          <section>
+            <h2 className="mb-4 text-xl font-semibold text-amber-800 dark:text-amber-300">Stock Unknown</h2>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Catalog-only refresh — live inventory is not confirmed (for example VMISS behind Cloudflare).
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-[560px] w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted-foreground/80">
+                    <th className="pb-2 pr-4">Plan</th>
+                    <th className="pb-2 pr-4">Location</th>
+                    <th className="pb-2 pr-4">Price</th>
+                    <th className="pb-2">Last Checked</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unknownProducts.map((product) => (
+                    <tr key={product.id} className="border-b border-border/30">
+                      <td className="py-2 pr-4 text-foreground/80">
+                        <Link
+                          href={`/provider/${provider.slug}/${encodeURIComponent(product.productId)}`}
+                          className="hover:text-foreground"
+                        >
+                          {product.planName}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground/80">{product.location}</td>
+                      <td className="py-2 pr-4 font-mono text-muted-foreground/80">{formatPrice(product)}</td>
+                      <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="mb-4 text-xl font-semibold text-muted-foreground">Out of Stock</h2>

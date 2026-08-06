@@ -38,6 +38,11 @@ model Product {
   storageGb          Int?
   storageType        String?
   bandwidthTb        Float?
+  /// Display override for bandwidth (e.g. "Unmetered") when numeric TB is 0/ambiguous
+  bandwidthLabel     String?
+  ipv4               Boolean?
+  /// live = last stock claim from a live adapter check; catalog = published catalog only
+  availabilitySource String   @default("live")
   priceCents         Int
   currency           String   @default("USD")
   billingCycle       String   @default("monthly")
@@ -58,6 +63,7 @@ model Product {
   @@index([providerId, inStock])
   @@index([providerId, priceCents])
   @@index([providerId, lastCheckedAt])
+  @@index([ipv4])
   @@map("products")
 }
 

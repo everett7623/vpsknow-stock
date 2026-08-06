@@ -52,3 +52,34 @@ export function botSubscribeUrl(providerSlug?: string): string {
   const payload = providerSlug ? `subscribe_${providerSlug}` : 'subscribe';
   return `https://t.me/vpsknow_stock_bot?start=${encodeURIComponent(payload)}`;
 }
+
+export type StockAvailability = 'in' | 'out' | 'unknown';
+
+export function resolveStockAvailability(
+  inStock: boolean,
+  availabilitySource?: string | null,
+): StockAvailability {
+  if (availabilitySource === 'catalog') return 'unknown';
+  return inStock ? 'in' : 'out';
+}
+
+export function formatBandwidth(
+  bandwidthTb: number | null | undefined,
+  bandwidthLabel?: string | null,
+): string {
+  const label = bandwidthLabel?.trim();
+  if (label) return label;
+  if (bandwidthTb == null || bandwidthTb <= 0) return 'N/A';
+  if (bandwidthTb >= 100) return 'Unmetered';
+  if (bandwidthTb >= 1) {
+    const rounded = Number.isInteger(bandwidthTb) ? bandwidthTb.toFixed(0) : bandwidthTb.toFixed(1);
+    return `${rounded} TB`;
+  }
+  return `${Math.round(bandwidthTb * 1000)} GB`;
+}
+
+export function formatIpv4(ipv4: boolean | null | undefined): string {
+  if (ipv4 === true) return 'Yes';
+  if (ipv4 === false) return 'No';
+  return 'N/A';
+}

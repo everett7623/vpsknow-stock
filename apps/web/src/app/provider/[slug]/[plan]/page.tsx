@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductDetail, getProductOrderUrl } from '@/lib/data';
-import { formatDate, formatPrice } from '@/lib/utils';
+import { formatDate, formatPrice, formatBandwidth, formatIpv4, resolveStockAvailability, botSubscribeUrl } from '@/lib/utils';
 import { PriceHistory } from './price-history';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +40,7 @@ export default async function ProductDetailPage({
   const product = await getProductDetail(slug, decodeURIComponent(plan));
   if (!product) notFound();
 
+  const availability = resolveStockAvailability(product.inStock, product.availabilitySource);
   const specs = [
     ['CPU', product.cpu || 'N/A'],
     ['RAM', formatRam(product.ramMb)],
@@ -49,9 +50,14 @@ export default async function ProductDetailPage({
         ? `${product.storageGb} GB${product.storageType ? ` ${product.storageType}` : ''}`
         : 'N/A',
     ],
-    ['Bandwidth', product.bandwidthTb ? `${product.bandwidthTb} TB` : 'N/A'],
+    ['Bandwidth', formatBandwidth(product.bandwidthTb, product.bandwidthLabel)],
+    ['IPv4', formatIpv4(product.ipv4)],
     ['Category', product.category.toUpperCase()],
     ['Billing', product.billingCycle],
+    [
+      'Availability',
+      availability === 'in' ? 'In stock' : availability === 'unknown' ? 'Unknown (catalog)' : 'Sold out',
+    ],
   ];
   const productUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://stock.vpsknow.com'}/provider/${product.provider.slug}/${encodeURIComponent(product.productId)}`;
   const structuredData = {
@@ -65,9 +71,12 @@ export default async function ProductDetailPage({
       url: productUrl,
       priceCurrency: product.currency,
       price: (product.priceCents / 100).toFixed(2),
-      availability: product.inStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
+      availability:
+        availability === 'in'
+          ? 'https://schema.org/InStock'
+          : availability === 'unknown'
+            ? 'https://schema.org/LimitedAvailability'
+            : 'https://schema.org/OutOfStock',
     },
   };
 
@@ -92,9 +101,29 @@ export default async function ProductDetailPage({
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
             <div>
               <div className="mb-3 flex items-center gap-3">
-                <span className={`h-2.5 w-2.5 rounded-full ${product.inStock ? 'bg-stock' : 'bg-danger'}`} />
-                <span className={product.inStock ? 'text-stock' : 'text-danger'}>
-                  {product.inStock ? 'In Stock' : 'Out of Stock'}
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    availability === 'in'
+                      ? 'bg-stock'
+                      : availability === 'unknown'
+                        ? 'bg-warning'
+                        : 'bg-danger'
+                  }`}
+                />
+                <span
+                  className={
+                    availability === 'in'
+                      ? 'text-stock'
+                      : availability === 'unknown'
+                        ? 'text-warning'
+                        : 'text-danger'
+                  }
+                >
+                  {availability === 'in'
+                    ? 'In Stock'
+                    : availability === 'unknown'
+                      ? 'Stock Unknown'
+                      : 'Out of Stock'}
                 </span>
               </div>
               <h1 className="break-words text-2xl font-bold text-foreground sm:text-3xl">{product.planName}</h1>
@@ -102,7 +131,7 @@ export default async function ProductDetailPage({
             </div>
             <div className="sm:text-right">
               <p className="font-mono text-2xl font-bold text-stock">{formatPrice(product)}</p>
-              {product.inStock && product.orderUrl && (
+              {availability === 'in' && product.orderUrl ? (
                 <a
                   href={getProductOrderUrl(product.provider.slug, product.productId)}
                   target="_blank"
@@ -110,6 +139,15 @@ export default async function ProductDetailPage({
                   className="mt-3 inline-block rounded-lg bg-accent px-5 py-2 font-medium text-accent-foreground hover:bg-stock-strong"
                 >
                   Order Now
+                </a>
+              ) : (
+                <a
+                  href={botSubscribeUrl(product.provider.slug)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block rounded-lg border border-sky-300 bg-sky-50 px-5 py-2 font-medium text-sky-700 hover:border-sky-500 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+                >
+                  Notify Me
                 </a>
               )}
             </div>
