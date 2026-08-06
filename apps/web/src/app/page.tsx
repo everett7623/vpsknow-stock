@@ -71,6 +71,11 @@ function OfferCard({ offer }: { offer: Offer }) {
             Order
           </a>
         )}
+        {offer.threadUrl && (
+          <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white">
+            Source
+          </a>
+        )}
       </div>
     </article>
   );

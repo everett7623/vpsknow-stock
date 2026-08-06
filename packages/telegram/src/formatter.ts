@@ -108,7 +108,9 @@ export function formatOfferMessage(opts: {
   billing: string;
   postedAt: string;
   couponCode: string | null;
-  /** Merchant order / affiliate CTA only — never a forum or competitor source URL */
+  /** Forum / discussion source URL (always shown) */
+  originalUrl: string;
+  /** Merchant order URL when the post includes one */
   orderUrl?: string | null;
 }): string {
   const locationTag = singleLocationTag(opts.locations);
@@ -130,7 +132,9 @@ export function formatOfferMessage(opts: {
     `🖥 Type: ${opts.category}`,
     ...(opts.couponCode ? [`🎟 Coupon: ${opts.couponCode}`] : []),
     `🕒 Posted: ${opts.postedAt}`,
-    ...(orderUrl ? ['', `🔗 Order: ${orderUrl}`] : []),
+    '',
+    ...(orderUrl ? [`🔗 Order: ${orderUrl}`] : []),
+    `🔗 Source: ${opts.originalUrl}`,
     '',
     tags,
     '',

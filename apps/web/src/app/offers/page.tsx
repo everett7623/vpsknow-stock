@@ -168,6 +168,7 @@ export default async function OffersPage({
                   <span className="text-gray-500">{formatPostedAt(offer.postedAt)}</span>
                   <div className="flex gap-3">
                     {offer.orderUrl && <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">Order</a>}
+                    {offer.threadUrl && <a href={offer.threadUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white">Source</a>}
                   </div>
                 </div>
               </article>

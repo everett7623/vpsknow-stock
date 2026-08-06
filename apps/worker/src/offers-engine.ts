@@ -243,8 +243,7 @@ async function pushOffer(
   notifySubscribers = false,
 ): Promise<boolean> {
   if (offer.pushed) return false;
-  // Validate the discovery thread URL for integrity, but never surface forum/source hosts in Telegram.
-  originalOfferUrl(offer);
+  const originalUrl = originalOfferUrl(offer);
 
   const message = formatOfferMessage({
     provider: offer.provider?.trim() || 'Unknown',
@@ -255,6 +254,7 @@ async function pushOffer(
     billing: billingSummary(offer.billingCycle),
     postedAt: offer.postedAt?.toISOString().slice(0, 10) || 'Unknown',
     couponCode: offer.couponCode,
+    originalUrl,
     orderUrl: offer.orderUrl,
   });
   let channelPushed = false;

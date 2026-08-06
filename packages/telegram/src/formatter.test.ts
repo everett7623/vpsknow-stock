@@ -87,8 +87,9 @@ describe('Telegram message formatters', () => {
     expect(message).not.toContain('0.488 TB');
   });
 
-  it('formats offers with merchant order links and never forum source URLs', () => {
+  it('formats offers with merchant order and forum source URLs', () => {
     const orderUrl = 'https://example.com/order';
+    const originalUrl = 'https://lowendtalk.com/discussion/12345/example-offer';
     const message = formatOfferMessage({
       provider: 'ExampleHost',
       title: 'ExampleHost VPS Flash Sale',
@@ -98,23 +99,23 @@ describe('Telegram message formatters', () => {
       billing: 'year',
       postedAt: '2026-08-04',
       couponCode: 'FLASH26',
+      originalUrl,
       orderUrl,
     });
 
     expect(message).toContain(`🔗 Order: ${orderUrl}`);
+    expect(message).toContain(`🔗 Source: ${originalUrl}`);
     expect(message).toContain('📍 Locations: Los Angeles');
     expect(message).toContain('💰 Price: From $12.00/year');
     expect(message).toContain('🎟 Coupon: FLASH26');
     expect(message).toContain('#Offer #ExampleHost #VPS #Los_Angeles');
     expect(message).not.toContain('View offer');
-    expect(message).not.toContain('lowendtalk.com');
-    expect(message).not.toContain('lowendbox.com');
-    expect(message).not.toContain('lowendspirit.com');
     expect(message).not.toContain('go.uukk.de');
     expect(message.endsWith(footer)).toBe(true);
   });
 
-  it('omits the order line when no merchant order URL is available', () => {
+  it('keeps the forum source when no merchant order URL is available', () => {
+    const originalUrl = 'https://lowendtalk.com/discussion/12345/example-offer';
     const message = formatOfferMessage({
       provider: 'ExampleHost',
       title: 'ExampleHost VPS Flash Sale',
@@ -124,11 +125,12 @@ describe('Telegram message formatters', () => {
       billing: 'year',
       postedAt: '2026-08-04',
       couponCode: null,
+      originalUrl,
       orderUrl: null,
     });
 
     expect(message).not.toContain('🔗 Order:');
-    expect(message).not.toContain('View offer');
+    expect(message).toContain(`🔗 Source: ${originalUrl}`);
     expect(message.endsWith(footer)).toBe(true);
   });
 
@@ -142,6 +144,7 @@ describe('Telegram message formatters', () => {
       billing: 'month',
       postedAt: '2026-08-03',
       couponCode: 'HOTSS50',
+      originalUrl: 'https://lowendtalk.com/discussion/219764/example',
       orderUrl: 'https://just.hosting/order',
     });
 

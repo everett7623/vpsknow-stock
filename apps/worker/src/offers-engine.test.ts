@@ -353,13 +353,12 @@ describe('discoverLetOffers', () => {
     });
     expect(sendMessage).toHaveBeenCalledWith(
       '@vpsknow_offers',
-      expect.stringContaining('🔗 Order: https://example.com/order'),
+      expect.stringContaining(`🔗 Source: ${discussion.url}`),
       { disableWebPagePreview: true },
     );
     const message = sendMessage.mock.calls[0]?.[1];
+    expect(message).toContain('🔗 Order: https://example.com/order');
     expect(message).not.toContain('View offer');
-    expect(message).not.toContain(discussion.url);
-    expect(message).not.toContain('lowendtalk.com');
     expect(message).not.toContain('go.uukk.de');
     expect(message).toContain('🌐 stock.vpsknow.com');
     expect(message).toContain('📢 @vpsknow_offers | 🤖 @vpsknow_stock_bot');
