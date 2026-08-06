@@ -24,6 +24,13 @@ const ACTIVE_PROVIDER_SLUGS = [
   'bestvm',
   'neburst',
   'hncloud',
+  // Re-activated after affiliate URL sync (real aff IDs, adapters present)
+  'clouvider',
+  'liteserver',
+  'evoxt',
+  'onidel',
+  'tierhive',
+  'zgocloud',
 ];
 
 async function main() {
@@ -510,19 +517,19 @@ async function main() {
     { providerId: greencloudvps.id, slug: 'greencloudvps', targetUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807', shortUrl: 'https://go.uukk.de/greencloudvps' },
     // Phase 4 A-Tier
     { providerId: racknerd.id, slug: 'racknerd', targetUrl: 'https://my.racknerd.com/aff.php?aff=5550', shortUrl: 'https://go.uukk.de/racknerd' },
-    { providerId: clouvider.id, slug: 'clouvider', targetUrl: 'https://www.clouvider.com', shortUrl: 'https://go.uukk.de/clouvider' },
-    { providerId: liteserver.id, slug: 'liteserver', targetUrl: 'https://liteserver.nl', shortUrl: 'https://go.uukk.de/liteserver' },
-    { providerId: crunchbits.id, slug: 'crunchbits', targetUrl: 'https://crunchbits.com', shortUrl: 'https://go.uukk.de/crunchbits' },
-    { providerId: servarica.id, slug: 'servarica', targetUrl: 'https://servarica.com', shortUrl: 'https://go.uukk.de/servarica' },
-    { providerId: evoxt.id, slug: 'evoxt', targetUrl: 'https://evoxt.com', shortUrl: 'https://go.uukk.de/evoxt' },
-    { providerId: alwyzon.id, slug: 'alwyzon', targetUrl: 'https://alwyzon.com', shortUrl: 'https://go.uukk.de/alwyzon' },
+    { providerId: clouvider.id, slug: 'clouvider', targetUrl: 'https://console.clouvider.co.uk/?affid=543', shortUrl: 'https://go.uukk.de/clouvider' },
+    { providerId: liteserver.id, slug: 'liteserver', targetUrl: 'https://clients.liteserver.nl/aff.php?aff=771', shortUrl: 'https://go.uukk.de/liteserver' },
+    { providerId: crunchbits.id, slug: 'crunchbits', targetUrl: 'https://crunchbits.com/', shortUrl: 'https://go.uukk.de/crunchbits' },
+    { providerId: servarica.id, slug: 'servarica', targetUrl: 'https://clients.servarica.com/', shortUrl: 'https://go.uukk.de/servarica' },
+    { providerId: evoxt.id, slug: 'evoxt', targetUrl: 'https://console.evoxt.com/aff.php?aff=994', shortUrl: 'https://go.uukk.de/evoxt' },
+    { providerId: alwyzon.id, slug: 'alwyzon', targetUrl: 'https://www.alwyzon.com/', shortUrl: 'https://go.uukk.de/alwyzon' },
     { providerId: dedirock.id, slug: 'dedirock', targetUrl: 'https://billing.dedirock.com/aff.php?aff=77', shortUrl: 'https://go.uukk.de/dedirock' },
-    { providerId: onidel.id, slug: 'onidel', targetUrl: 'https://onidel.com', shortUrl: 'https://go.uukk.de/onidel' },
+    { providerId: onidel.id, slug: 'onidel', targetUrl: 'https://onidel.com/?referral=1572199', shortUrl: 'https://go.uukk.de/onidel' },
     { providerId: bagevm.id, slug: 'bagevm', targetUrl: 'https://www.bagevm.com/aff.php?aff=10', shortUrl: 'https://go.uukk.de/bagevm' },
     // Phase 4 B-Tier
-    { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com', shortUrl: 'https://go.uukk.de/tierhive' },
-    { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://gullos.com', shortUrl: 'https://go.uukk.de/gullos' },
-    { providerId: webhorizon.id, slug: 'webhorizon', targetUrl: 'https://webhorizon.in', shortUrl: 'https://go.uukk.de/webhorizon' },
+    { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com/r/4FB89FE7369E', shortUrl: 'https://go.uukk.de/tierhive' },
+    { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://hosting.gullo.me/', shortUrl: 'https://go.uukk.de/gullos' },
+    { providerId: webhorizon.id, slug: 'webhorizon', targetUrl: 'https://my.webhorizon.net/', shortUrl: 'https://go.uukk.de/webhorizon' },
     { providerId: vmrack.id, slug: 'vmrack', targetUrl: 'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf', shortUrl: 'https://go.uukk.de/vmrack' },
     { providerId: gomami.id, slug: 'gomami', targetUrl: 'https://gomami.io/aff.php?aff=209', shortUrl: 'https://go.uukk.de/gomami' },
     { providerId: zgocloud.id, slug: 'zgocloud', targetUrl: 'https://clients.zgovps.com/?affid=488', shortUrl: 'https://go.uukk.de/zgovps' },
@@ -550,6 +557,7 @@ async function main() {
 
   console.log('Seeding complete!');
   console.log(`  Providers: 32`);
+  console.log(`  Active allowlist: ${ACTIVE_PROVIDER_SLUGS.length}`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);
 }

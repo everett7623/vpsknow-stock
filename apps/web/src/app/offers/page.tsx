@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { allowedOfferSourceUrl } from '@vpsknow/shared';
+import { allowedOfferSourceUrl, listRegions } from '@vpsknow/shared';
 import {
   getOfferFilterOptions,
   getOfferOrderUrl,
   getOffers,
   type OfferFilters,
 } from '@/lib/data';
+import { formatRelativeTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,12 +25,15 @@ function priceCents(value: string | undefined): number | undefined {
 
 function offerFilters(searchParams: SearchParams): OfferFilters {
   const sort = firstValue(searchParams.sort);
+  const region = firstValue(searchParams.region);
   return {
     provider: firstValue(searchParams.provider),
     category: firstValue(searchParams.category),
     location: firstValue(searchParams.location),
+    region: region && region !== 'all' ? region : undefined,
     billingCycle: firstValue(searchParams.billing),
     ipv4: firstValue(searchParams.ipv4) === '1' ? true : undefined,
+    limitedOnly: firstValue(searchParams.limited) === '1' ? true : undefined,
     minPriceCents: priceCents(firstValue(searchParams.minPrice)),
     maxPriceCents: priceCents(firstValue(searchParams.maxPrice)),
     sort: sort === 'price_asc' || sort === 'price_desc' || sort === 'newest' ? sort : 'newest',
@@ -43,7 +47,7 @@ function formatPrice(priceCents: number | null, currency: string | null, billing
 
 function formatPostedAt(value: Date | null): string {
   if (!value) return 'Recently discovered';
-  return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${formatRelativeTime(value)} (${value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
 }
 
 function label(value: string): string {
@@ -74,7 +78,7 @@ export default async function OffersPage({
           </div>
         </header>
 
-        <form method="get" className="grid gap-3 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-8">
+        <form method="get" className="grid gap-3 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <label className="grid gap-1 text-xs text-muted-foreground">
             Provider
             <select name="provider" defaultValue={filters.provider || ''} className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-accent">
@@ -87,6 +91,13 @@ export default async function OffersPage({
             <select name="category" defaultValue={filters.category || ''} className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-accent">
               <option value="">All categories</option>
               {options.categories.map((category) => <option key={category} value={category}>{label(category)}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            Region
+            <select name="region" defaultValue={filters.region || 'all'} className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-accent">
+              <option value="all">All regions</option>
+              {listRegions().map((region) => <option key={region} value={region}>{region}</option>)}
             </select>
           </label>
           <label className="grid gap-1 text-xs text-muted-foreground">
@@ -111,6 +122,13 @@ export default async function OffersPage({
             </select>
           </label>
           <label className="grid gap-1 text-xs text-muted-foreground">
+            Availability
+            <select name="limited" defaultValue={filters.limitedOnly ? '1' : ''} className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-accent">
+              <option value="">Any stock</option>
+              <option value="1">Limited only</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
             Min price (USD)
             <input name="minPrice" type="number" min="0" max={maxPrice || undefined} step="0.01" defaultValue={minPrice} placeholder="Any" className="h-10 min-w-0 border border-border bg-card px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-accent" />
           </label>
@@ -126,7 +144,7 @@ export default async function OffersPage({
               <option value="price_desc">Price: high to low</option>
             </select>
           </label>
-          <div className="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-8">
+          <div className="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-4 xl:col-span-5">
             <button type="submit" className="h-10 bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-stock-strong">
               Apply filters
             </button>

@@ -75,15 +75,33 @@ def main() -> int:
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     print("Connecting...")
-    client.connect(
-        hostname=host,
-        port=port,
-        username=user,
-        password=password,
-        timeout=30,
-        allow_agent=False,
-        look_for_keys=False,
-    )
+    last_error: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            client.connect(
+                hostname=host,
+                port=port,
+                username=user,
+                password=password,
+                timeout=45,
+                banner_timeout=60,
+                auth_timeout=45,
+                allow_agent=False,
+                look_for_keys=False,
+            )
+            last_error = None
+            break
+        except Exception as error:  # noqa: BLE001 — retry transient SSH failures
+            last_error = error
+            print(f"SSH attempt {attempt}/3 failed: {type(error).__name__}")
+            try:
+                client.close()
+            except Exception:  # noqa: BLE001
+                pass
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    if last_error is not None:
+        raise last_error
     print("Connected. Deploying...")
 
     remote = f"""

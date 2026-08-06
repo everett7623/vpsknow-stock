@@ -4,7 +4,7 @@ export const PROVIDER_INTERVALS = {
   buyvm: 90_000,
   greencloudvps: 180_000,
   spartanhost: 150_000,
-  // Live app.vmiss.com is often CF-blocked; adapter falls back to published PID catalog.
+  // Live app.vmiss.com is often CF-blocked; catalog fallback refreshes PIDs without stock claims.
   vmiss: 180_000,
   vps: 300_000,
   saltyfish: 300_000,
@@ -20,6 +20,13 @@ export const PROVIDER_INTERVALS = {
   bestvm: 300_000,
   neburst: 300_000,
   hncloud: 300_000,
+  // Re-activated: real affiliate IDs + adapters present
+  clouvider: 180_000,
+  liteserver: 180_000,
+  evoxt: 180_000,
+  onidel: 180_000,
+  tierhive: 300_000,
+  zgocloud: 300_000,
 } as const satisfies Record<string, number>;
 
 const MONITORED_PROVIDER_SLUGS = new Set<string>(Object.keys(PROVIDER_INTERVALS));

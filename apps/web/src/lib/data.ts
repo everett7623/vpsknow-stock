@@ -1,5 +1,5 @@
 import { prisma, Prisma } from '@vpsknow/database';
-import { buildStockGoUrl, resolveAffiliateProviderSlug } from '@vpsknow/shared';
+import { buildStockGoUrl, resolveAffiliateProviderSlug, resolveRegion } from '@vpsknow/shared';
 
 const providerInclude = {
   products: { orderBy: { priceCents: 'asc' as const } },
@@ -135,8 +135,10 @@ export interface OfferFilters {
   provider?: string;
   category?: string;
   location?: string;
+  region?: string;
   billingCycle?: string;
   ipv4?: boolean;
+  limitedOnly?: boolean;
   minPriceCents?: number;
   maxPriceCents?: number;
   sort?: OfferSort;
@@ -159,6 +161,7 @@ function offerWhere(filters: OfferFilters): Prisma.OfferWhereInput {
     ...(filters.location ? { locations: { has: filters.location } } : {}),
     ...(filters.billingCycle ? { billingCycle: filters.billingCycle } : {}),
     ...(filters.ipv4 === true ? { ipv4: true } : {}),
+    ...(filters.limitedOnly ? { isLimitedStock: true } : {}),
     ...(hasPriceFilter ? {
       priceCents: {
         ...(filters.minPriceCents !== undefined ? { gte: filters.minPriceCents } : {}),
@@ -166,6 +169,14 @@ function offerWhere(filters: OfferFilters): Prisma.OfferWhereInput {
       },
     } : {}),
   };
+}
+
+function offerMatchesRegion(
+  locations: string[],
+  region: string,
+): boolean {
+  if (locations.length === 0) return region === 'Other';
+  return locations.some((location) => resolveRegion(location) === region);
 }
 
 function offerOrderBy(sort: OfferSort | undefined): Prisma.OfferOrderByWithRelationInput {
@@ -176,11 +187,17 @@ function offerOrderBy(sort: OfferSort | undefined): Prisma.OfferOrderByWithRelat
 
 export async function getOffers(filters: OfferFilters = {}, limit = 60) {
   if (!hasDatabase) return [];
-  return prisma.offer.findMany({
+
+  // Region is derived from free-text locations, so over-fetch then filter in memory.
+  const take = filters.region ? Math.max(limit * 5, 200) : limit;
+  const rows = await prisma.offer.findMany({
     where: offerWhere(filters),
     orderBy: offerOrderBy(filters.sort),
-    take: limit,
+    take,
   });
+
+  if (!filters.region) return rows.slice(0, limit);
+  return rows.filter((offer) => offerMatchesRegion(offer.locations, filters.region!)).slice(0, limit);
 }
 
 export async function getOfferFilterOptions(): Promise<OfferFilterOptions> {

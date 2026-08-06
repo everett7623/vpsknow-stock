@@ -23,21 +23,26 @@ const IMPLEMENTED_ALLOWLIST = [
   'bestvm',
   'neburst',
   'hncloud',
+  'clouvider',
+  'liteserver',
+  'evoxt',
+  'onidel',
+  'tierhive',
+  'zgocloud',
 ] as const;
 
 describe('provider scheduling allowlist', () => {
-  it('schedules only the 20 approved providers with implemented adapters', () => {
+  it('schedules approved providers that have implemented adapters', () => {
     expect(Object.keys(PROVIDER_INTERVALS).sort()).toEqual([...IMPLEMENTED_ALLOWLIST].sort());
     expect(Object.keys(PROVIDER_INTERVALS).every((slug) => registry.has(slug))).toBe(true);
   });
 
-  it('rejects registered providers outside the approved monitoring scope', () => {
-    expect(isMonitoredProvider('liteserver')).toBe(false);
+  it('rejects providers with PLACEHOLDER affiliates or missing adapters', () => {
     expect(isMonitoredProvider('servarica')).toBe(false);
     expect(isMonitoredProvider('webhorizon')).toBe(false);
-  });
-
-  it('keeps providers without adapters out of scheduling until implementation', () => {
+    expect(isMonitoredProvider('crunchbits')).toBe(false);
+    expect(isMonitoredProvider('alwyzon')).toBe(false);
+    expect(isMonitoredProvider('gullos')).toBe(false);
     expect(isMonitoredProvider('highendnetwork')).toBe(false);
   });
 });
