@@ -46,3 +46,9 @@ export function formatRelativeTime(date: Date | string | null, now = Date.now())
 
   return rtf.format(deltaMs < 0 ? -value : value, unit);
 }
+
+/** Deep-link into the Telegram bot subscribe flow, optionally preselecting a provider. */
+export function botSubscribeUrl(providerSlug?: string): string {
+  const payload = providerSlug ? `subscribe_${providerSlug}` : 'subscribe';
+  return `https://t.me/vpsknow_stock_bot?start=${encodeURIComponent(payload)}`;
+}

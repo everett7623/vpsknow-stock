@@ -1,5 +1,6 @@
 import { prisma } from '@vpsknow/database';
 import type { StockResult } from '@vpsknow/providers';
+import { resolveRegion } from '@vpsknow/shared';
 import { formatRestockMessage, sendChannelMessage } from '@vpsknow/telegram';
 import type { Logger } from 'pino';
 
@@ -20,6 +21,21 @@ export interface OfferNotificationInput {
   currency: string | null;
 }
 
+/**
+ * Match subscription region filters against a free-text location.
+ * Supports coarse regions (Asia, US West, …) and legacy city values (Tokyo → Asia).
+ */
+export function locationMatchesRegions(location: string, selectedRegions: string[]): boolean {
+  if (selectedRegions.length === 0) return true;
+
+  const resolvedLocation = resolveRegion(location);
+  return selectedRegions.some((selected) => {
+    if (selected === location) return true;
+    if (selected === resolvedLocation) return true;
+    return resolveRegion(selected) === resolvedLocation;
+  });
+}
+
 export function matchesRestockSubscription(
   subscription: RestockSubscription,
   result: StockResult,
@@ -27,7 +43,7 @@ export function matchesRestockSubscription(
   if (subscription.providers.length > 0 && !subscription.providers.includes(result.provider)) {
     return false;
   }
-  if (subscription.regions.length > 0 && !subscription.regions.includes(result.location)) {
+  if (!locationMatchesRegions(result.location, subscription.regions)) {
     return false;
   }
   if (subscription.categories.length > 0 && !subscription.categories.includes(result.category)) {
@@ -47,11 +63,11 @@ export function matchesOfferSubscription(
   if (subscription.providers.length > 0 && (!provider || !subscription.providers.includes(provider))) {
     return false;
   }
-  if (
-    subscription.regions.length > 0
-    && !offer.locations.some((location) => subscription.regions.includes(location))
-  ) {
-    return false;
+  if (subscription.regions.length > 0) {
+    const locations = offer.locations.length > 0 ? offer.locations : [''];
+    if (!locations.some((location) => locationMatchesRegions(location, subscription.regions))) {
+      return false;
+    }
   }
   if (
     subscription.categories.length > 0

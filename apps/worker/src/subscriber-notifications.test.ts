@@ -59,10 +59,37 @@ describe('subscriber notification matching', () => {
     }, { ...result, currency: 'EUR' })).toBe(false);
   });
 
+  it('matches coarse and legacy region filters against free-text locations', () => {
+    expect(matchesRestockSubscription({
+      providers: [],
+      regions: ['US West'],
+      categories: [],
+      maxPriceCents: null,
+    }, result)).toBe(true);
+    expect(matchesRestockSubscription({
+      providers: [],
+      regions: ['Las Vegas'],
+      categories: [],
+      maxPriceCents: null,
+    }, result)).toBe(true);
+    expect(matchesRestockSubscription({
+      providers: [],
+      regions: ['Asia'],
+      categories: [],
+      maxPriceCents: null,
+    }, result)).toBe(false);
+    expect(matchesRestockSubscription({
+      providers: [],
+      regions: ['Tokyo'],
+      categories: [],
+      maxPriceCents: null,
+    }, { ...result, location: 'Tokyo Narita' })).toBe(true);
+  });
+
   it('matches offers using normalized providers and any overlapping region', () => {
     expect(matchesOfferSubscription({
       providers: ['greencloudvps'],
-      regions: ['Tokyo', 'Singapore'],
+      regions: ['Asia'],
       categories: ['vps'],
       maxPriceCents: 2500,
     }, {

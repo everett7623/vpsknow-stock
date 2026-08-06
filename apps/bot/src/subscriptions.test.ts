@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   PROVIDERS,
+  REGIONS,
   formatSubscriptionStatus,
+  normalizeSubscriptionRegions,
   parseMaxPriceCents,
   parseMuteHours,
+  parseSubscribeStartPayload,
   toggleFilter,
   toggleProvider,
 } from './subscriptions.js';
@@ -21,6 +24,27 @@ describe('subscription helpers', () => {
       'zgocloud',
       'hncloud',
     ]));
+  });
+
+  it('uses coarse regions shared with the website', () => {
+    expect(REGIONS).toEqual(expect.arrayContaining(['Asia', 'US West', 'Europe', 'Other']));
+    expect(normalizeSubscriptionRegions(['Tokyo', 'Los Angeles'])).toEqual(['Asia', 'US West']);
+  });
+
+  it('parses subscribe deep-link payloads with optional provider slug', () => {
+    expect(parseSubscribeStartPayload('subscribe')).toEqual({
+      mode: 'subscribe',
+      providerSlug: null,
+    });
+    expect(parseSubscribeStartPayload('subscribe_buyvm')).toEqual({
+      mode: 'subscribe',
+      providerSlug: 'buyvm',
+    });
+    expect(parseSubscribeStartPayload('subscribe_unknownhost')).toEqual({
+      mode: 'subscribe',
+      providerSlug: null,
+    });
+    expect(parseSubscribeStartPayload('')).toBeNull();
   });
   it('parses mute duration with an eight-hour default and safe bounds', () => {
     expect(parseMuteHours('')).toBe(8);
@@ -46,7 +70,7 @@ describe('subscription helpers', () => {
       eventTypes: ['restock'],
       isActive: true,
       mutedUntil: null,
-    })).toContain('Providers: All');
+    })).toContain('Regions: Asia');
   });
 
   it('reports an active future mute', () => {
@@ -67,6 +91,6 @@ describe('subscription helpers', () => {
   it('toggles provider whitelist entries without duplicates', () => {
     expect(toggleProvider([], 'buyvm')).toEqual(['buyvm']);
     expect(toggleProvider(['buyvm', 'dmit'], 'buyvm')).toEqual(['dmit']);
-    expect(toggleFilter(['Tokyo'], 'Singapore')).toEqual(['Tokyo', 'Singapore']);
+    expect(toggleFilter(['Asia'], 'Europe')).toEqual(['Asia', 'Europe']);
   });
 });

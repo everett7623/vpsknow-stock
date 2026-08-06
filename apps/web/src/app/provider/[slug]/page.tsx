@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductOrderUrl, getProviderBySlug, getProviderSiteUrl } from '@/lib/data';
-import { formatDate, formatPrice } from '@/lib/utils';
+import { formatDate, formatPrice, botSubscribeUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +61,7 @@ export default async function ProviderDetailPage({
                 Official website
               </a>
               <a
-                href="https://t.me/vpsknow_stock_bot?start=subscribe"
+                href={botSubscribeUrl(provider.slug)}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 transition-colors hover:border-sky-500 hover:text-sky-800 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:border-sky-500 dark:hover:text-sky-200"

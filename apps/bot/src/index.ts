@@ -2,8 +2,10 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { prisma } from '@vpsknow/database';
 import {
   formatSubscriptionStatus,
+  normalizeSubscriptionRegions,
   parseMaxPriceCents,
   parseMuteHours,
+  parseSubscribeStartPayload,
   CATEGORIES,
   PROVIDERS,
   REGIONS,
@@ -46,21 +48,54 @@ function filterKeyboard(
     .text('Done', `${prefix}:done`);
 }
 
-function subscribePrompt() {
+function subscribePrompt(providerName?: string) {
   const keyboard = new InlineKeyboard()
     .text('Restocks + Offers', 'events:both').row()
     .text('Restocks only', 'events:restock')
     .text('Offers only', 'events:offers');
 
+  const focus = providerName
+    ? ` Alerts will focus on ${providerName} (you can change providers next).`
+    : ' This initial subscription includes all providers, regions, and categories.';
+
   return {
-    text: 'Choose which alerts you want. This initial subscription includes all providers, regions, and categories.',
+    text: `Choose which alerts you want.${focus}`,
     reply_markup: keyboard,
   };
 }
 
 bot.command('start', async (ctx) => {
-  const payload = ctx.match?.trim().toLowerCase() ?? '';
-  if (payload === 'subscribe') {
+  const payload = ctx.match?.trim() ?? '';
+  const subscribe = parseSubscribeStartPayload(payload);
+  if (subscribe) {
+    if (subscribe.providerSlug && ctx.from) {
+      const telegramUserId = BigInt(ctx.from.id);
+      const chatId = BigInt(ctx.chat?.id ?? ctx.from.id);
+      const providerName = PROVIDERS.find(([slug]) => slug === subscribe.providerSlug)?.[1]
+        ?? subscribe.providerSlug;
+      await prisma.subscription.upsert({
+        where: { telegramUserId },
+        update: {
+          chatId,
+          providers: [subscribe.providerSlug],
+          isActive: true,
+          mutedUntil: null,
+        },
+        create: {
+          telegramUserId,
+          chatId,
+          providers: [subscribe.providerSlug],
+          regions: [],
+          categories: [],
+          maxPriceCents: null,
+          eventTypes: ['restock', 'offers'],
+        },
+      });
+      const prompt = subscribePrompt(providerName);
+      await ctx.reply(prompt.text, { reply_markup: prompt.reply_markup });
+      return;
+    }
+
     const prompt = subscribePrompt();
     await ctx.reply(prompt.text, { reply_markup: prompt.reply_markup });
     return;
@@ -132,9 +167,11 @@ bot.callbackQuery(/^events:(both|restock|offers)$/, async (ctx) => {
   });
 
   await ctx.answerCallbackQuery({ text: 'Subscription saved' });
+  const providers = (await prisma.subscription.findUnique({ where: { telegramUserId } }))?.providers
+    ?? [];
   await ctx.editMessageText(
     `Subscribed to ${selection === 'both' ? 'restocks and offers' : selection}.\n\nSelect provider filters, or keep all providers enabled:`,
-    { reply_markup: providerKeyboard([]) },
+    { reply_markup: providerKeyboard(providers) },
   );
 });
 
@@ -178,16 +215,24 @@ bot.callbackQuery(/^provider:(.+)$/, async (ctx) => {
 
 bot.command('regions', async (ctx) => {
   if (!ctx.from) return;
+  const telegramUserId = BigInt(ctx.from.id);
   const subscription = await prisma.subscription.findUnique({
-    where: { telegramUserId: BigInt(ctx.from.id) },
+    where: { telegramUserId },
   });
   if (!subscription) {
     await ctx.reply('Use /subscribe first.');
     return;
   }
+  const regions = normalizeSubscriptionRegions(subscription.regions);
+  if (regions.join('\0') !== subscription.regions.join('\0')) {
+    await prisma.subscription.update({
+      where: { telegramUserId },
+      data: { regions },
+    });
+  }
   const options = REGIONS.map((region) => [region, region] as const);
-  await ctx.reply('Select regions, or keep all regions enabled:', {
-    reply_markup: filterKeyboard('region', options, subscription.regions),
+  await ctx.reply('Select regions (Asia, US West, Europe, …), or keep all regions enabled:', {
+    reply_markup: filterKeyboard('region', options, regions),
   });
 });
 
@@ -200,15 +245,17 @@ bot.callbackQuery(/^region:(.+)$/, async (ctx) => {
     return;
   }
   if (action === 'done') {
+    const regions = normalizeSubscriptionRegions(subscription.regions);
     await ctx.answerCallbackQuery({ text: 'Region filters saved' });
-    await ctx.editMessageText(`✅ Regions: ${subscription.regions.join(', ') || 'All'}`);
+    await ctx.editMessageText(`✅ Regions: ${regions.join(', ') || 'All'}`);
     return;
   }
   if (action !== 'all' && !REGIONS.some((region) => region === action)) {
     await ctx.answerCallbackQuery({ text: 'Unknown region', show_alert: true });
     return;
   }
-  const regions = action === 'all' ? [] : toggleFilter(subscription.regions, action);
+  const current = normalizeSubscriptionRegions(subscription.regions);
+  const regions = action === 'all' ? [] : toggleFilter(current, action);
   await prisma.subscription.update({ where: { telegramUserId }, data: { regions } });
   const options = REGIONS.map((region) => [region, region] as const);
   await ctx.answerCallbackQuery({ text: regions.length === 0 ? 'All regions enabled' : 'Filters updated' });

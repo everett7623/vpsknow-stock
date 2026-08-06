@@ -1,3 +1,5 @@
+import { listRegions, resolveRegion } from '@vpsknow/shared';
+
 interface SubscriptionStatus {
   providers: string[];
   regions: string[];
@@ -38,18 +40,8 @@ export const PROVIDERS = [
   ['zgocloud', 'ZgoCloud'],
 ] as const;
 
-export const REGIONS = [
-  'Hong Kong',
-  'Tokyo',
-  'Singapore',
-  'Los Angeles',
-  'Seattle',
-  'Dallas',
-  'San Jose',
-  'New York',
-  'Amsterdam',
-  'Frankfurt',
-] as const;
+/** Coarse regions shared with the stock website filters. */
+export const REGIONS = listRegions();
 
 export const CATEGORIES = [
   ['vps', 'VPS'],
@@ -57,6 +49,23 @@ export const CATEGORIES = [
   ['dedicated', 'Dedicated'],
   ['nat_vps', 'NAT VPS'],
 ] as const;
+
+/**
+ * Migrate legacy city filters (e.g. Tokyo) to coarse regions (Asia).
+ */
+export function normalizeSubscriptionRegions(regions: string[]): string[] {
+  if (regions.length === 0) return [];
+  const allowed = new Set(listRegions());
+  const normalized = new Set<string>();
+  for (const region of regions) {
+    if (allowed.has(region)) {
+      normalized.add(region);
+      continue;
+    }
+    normalized.add(resolveRegion(region));
+  }
+  return [...normalized];
+}
 
 export function toggleFilter(selected: string[], value: string): string[] {
   return selected.includes(value)
@@ -105,8 +114,25 @@ export function formatSubscriptionStatus(subscription: SubscriptionStatus | null
     `Status: ${muted}`,
     `Events: ${list(subscription.eventTypes)}`,
     `Providers: ${list(subscription.providers)}`,
-    `Regions: ${list(subscription.regions)}`,
+    `Regions: ${list(normalizeSubscriptionRegions(subscription.regions))}`,
     `Categories: ${list(subscription.categories)}`,
     `Max price: ${price}`,
   ].join('\n');
+}
+
+export function parseSubscribeStartPayload(payload: string): {
+  mode: 'subscribe';
+  providerSlug: string | null;
+} | null {
+  const normalized = payload.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === 'subscribe') return { mode: 'subscribe', providerSlug: null };
+  if (normalized.startsWith('subscribe_')) {
+    const slug = normalized.slice('subscribe_'.length);
+    if (!slug || !PROVIDERS.some(([providerSlug]) => providerSlug === slug)) {
+      return { mode: 'subscribe', providerSlug: null };
+    }
+    return { mode: 'subscribe', providerSlug: slug };
+  }
+  return null;
 }

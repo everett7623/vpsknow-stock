@@ -13,7 +13,7 @@ import {
   offerTagLabel,
   type PlanOfferTag,
 } from '@/lib/plan-tags';
-import { formatDate, formatPrice, formatRelativeTime } from '@/lib/utils';
+import { formatDate, formatPrice, formatRelativeTime, botSubscribeUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -715,7 +715,7 @@ export default async function ProvidersPage({
                                 </a>
                               ) : !product.inStock ? (
                                 <a
-                                  href="https://t.me/vpsknow_stock_bot?start=subscribe"
+                                  href={botSubscribeUrl(selected.slug)}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-sky-600 hover:text-sky-500 dark:text-sky-300"
