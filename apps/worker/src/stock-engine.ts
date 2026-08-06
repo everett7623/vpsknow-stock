@@ -5,6 +5,7 @@ import {
   RESTOCK_COOLDOWN_MS,
   CONSECUTIVE_CONFIRMS_REQUIRED,
   buildProductAffiliateUrl,
+  buildStockGoUrl,
   extractWhmcsPid,
   generateShortLinkSlug,
 } from '@vpsknow/shared';
@@ -185,7 +186,7 @@ export async function processStockResults(
       });
 
       const linkSlug = generateShortLinkSlug(providerSlug, result.productId);
-      const shortUrl = `https://stock.vpsknow.com/go/${linkSlug}`;
+      const shortUrl = buildStockGoUrl(providerSlug, result.productId);
       const targetUrl = buildProductAffiliateUrl(providerSlug, result.orderUrl, whmcsPid);
       const existingProductLink = provider.affiliateLinks.find((link) => link.slug === linkSlug);
       if (

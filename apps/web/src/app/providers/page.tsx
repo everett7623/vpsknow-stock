@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getAffiliateUrl, getProviders, type ProviderWithProducts } from '@/lib/data';
+import { getProductOrderUrl, getProviders, type ProviderWithProducts } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -308,7 +308,7 @@ export default async function ProvidersPage({
                           <td className="px-4 py-3">
                             {product.orderUrl ? (
                               <a
-                                href={getAffiliateUrl(product.orderUrl)}
+                                href={getProductOrderUrl(selected.slug, product.productId)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-emerald-400 hover:text-emerald-300"

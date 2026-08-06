@@ -2,9 +2,10 @@ import Link from 'next/link';
 import type { Offer } from '@vpsknow/database';
 import { allowedOfferSourceUrl } from '@vpsknow/shared';
 import {
-  getAffiliateUrl,
   getLatestRestocks,
   getLimitedOffers,
+  getOfferOrderUrl,
+  getProductOrderUrl,
   getRecentOffers,
   getRecentStockEvents,
   getRecentlySoldOut,
@@ -34,7 +35,7 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
       <div className="mt-2 flex gap-3 text-sm">
         {event.product.orderUrl && (
           <a
-            href={getAffiliateUrl(event.product.orderUrl)}
+            href={getProductOrderUrl(event.product.provider.slug, event.product.productId)}
             target="_blank"
             rel="noreferrer"
             className="text-emerald-400 hover:text-emerald-300"
@@ -55,6 +56,7 @@ function EventCard({ event, badge }: { event: StockEventWithProduct; badge: stri
 
 function OfferCard({ offer }: { offer: Offer }) {
   const sourceUrl = allowedOfferSourceUrl(offer.threadUrl);
+  const orderUrl = getOfferOrderUrl(offer.provider, offer.orderUrl);
   return (
     <article className="rounded-lg border border-gray-800 bg-[#12121a] p-4">
       <div className="flex items-center justify-between gap-3">
@@ -70,8 +72,8 @@ function OfferCard({ offer }: { offer: Offer }) {
           : `${offer.currency || 'USD'} ${(offer.priceCents / 100).toFixed(2)}`}
       </p>
       <div className="mt-3 flex gap-3 text-sm">
-        {offer.orderUrl && (
-          <a href={getAffiliateUrl(offer.orderUrl)} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">
+        {orderUrl && (
+          <a href={orderUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300">
             Order
           </a>
         )}

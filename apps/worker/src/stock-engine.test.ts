@@ -3,8 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StockResult } from '@vpsknow/providers';
 import {
   buildProductAffiliateUrl,
+  buildStockGoUrl,
   extractWhmcsPid,
   generateAffiliateUrl,
+  generateShortLinkSlug,
+  resolveAffiliateProviderSlug,
 } from '@vpsknow/shared';
 import { processStockResults } from './stock-engine.js';
 
@@ -888,5 +891,23 @@ describe('product affiliate mapping', () => {
     expect(buildProductAffiliateUrl('hncloud', 'https://example.com/product/cloud-vps', null)).toBe(
       'https://example.com/product/cloud-vps',
     );
+  });
+
+  it('builds stock.vpsknow.com/go short links without go.uukk.de', () => {
+    expect(buildStockGoUrl('greencloudvps', 'gc-2017')).toBe(
+      'https://stock.vpsknow.com/go/greencloudvps-gc-2017',
+    );
+    expect(buildStockGoUrl('buyvm', 'buyvm-slice-1024-lv')).toBe(
+      'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
+    );
+    expect(buildStockGoUrl('buyvm')).toBe('https://stock.vpsknow.com/go/buyvm');
+    expect(generateShortLinkSlug('zgocloud', 'zgocloud-121')).toBe('zgocloud-121');
+  });
+
+  it('resolves free-text offer provider names to affiliate slugs', () => {
+    expect(resolveAffiliateProviderSlug('BuyVM')).toBe('buyvm');
+    expect(resolveAffiliateProviderSlug('GreenCloudVPS')).toBe('greencloudvps');
+    expect(resolveAffiliateProviderSlug('BWH')).toBe('bandwagonhost');
+    expect(resolveAffiliateProviderSlug('UnknownHost')).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { prisma, Prisma } from '@vpsknow/database';
+import { buildStockGoUrl, resolveAffiliateProviderSlug } from '@vpsknow/shared';
 
 const providerInclude = {
   products: { orderBy: { priceCents: 'asc' as const } },
@@ -33,7 +34,6 @@ export type ProductDetail = Prisma.ProductGetPayload<{
   include: typeof productDetailInclude;
 }>;
 
-const AFFILIATE_BASE = process.env.AFFILIATE_BASE_URL || 'https://go.uukk.de';
 const hasDatabase = Boolean(process.env.DATABASE_URL);
 
 export async function getProviders(): Promise<ProviderWithProducts[]> {
@@ -265,7 +265,24 @@ export async function getStockSummary(): Promise<
   }));
 }
 
-export function getAffiliateUrl(orderUrl: string | null): string {
-  if (!orderUrl) return '#';
-  return `${AFFILIATE_BASE}/?url=${encodeURIComponent(orderUrl)}`;
+/**
+ * Product Order CTA → internal short link (stock.vpsknow.com/go/...).
+ * Aff+pid stay server-side in affiliate_links.targetUrl.
+ */
+export function getProductOrderUrl(providerSlug: string, productId: string): string {
+  return buildStockGoUrl(providerSlug, productId);
+}
+
+/**
+ * Offer Order CTA: prefer provider-level /go/{slug} when the merchant maps to a
+ * configured affiliate. Otherwise omit Order (Source forum link remains).
+ */
+export function getOfferOrderUrl(
+  provider: string | null,
+  orderUrl: string | null,
+): string | null {
+  if (!orderUrl) return null;
+  const slug = resolveAffiliateProviderSlug(provider);
+  if (!slug) return null;
+  return buildStockGoUrl(slug);
 }

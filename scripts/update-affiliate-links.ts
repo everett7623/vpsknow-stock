@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import {
   AFFILIATE_CONFIGS,
   buildProductAffiliateUrl,
+  buildStockGoUrl,
   extractWhmcsPid,
   generateAffiliateUrl,
   generateShortLinkSlug,
@@ -55,7 +56,7 @@ async function updateAffiliateLinks() {
         providerId: provider.id,
         slug: providerSlug,
         targetUrl: providerTargetUrl,
-        shortUrl: `https://stock.vpsknow.com/go/${providerSlug}`,
+        shortUrl: buildStockGoUrl(provider.slug),
       },
     });
 
@@ -94,12 +95,15 @@ async function updateAffiliateLinks() {
 
         await prisma.affiliateLink.upsert({
           where: { slug: productSlug },
-          update: { targetUrl: productTargetUrl },
+          update: {
+            targetUrl: productTargetUrl,
+            shortUrl: buildStockGoUrl(provider.slug, product.productId),
+          },
           create: {
             providerId: provider.id,
             slug: productSlug,
             targetUrl: productTargetUrl,
-            shortUrl: `https://stock.vpsknow.com/go/${productSlug}`,
+            shortUrl: buildStockGoUrl(provider.slug, product.productId),
           },
         });
       }

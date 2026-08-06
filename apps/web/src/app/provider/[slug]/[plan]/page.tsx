@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getAffiliateUrl, getProductDetail } from '@/lib/data';
+import { getProductDetail, getProductOrderUrl } from '@/lib/data';
 import { formatDate, formatPrice } from '@/lib/utils';
 import { PriceHistory } from './price-history';
 
@@ -104,7 +104,7 @@ export default async function ProductDetailPage({
               <p className="font-mono text-2xl font-bold text-emerald-400">{formatPrice(product)}</p>
               {product.inStock && product.orderUrl && (
                 <a
-                  href={getAffiliateUrl(product.orderUrl)}
+                  href={getProductOrderUrl(product.provider.slug, product.productId)}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-block rounded-lg bg-emerald-600 px-5 py-2 font-medium text-white hover:bg-emerald-500"

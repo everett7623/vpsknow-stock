@@ -430,6 +430,21 @@ export function buildProductAffiliateUrl(
   return orderUrl;
 }
 
+/** Public stock site origin used for internal /go short links. */
+export const STOCK_SITE_ORIGIN = 'https://stock.vpsknow.com';
+
+const PROVIDER_NAME_ALIASES: Record<string, string> = {
+  bwh: 'bandwagonhost',
+  bandwagon: 'bandwagonhost',
+  thebandwagonhost: 'bandwagonhost',
+  greencloud: 'greencloudvps',
+  zgovps: 'zgocloud',
+  zgo: 'zgocloud',
+  ccs: 'colocrossing',
+  speedy: 'speedypage',
+  vps: 'vps',
+};
+
 /**
  * 生成短链接 slug (用于 /go/:slug)
  * @param providerSlug Provider slug
@@ -448,6 +463,35 @@ export function generateShortLinkSlug(providerSlug: string, productId?: string):
   }
   // Provider 级别: provider (例: buyvm)
   return providerSlug;
+}
+
+/**
+ * Build an internal short-link URL: https://stock.vpsknow.com/go/{slug}
+ */
+export function buildStockGoUrl(providerSlug: string, productId?: string): string {
+  return `${STOCK_SITE_ORIGIN}/go/${generateShortLinkSlug(providerSlug, productId)}`;
+}
+
+/**
+ * Map a free-text provider name (e.g. LET offer author) to a configured affiliate slug.
+ */
+export function resolveAffiliateProviderSlug(
+  providerName: string | null | undefined,
+): string | null {
+  if (!providerName?.trim()) return null;
+
+  const raw = providerName.trim().toLowerCase();
+  if (AFFILIATE_CONFIGS[raw]) return raw;
+
+  const compact = raw.replace(/[^a-z0-9]/g, '');
+  const aliased = PROVIDER_NAME_ALIASES[compact];
+  if (aliased && AFFILIATE_CONFIGS[aliased]) return aliased;
+
+  for (const slug of Object.keys(AFFILIATE_CONFIGS)) {
+    if (slug.replace(/[^a-z0-9]/g, '') === compact) return slug;
+  }
+
+  return null;
 }
 
 /**
