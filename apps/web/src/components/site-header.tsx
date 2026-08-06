@@ -9,7 +9,7 @@ const links = [
 export function SiteHeader(): React.JSX.Element {
   return (
     <header className="border-b border-gray-800/80 bg-[#0a0a0f]/">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="text-sm font-semibold tracking-wide text-white hover:text-emerald-300">
           VPSKnow Stock
         </Link>

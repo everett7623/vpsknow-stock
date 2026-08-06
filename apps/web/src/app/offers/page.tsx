@@ -65,7 +65,7 @@ export default async function OffersPage({
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
-      <div className="mx-auto max-w-6xl space-y-8">
+      <div className="mx-auto max-w-[1400px] space-y-8">
         <header className="space-y-2">
           <div>
             <p className="text-sm font-medium text-orange-400">CURATED VPS DEALS</p>

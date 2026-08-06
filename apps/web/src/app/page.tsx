@@ -99,7 +99,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
-      <div className="mx-auto max-w-5xl space-y-10">
+      <div className="mx-auto max-w-[1200px] space-y-10">
         <header className="space-y-4 pb-4 pt-8 text-center">
           <h1 className="text-4xl font-bold text-white">VPSKnow Stock</h1>
           <p className="text-lg text-gray-400">

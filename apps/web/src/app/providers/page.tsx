@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getProductOrderUrl, getProviders, type ProviderWithProducts } from '@/lib/data';
+import {
+  categoryLabel,
+  detectPlanOfferTag,
+  offerTagLabel,
+  type PlanOfferTag,
+} from '@/lib/plan-tags';
 import { formatDate, formatPrice } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -11,18 +17,28 @@ export const metadata: Metadata = {
 };
 
 type StockFilter = 'all' | 'in' | 'out';
+type OfferFilter = 'all' | 'special' | 'promo' | 'limited' | 'regular';
 type SortKey = 'price_asc' | 'price_desc' | 'name';
 
 interface SearchParams {
   p?: string;
   stock?: string;
   location?: string;
+  category?: string;
+  offer?: string;
   q?: string;
   sort?: string;
 }
 
 function parseStock(value: string | undefined): StockFilter {
   if (value === 'in' || value === 'out') return value;
+  return 'all';
+}
+
+function parseOffer(value: string | undefined): OfferFilter {
+  if (value === 'special' || value === 'promo' || value === 'limited' || value === 'regular') {
+    return value;
+  }
   return 'all';
 }
 
@@ -44,6 +60,8 @@ function filterProducts(
   provider: ProviderWithProducts,
   stock: StockFilter,
   location: string,
+  category: string,
+  offer: OfferFilter,
   query: string,
   sort: SortKey,
 ) {
@@ -52,11 +70,18 @@ function filterProducts(
     if (stock === 'in' && !product.inStock) return false;
     if (stock === 'out' && product.inStock) return false;
     if (location !== 'all' && product.location !== location) return false;
+    if (category !== 'all' && product.category !== category) return false;
+
+    const tag = detectPlanOfferTag(product.planName, product.productId);
+    if (offer === 'regular' && tag !== null) return false;
+    if (offer !== 'all' && offer !== 'regular' && tag !== offer) return false;
+
     if (!needle) return true;
     return (
       product.planName.toLowerCase().includes(needle) ||
       product.location.toLowerCase().includes(needle) ||
-      product.productId.toLowerCase().includes(needle)
+      product.productId.toLowerCase().includes(needle) ||
+      product.category.toLowerCase().includes(needle)
     );
   });
 
@@ -82,6 +107,22 @@ function StockBadge({ inStock }: { inStock: boolean }) {
   );
 }
 
+function OfferBadge({ tag }: { tag: PlanOfferTag }) {
+  const label = offerTagLabel(tag);
+  if (!label || !tag) return <span className="text-gray-600">—</span>;
+
+  const styles =
+    tag === 'special'
+      ? 'bg-amber-950 text-amber-300'
+      : tag === 'promo'
+        ? 'bg-violet-950 text-violet-300'
+        : 'bg-orange-950 text-orange-300';
+
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs font-medium ${styles}`}>{label}</span>
+  );
+}
+
 export default async function ProvidersPage({
   searchParams,
 }: {
@@ -95,13 +136,18 @@ export default async function ProvidersPage({
   const stock = parseStock(params.stock);
   const sort = parseSort(params.sort);
   const location = params.location?.trim() || 'all';
+  const category = params.category?.trim() || 'all';
+  const offer = parseOffer(params.offer);
   const query = params.q?.trim() || '';
 
   const locations = selected
     ? [...new Set(selected.products.map((product) => product.location))].sort()
     : [];
+  const categories = selected
+    ? [...new Set(selected.products.map((product) => product.category))].sort()
+    : [];
   const products = selected
-    ? filterProducts(selected, stock, location, query, sort)
+    ? filterProducts(selected, stock, location, category, offer, query, sort)
     : [];
   const inStockCount = selected?.products.filter((product) => product.inStock).length ?? 0;
   const lastCheckedAt =
@@ -114,13 +160,15 @@ export default async function ProvidersPage({
     p: selected?.slug,
     stock: stock === 'all' ? undefined : stock,
     location: location === 'all' ? undefined : location,
+    category: category === 'all' ? undefined : category,
+    offer: offer === 'all' ? undefined : offer,
     q: query || undefined,
     sort: sort === 'price_asc' ? undefined : sort,
   };
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-gray-100">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
         <aside className="border-b border-gray-800 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r">
           <div className="sticky top-0 space-y-4 p-4 sm:p-5">
             <div className="space-y-1">
@@ -139,6 +187,8 @@ export default async function ProvidersPage({
                       ...sharedParams,
                       p: provider.slug,
                       location: undefined,
+                      category: undefined,
+                      offer: undefined,
                     })}`}
                     className={`block rounded-md px-3 py-2 transition-colors ${
                       active
@@ -190,7 +240,7 @@ export default async function ProvidersPage({
 
               <form
                 method="get"
-                className="grid gap-3 rounded-lg border border-gray-800 bg-[#12121a] p-4 sm:grid-cols-2 lg:grid-cols-4"
+                className="grid gap-3 rounded-lg border border-gray-800 bg-[#12121a] p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
               >
                 <input type="hidden" name="p" value={selected.slug} />
                 <label className="space-y-1 text-xs text-gray-500">
@@ -203,6 +253,35 @@ export default async function ProvidersPage({
                     <option value="all">All</option>
                     <option value="in">In stock</option>
                     <option value="out">Sold out</option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-gray-500">
+                  Category
+                  <select
+                    name="category"
+                    defaultValue={category}
+                    className="w-full rounded border border-gray-700 bg-[#0a0a0f] px-3 py-2 text-sm text-gray-200"
+                  >
+                    <option value="all">All types</option>
+                    {categories.map((item) => (
+                      <option key={item} value={item}>
+                        {categoryLabel(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-gray-500">
+                  Offer
+                  <select
+                    name="offer"
+                    defaultValue={offer}
+                    className="w-full rounded border border-gray-700 bg-[#0a0a0f] px-3 py-2 text-sm text-gray-200"
+                  >
+                    <option value="all">All offers</option>
+                    <option value="special">Special</option>
+                    <option value="promo">Promo</option>
+                    <option value="limited">Limited</option>
+                    <option value="regular">Regular</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-gray-500">
@@ -241,7 +320,7 @@ export default async function ProvidersPage({
                     className="w-full rounded border border-gray-700 bg-[#0a0a0f] px-3 py-2 text-sm text-gray-200"
                   />
                 </label>
-                <div className="sm:col-span-2 lg:col-span-4">
+                <div className="sm:col-span-2 lg:col-span-3 xl:col-span-6">
                   <button
                     type="submit"
                     className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
@@ -252,14 +331,16 @@ export default async function ProvidersPage({
               </form>
 
               <div className="overflow-x-auto rounded-lg border border-gray-800">
-                <table className="min-w-[920px] w-full text-sm">
+                <table className="min-w-[1080px] w-full text-sm">
                   <thead className="bg-[#12121a] text-left text-gray-400">
                     <tr className="border-b border-gray-800">
                       <th className="px-4 py-3">Plan</th>
+                      <th className="px-4 py-3">Type</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3">CPU</th>
                       <th className="px-4 py-3">RAM</th>
                       <th className="px-4 py-3">Storage</th>
+                      <th className="px-4 py-3">Offer</th>
                       <th className="px-4 py-3">Price</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Action</th>
@@ -268,59 +349,68 @@ export default async function ProvidersPage({
                   <tbody>
                     {products.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                           No plans match the current filters.
                         </td>
                       </tr>
                     ) : (
-                      products.map((product) => (
-                        <tr key={product.id} className="border-b border-gray-800/60">
-                          <td className="px-4 py-3 font-medium text-white">
-                            <Link
-                              href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
-                              className="hover:text-emerald-300"
-                            >
-                              {product.planName}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3 text-gray-300">{product.location}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-gray-300">
-                            {product.cpu || 'N/A'}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs text-gray-300">
-                            {product.ramMb
-                              ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${
-                                  product.ramMb >= 1024 ? 'GB' : 'MB'
-                                }`
-                              : 'N/A'}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs text-gray-300">
-                            {product.storageGb
-                              ? `${product.storageGb} GB ${product.storageType || ''}`.trim()
-                              : 'N/A'}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-emerald-400">
-                            {formatPrice(product)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <StockBadge inStock={product.inStock} />
-                          </td>
-                          <td className="px-4 py-3">
-                            {product.orderUrl ? (
-                              <a
-                                href={getProductOrderUrl(selected.slug, product.productId)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-emerald-400 hover:text-emerald-300"
+                      products.map((product) => {
+                        const tag = detectPlanOfferTag(product.planName, product.productId);
+                        return (
+                          <tr key={product.id} className="border-b border-gray-800/60">
+                            <td className="px-4 py-3 font-medium text-white">
+                              <Link
+                                href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
+                                className="hover:text-emerald-300"
                               >
-                                Order
-                              </a>
-                            ) : (
-                              <span className="text-gray-600">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                                {product.planName}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-400">
+                              {categoryLabel(product.category)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-300">{product.location}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-300">
+                              {product.cpu || 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-300">
+                              {product.ramMb
+                                ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${
+                                    product.ramMb >= 1024 ? 'GB' : 'MB'
+                                  }`
+                                : 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-300">
+                              {product.storageGb
+                                ? `${product.storageGb} GB ${product.storageType || ''}`.trim()
+                                : 'N/A'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <OfferBadge tag={tag} />
+                            </td>
+                            <td className="px-4 py-3 font-mono text-emerald-400">
+                              {formatPrice(product)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StockBadge inStock={product.inStock} />
+                            </td>
+                            <td className="px-4 py-3">
+                              {product.orderUrl ? (
+                                <a
+                                  href={getProductOrderUrl(selected.slug, product.productId)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-emerald-400 hover:text-emerald-300"
+                                >
+                                  Order
+                                </a>
+                              ) : (
+                                <span className="text-gray-600">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

@@ -43,7 +43,7 @@ export default async function ProviderDetailPage({
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] px-4 py-8 text-gray-100">
-      <div className="mx-auto max-w-5xl space-y-8">
+      <div className="mx-auto max-w-[1200px] space-y-8">
         <Link href={`/providers?p=${provider.slug}`} className="text-gray-400 transition-colors hover:text-white">
           Stock monitor
         </Link>
