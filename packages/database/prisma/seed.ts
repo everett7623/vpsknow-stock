@@ -9,7 +9,7 @@ const ACTIVE_PROVIDER_SLUGS = [
   'buyvm',
   'greencloudvps',
   'spartanhost',
-  'vmiss',
+  // 'vmiss', // paused: Cloudflare 403 from worker IP — re-enable after proxy/exit fix
   'vps',
   'saltyfish',
   'racknerd',

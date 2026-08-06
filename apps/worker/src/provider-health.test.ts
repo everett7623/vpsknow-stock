@@ -8,7 +8,7 @@ import {
   type ProviderHealthConnection,
 } from './provider-health.js';
 
-const footer = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'].join('\n');
+const footer = ['🌐 stock.vpsknow.com', '📢@vpsknow_offers | 🤖@vpsknow_stock_bot'].join('\n');
 
 function createConnection(incrementedFailures = 0): ProviderHealthConnection & {
   del: ReturnType<typeof vi.fn>;

@@ -8,7 +8,7 @@ const IMPLEMENTED_ALLOWLIST = [
   'buyvm',
   'greencloudvps',
   'spartanhost',
-  'vmiss',
+  // vmiss: temporarily unscheduled — Cloudflare 403 from worker IP
   'vps',
   'saltyfish',
   'racknerd',
@@ -26,9 +26,11 @@ const IMPLEMENTED_ALLOWLIST = [
 ] as const;
 
 describe('provider scheduling allowlist', () => {
-  it('schedules only the 20 approved providers with implemented adapters', () => {
+  it('schedules only the approved providers with implemented adapters', () => {
     expect(Object.keys(PROVIDER_INTERVALS).sort()).toEqual([...IMPLEMENTED_ALLOWLIST].sort());
     expect(Object.keys(PROVIDER_INTERVALS).every((slug) => registry.has(slug))).toBe(true);
+    expect(registry.has('vmiss')).toBe(true);
+    expect(isMonitoredProvider('vmiss')).toBe(false);
   });
 
   it('rejects registered providers outside the approved monitoring scope', () => {

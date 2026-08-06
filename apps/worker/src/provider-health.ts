@@ -3,7 +3,7 @@ import { ADAPTER_DEGRADED_THRESHOLD, ADAPTER_PAUSED_THRESHOLD } from '@vpsknow/s
 const FAILURE_KEY_PREFIX = 'provider-failures:';
 const PAUSE_KEY_PREFIX = 'provider-paused:';
 const PAUSE_DURATION_SECONDS = 5 * 60;
-const MESSAGE_FOOTER = ['🌐 vpsknow.com', '💬@vpsknow | 📢@vpsknow_channel | 🤖@vpsknow_bot'];
+const MESSAGE_FOOTER = ['🌐 stock.vpsknow.com', '📢@vpsknow_offers | 🤖@vpsknow_stock_bot'];
 
 export interface ProviderFailureState {
   failures: number;

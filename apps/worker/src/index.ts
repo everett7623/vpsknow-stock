@@ -7,7 +7,6 @@ import {
   ADAPTER_PAUSED_THRESHOLD,
   withJitter,
 } from '@vpsknow/shared';
-import { sendChannelMessage } from '@vpsknow/telegram';
 import { prisma } from '@vpsknow/database';
 import {
   formatProviderFailureAlert,
@@ -25,7 +24,6 @@ import { PROVIDER_INTERVALS, isMonitoredProvider } from './provider-schedule.js'
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 
 const QUEUE_NAME = 'stock-check';
@@ -132,15 +130,12 @@ async function bootstrap(): Promise<void> {
         }
         const previousFailures = await recordProviderSuccess(connection, provider);
 
-        if (previousFailures >= ADAPTER_DEGRADED_THRESHOLD && ADMIN_CHAT_ID) {
-          try {
-            await sendChannelMessage(
-              ADMIN_CHAT_ID,
-              formatProviderRecoveryAlert(provider, previousFailures),
-            );
-          } catch (notificationError) {
-            logger.error({ provider, err: notificationError }, 'Failed to send provider recovery alert');
-          }
+        // Adapter recovery/pause alerts stay in logs only — not Telegram.
+        if (previousFailures >= ADAPTER_DEGRADED_THRESHOLD) {
+          logger.info(
+            { provider, previousFailures, alert: formatProviderRecoveryAlert(provider, previousFailures) },
+            'Provider adapter recovered after repeated failures',
+          );
         }
 
         logger.info(
@@ -168,18 +163,15 @@ async function bootstrap(): Promise<void> {
         }
 
         if (failureState.paused && failureState.failures === ADAPTER_PAUSED_THRESHOLD) {
-          logger.error({ provider }, 'Provider paused for five minutes after repeated failures');
-
-          if (ADMIN_CHAT_ID) {
-            try {
-              await sendChannelMessage(
-                ADMIN_CHAT_ID,
-                formatProviderFailureAlert(provider, failureState, duration, err),
-              );
-            } catch (notificationError) {
-              logger.error({ provider, err: notificationError }, 'Failed to send provider pause alert');
-            }
-          }
+          logger.error(
+            {
+              provider,
+              failures: failureState.failures,
+              durationMs: duration,
+              alert: formatProviderFailureAlert(provider, failureState, duration, err),
+            },
+            'Provider paused after repeated failures (Telegram alert suppressed)',
+          );
         }
 
         throw err;
