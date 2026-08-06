@@ -431,6 +431,29 @@ describe('provider adapters', () => {
     expect(results[0]?.provider).toBe('vmiss');
   });
 
+  it('falls back to the published PID catalog when VMISS live scrape is blocked', async () => {
+    const fetchHtml = vi.fn(async (): Promise<string> => {
+      throw new Error('native fetch HTTP 403');
+    });
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[]) =>
+        urls.map((url) => ({
+          url,
+          ok: false as const,
+          error: 'HTTP 403',
+        })),
+    );
+    const adapter = new VmissAdapter(fetchHtml, fetchBrowserPages);
+    const results = await adapter.check();
+
+    expect(results.length).toBeGreaterThanOrEqual(60);
+    expect(results.every((item) => item.provider === 'vmiss')).toBe(true);
+    expect(results.some((item) => item.productId === 'vmiss-32' && item.orderUrl.includes('pid=32'))).toBe(
+      true,
+    );
+    expect(adapter.warnings.some((warning) => /published PID catalog/i.test(warning))).toBe(true);
+  });
+
   it('parses V.PS HostBill products and out-of-stock class', () => {
     const results = new VpsAdapter().parse(fixture('vps.html'), 'Singapore');
 

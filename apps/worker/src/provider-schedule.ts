@@ -4,10 +4,8 @@ export const PROVIDER_INTERVALS = {
   buyvm: 90_000,
   greencloudvps: 180_000,
   spartanhost: 150_000,
-  // VMISS storefront is Cloudflare-blocked from the current worker IP (HTTP 403 /
-  // challenge page even via Playwright). Keep the adapter registered for a later
-  // proxy/exit fix, but do not schedule checks until scraping works again.
-  // vmiss: 180_000,
+  // Live app.vmiss.com is often CF-blocked; adapter falls back to published PID catalog.
+  vmiss: 180_000,
   vps: 300_000,
   saltyfish: 300_000,
   racknerd: 180_000,

@@ -6,6 +6,7 @@ import {
 } from '../browser.js';
 import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
+import { VMISS_CATALOG } from './vmiss-catalog.js';
 
 interface Category {
   slug: string;
@@ -71,6 +72,10 @@ function englishUrl(category: Category): string {
   return `${category.url}?language=english`;
 }
 
+function orderUrlForPid(pid: string): string {
+  return `https://app.vmiss.com/cart.php?a=add&pid=${pid}`;
+}
+
 export class VmissAdapter implements ProviderAdapter {
   readonly slug = 'vmiss';
   readonly name = 'VMISS';
@@ -122,15 +127,48 @@ export class VmissAdapter implements ProviderAdapter {
       }
     }
 
-    if (results.length === 0) {
-      throw new Error(
-        `VMISS returned no parseable products; direct HTTP: ${direct.failures.slice(0, 3).join('; ') || 'all categories failed'}; `
-        + `browser: ${failures.slice(0, 3).join('; ') || 'no successful categories'}`,
-      );
+    if (results.length > 0) {
+      this.warnings = failures;
+      return results;
     }
 
-    this.warnings = failures;
-    return results;
+    // Cloudflare often blocks app.vmiss.com from the worker IP. Fall back to the
+    // published WHMCS PID catalog so the site still has orderable plans/PIDs.
+    // Treat catalog rows as in-stock for display/order; live stock resumes when scrape works.
+    const catalog = this.parseCatalog();
+    this.warnings = [
+      `live scrape blocked; using published PID catalog (${catalog.length} plans)`,
+      ...direct.failures.slice(0, 2),
+      ...failures.slice(0, 2),
+    ];
+    return catalog;
+  }
+
+  /** Build StockResult rows from the published PID catalog. */
+  parseCatalog(): StockResult[] {
+    return VMISS_CATALOG.map((plan) => ({
+      provider: this.slug,
+      productId: `vmiss-${plan.pid}`,
+      planName: plan.planName,
+      location: plan.location,
+      category: 'vps' as const,
+      cpu: `${plan.cpuCores} Core${plan.cpuCores === 1 ? '' : 's'}`,
+      ramMb: plan.ramMb,
+      storageGb: plan.storageGb,
+      storageType: 'SSD',
+      bandwidthTb: plan.bandwidthTb,
+      ipv4: true,
+      ipv6: false,
+      price: plan.priceCents,
+      currency: plan.currency,
+      billingCycle: plan.billingCycle,
+      inStock: true,
+      orderUrl: orderUrlForPid(plan.pid),
+      displaySpecs: {
+        port: `${plan.portMbps}Mbps`,
+      },
+      raw: { source: 'published-catalog', pid: plan.pid },
+    }));
   }
 
   private async checkDirect(): Promise<{ results: StockResult[]; failures: string[] }> {

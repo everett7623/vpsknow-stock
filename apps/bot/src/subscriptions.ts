@@ -15,7 +15,7 @@ export const PROVIDERS = [
   ['buyvm', 'BuyVM'],
   ['greencloudvps', 'GreenCloudVPS'],
   ['spartanhost', 'SpartanHost'],
-  // ['vmiss', 'VMISS'], // paused: Cloudflare 403 from worker IP
+  ['vmiss', 'VMISS'],
   ['vps', 'V.PS'],
   ['saltyfish', 'SaltyFish'],
   ['racknerd', 'RackNerd'],
