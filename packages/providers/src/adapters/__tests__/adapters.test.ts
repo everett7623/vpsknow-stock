@@ -30,6 +30,7 @@ import { ColoCrossingAdapter } from '../colocrossing.js';
 import { ChicagoVPSAdapter } from '../chicagovps.js';
 import { LightLayerAdapter } from '../lightlayer.js';
 import { SpeedyPageAdapter } from '../speedypage.js';
+import { detectOptimizedLine } from '@vpsknow/shared';
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -44,6 +45,7 @@ describe('provider adapters', () => {
       provider: 'bandwagonhost',
       planName: 'CN2 GIA-E 20',
       location: 'DC6 CN2 GIA-E',
+      lineType: 'CN2 GIA-E',
       cpu: '2 Core',
       ramMb: 2048,
       storageGb: 40,
@@ -78,6 +80,7 @@ describe('provider adapters', () => {
       billingCycle: 'monthly',
       inStock: true,
       orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=95',
+      lineType: 'CN2 GIA',
     });
   });
 
@@ -173,6 +176,7 @@ describe('provider adapters', () => {
       price: 1090,
       inStock: true,
       orderUrl: 'https://www.dmit.io/cart.php?a=add&pid=253',
+      lineType: 'Premium',
     });
     expect(results[1]).toMatchObject({
       productId: 'dmit-pvm-lax-mini',
@@ -180,6 +184,14 @@ describe('provider adapters', () => {
       inStock: false,
       orderUrl: 'https://www.dmit.io/pages/pricing?language=english',
     });
+  });
+
+  it('normalizes optimized route names from provider text', () => {
+    expect(detectOptimizedLine('Singapore CMIN2 / CMI N2')).toBe('CMIN2');
+    expect(detectOptimizedLine('DC6 CN2 GIA-E')).toBe('CN2 GIA-E');
+    expect(detectOptimizedLine('CN2 GIA')).toBe('CN2 GIA');
+    expect(detectOptimizedLine('T1 Tier 1')).toBe('Tier 1');
+    expect(detectOptimizedLine('ordinary KVM')).toBeNull();
   });
 
   it('falls back to one browser page when DMIT direct HTTP is challenged', async () => {

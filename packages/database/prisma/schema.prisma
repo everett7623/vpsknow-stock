@@ -40,6 +40,8 @@ model Product {
   bandwidthTb        Float?
   /// Display override for bandwidth (e.g. "Unmetered") when numeric TB is 0/ambiguous
   bandwidthLabel     String?
+  /// Normalized network route label, e.g. CN2 GIA, CMIN2, or Premium
+  lineType           String?
   ipv4               Boolean?
   /// live = last stock claim from a live adapter check; catalog = published catalog only
   availabilitySource String   @default("live")

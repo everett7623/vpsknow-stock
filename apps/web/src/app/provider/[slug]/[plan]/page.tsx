@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { getProductDetail, getProductOrderUrl } from '@/lib/data';
 import { formatDate, formatPrice, formatBandwidth, formatIpv4, resolveStockAvailability, botSubscribeUrl } from '@/lib/utils';
 import { PriceHistory } from './price-history';
+import { lineTypeLabel } from '@/lib/plan-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,7 @@ export default async function ProductDetailPage({
         : 'N/A',
     ],
     ['Bandwidth', formatBandwidth(product.bandwidthTb, product.bandwidthLabel)],
+    ['Optimized line', lineTypeLabel(product.lineType)],
     ['IPv4', formatIpv4(product.ipv4)],
     ['Category', product.category.toUpperCase()],
     ['Billing', product.billingCycle],

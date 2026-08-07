@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductOrderUrl, getProviderBySlug, getProviderSiteUrl } from '@/lib/data';
 import { formatDate, formatPrice, botSubscribeUrl, formatBandwidth, resolveStockAvailability } from '@/lib/utils';
+import { lineTypeLabel } from '@/lib/plan-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,7 @@ export default async function ProviderDetailPage({
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
                     <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
+                    <th className="pb-2 pr-4">Line</th>
                     <th className="pb-2 pr-4">CPU</th><th className="pb-2 pr-4">RAM</th>
                     <th className="pb-2 pr-4">Storage</th><th className="pb-2 pr-4">Bandwidth</th>
                     <th className="pb-2 pr-4">Price</th>
@@ -123,6 +125,7 @@ export default async function ProviderDetailPage({
                         </Link>
                       </td>
                       <td className="py-3 pr-4 text-foreground/80">{product.location}</td>
+                      <td className="py-3 pr-4 text-xs text-foreground/80">{lineTypeLabel(product.lineType)}</td>
                       <td className="py-3 pr-4 font-mono text-xs text-foreground/80">{product.cpu || 'N/A'}</td>
                       <td className="py-3 pr-4 font-mono text-xs text-foreground/80">
                         {product.ramMb ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${product.ramMb >= 1024 ? 'GB' : 'MB'}` : 'N/A'}
@@ -167,6 +170,7 @@ export default async function ProviderDetailPage({
                   <tr className="border-b border-border text-left text-muted-foreground/80">
                     <th className="pb-2 pr-4">Plan</th>
                     <th className="pb-2 pr-4">Location</th>
+                    <th className="pb-2 pr-4">Line</th>
                     <th className="pb-2 pr-4">Price</th>
                     <th className="pb-2">Last Checked</th>
                   </tr>
@@ -183,6 +187,7 @@ export default async function ProviderDetailPage({
                         </Link>
                       </td>
                       <td className="py-2 pr-4 text-muted-foreground/80">{product.location}</td>
+                      <td className="py-2 pr-4 text-xs text-muted-foreground/80">{lineTypeLabel(product.lineType)}</td>
                       <td className="py-2 pr-4 font-mono text-muted-foreground/80">{formatPrice(product)}</td>
                       <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt)}</td>
                     </tr>
@@ -200,6 +205,7 @@ export default async function ProviderDetailPage({
               <table className="min-w-[560px] w-full text-sm opacity-60">
                 <thead><tr className="border-b border-border text-left text-muted-foreground/80">
                   <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
+                  <th className="pb-2 pr-4">Line</th>
                   <th className="pb-2 pr-4">Price</th><th className="pb-2">Last Checked</th>
                 </tr></thead>
                 <tbody>{outOfStockProducts.map((product) => (
@@ -213,6 +219,7 @@ export default async function ProviderDetailPage({
                       </Link>
                     </td>
                     <td className="py-2 pr-4 text-muted-foreground/80">{product.location}</td>
+                    <td className="py-2 pr-4 text-xs text-muted-foreground/80">{lineTypeLabel(product.lineType)}</td>
                     <td className="py-2 pr-4 font-mono text-muted-foreground/80">{formatPrice(product)}</td>
                     <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt)}</td>
                   </tr>

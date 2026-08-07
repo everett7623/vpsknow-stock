@@ -10,6 +10,7 @@ import {
 import {
   categoryLabel,
   detectPlanOfferTag,
+  lineTypeLabel,
   offerTagLabel,
   type PlanOfferTag,
 } from '@/lib/plan-tags';
@@ -77,6 +78,7 @@ interface SearchParams {
   location?: string;
   region?: string;
   category?: string;
+  line?: string;
   offer?: string;
   ram?: string;
   storage?: string;
@@ -165,6 +167,7 @@ function filterProducts(
   location: string,
   region: string,
   category: string,
+  line: string,
   offer: OfferFilter,
   ramMinMb: number | null,
   storageMinGb: number | null,
@@ -187,6 +190,9 @@ function filterProducts(
     if (location !== 'all' && product.location !== location) return false;
     if (region !== 'all' && resolveRegion(product.location) !== region) return false;
     if (category !== 'all' && product.category !== category) return false;
+    if (line !== 'all' && (line === 'standard' ? product.lineType !== null : product.lineType !== line)) {
+      return false;
+    }
     if (billing !== 'all' && product.billingCycle !== billing) return false;
     if (ipv4Filter === 'yes' && product.ipv4 !== true) return false;
     if (ipv4Filter === 'no' && product.ipv4 !== false) return false;
@@ -210,7 +216,8 @@ function filterProducts(
       product.category.toLowerCase().includes(needle) ||
       (product.storageType ?? '').toLowerCase().includes(needle) ||
       (product.cpu ?? '').toLowerCase().includes(needle) ||
-      (product.bandwidthLabel ?? '').toLowerCase().includes(needle)
+      (product.bandwidthLabel ?? '').toLowerCase().includes(needle) ||
+      (product.lineType ?? '').toLowerCase().includes(needle)
     );
   });
 
@@ -284,6 +291,7 @@ export default async function ProvidersPage({
   const location = params.location?.trim() || 'all';
   const region = params.region?.trim() || 'all';
   const category = params.category?.trim() || 'all';
+  const line = params.line?.trim() || 'all';
   const offer = parseOffer(params.offer);
   const ram = params.ram?.trim() || 'all';
   const ramMinMb = parsePositiveNumber(ram);
@@ -308,6 +316,9 @@ export default async function ProvidersPage({
   const categories = selected
     ? [...new Set(selected.products.map((product) => product.category))].sort()
     : [];
+  const lineTypes = selected
+    ? [...new Set(selected.products.flatMap((product) => product.lineType ? [product.lineType] : []))].sort()
+    : [];
   const billingCycles = selected
     ? [...new Set(selected.products.map((product) => product.billingCycle))].sort()
     : [];
@@ -318,6 +329,7 @@ export default async function ProvidersPage({
         location,
         region,
         category,
+        line,
         offer,
         ramMinMb,
         storageMinGb,
@@ -347,6 +359,7 @@ export default async function ProvidersPage({
     location: location === 'all' ? undefined : location,
     region: region === 'all' ? undefined : region,
     category: category === 'all' ? undefined : category,
+    line: line === 'all' ? undefined : line,
     offer: offer === 'all' ? undefined : offer,
     ram: ram === 'all' ? undefined : ram,
     storage: storage === 'all' ? undefined : storage,
@@ -383,6 +396,7 @@ export default async function ProvidersPage({
                       location: undefined,
                       region: undefined,
                       category: undefined,
+                      line: undefined,
                       offer: undefined,
                       ram: undefined,
                       storage: undefined,
@@ -508,6 +522,22 @@ export default async function ProvidersPage({
                         {categoryLabel(item)}
                       </option>
                     ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Optimized line
+                  <select
+                    name="line"
+                    defaultValue={line}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">All lines</option>
+                    {lineTypes.map((item) => (
+                      <option key={item} value={item}>
+                        {lineTypeLabel(item)}
+                      </option>
+                    ))}
+                    <option value="standard">Standard / unclassified</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
@@ -690,6 +720,7 @@ export default async function ProvidersPage({
                       <th className="px-4 py-3">Plan</th>
                       <th className="px-4 py-3">Type</th>
                       <th className="px-4 py-3">Location</th>
+                      <th className="px-4 py-3">Line</th>
                       <th className="px-4 py-3">CPU</th>
                       <th className="px-4 py-3">RAM</th>
                       <th className="px-4 py-3">Storage</th>
@@ -704,7 +735,7 @@ export default async function ProvidersPage({
                   <tbody>
                     {products.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground/80">
+                        <td colSpan={13} className="px-4 py-8 text-center text-muted-foreground/80">
                           No plans match the current filters.
                         </td>
                       </tr>
@@ -729,6 +760,11 @@ export default async function ProvidersPage({
                               {categoryLabel(product.category)}
                             </td>
                             <td className="px-4 py-3 text-foreground/80">{product.location}</td>
+                            <td className="px-4 py-3 text-xs text-foreground/80">
+                              <span className={product.lineType ? 'font-medium text-sky-700 dark:text-sky-300' : 'text-muted-foreground/70'}>
+                                {lineTypeLabel(product.lineType)}
+                              </span>
+                            </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
                               {product.cpu || 'N/A'}
                             </td>

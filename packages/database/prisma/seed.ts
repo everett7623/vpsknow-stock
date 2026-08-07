@@ -412,24 +412,67 @@ async function main() {
 
   // Seed known products — BandwagonHost
   const bwgPlans = [
-    { productId: 'bwg-the-plan-dc6', planName: 'THE PLAN', location: 'DC6 CN2 GIA-E', priceCents: 4999, billingCycle: 'annually' },
-    { productId: 'bwg-20g-kvm-dc6', planName: '20G KVM - CN2 GIA-E', location: 'DC6 CN2 GIA-E', priceCents: 6599, billingCycle: 'annually' },
-    { productId: 'bwg-40g-kvm-dc6', planName: '40G KVM - CN2 GIA-E', location: 'DC6 CN2 GIA-E', priceCents: 9999, billingCycle: 'annually' },
-    { productId: 'bwg-hk-pccw', planName: 'HK 85 PCCW', location: 'Hong Kong', priceCents: 8999, billingCycle: 'monthly' },
-    { productId: 'bwg-hk-cn2gia', planName: 'HK CN2 GIA', location: 'Hong Kong', priceCents: 8999, billingCycle: 'monthly' },
-    { productId: 'bwg-jp-cn2gia', planName: 'Tokyo CN2 GIA', location: 'Tokyo', priceCents: 8999, billingCycle: 'monthly' },
+    {
+      productId: 'bwg-the-plan-dc6',
+      planName: 'THE PLAN',
+      location: 'DC6 CN2 GIA-E',
+      lineType: 'CN2 GIA-E',
+      priceCents: 4999,
+      billingCycle: 'annually',
+    },
+    {
+      productId: 'bwg-20g-kvm-dc6',
+      planName: '20G KVM - CN2 GIA-E',
+      location: 'DC6 CN2 GIA-E',
+      lineType: 'CN2 GIA-E',
+      priceCents: 6599,
+      billingCycle: 'annually',
+    },
+    {
+      productId: 'bwg-40g-kvm-dc6',
+      planName: '40G KVM - CN2 GIA-E',
+      location: 'DC6 CN2 GIA-E',
+      lineType: 'CN2 GIA-E',
+      priceCents: 9999,
+      billingCycle: 'annually',
+    },
+    {
+      productId: 'bwg-hk-pccw',
+      planName: 'HK 85 PCCW',
+      location: 'Hong Kong',
+      lineType: 'CU Premium',
+      priceCents: 8999,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'bwg-hk-cn2gia',
+      planName: 'HK CN2 GIA',
+      location: 'Hong Kong',
+      lineType: 'CN2 GIA',
+      priceCents: 8999,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'bwg-jp-cn2gia',
+      planName: 'Tokyo CN2 GIA',
+      location: 'Tokyo',
+      lineType: 'CN2 GIA',
+      priceCents: 8999,
+      billingCycle: 'monthly',
+    },
   ];
 
   for (const plan of bwgPlans) {
     await prisma.product.upsert({
       where: { providerId_productId: { providerId: bandwagonhost.id, productId: plan.productId } },
-      update: {},
+      update: { lineType: plan.lineType },
       create: {
         providerId: bandwagonhost.id,
         productId: plan.productId,
         planName: plan.planName,
         category: 'vps',
         location: plan.location,
+        lineType: plan.lineType,
         priceCents: plan.priceCents,
         billingCycle: plan.billingCycle,
       },
@@ -447,19 +490,251 @@ async function main() {
   });
 
   // Seed known products — DMIT
-  const dmitPlans = [
-    { productId: 'dmit-pvm-lax-tiny', planName: 'PVM.LAX Tiny', location: 'Los Angeles', priceCents: 699, billingCycle: 'monthly' },
-    { productId: 'dmit-pvm-lax-mini', planName: 'PVM.LAX Mini', location: 'Los Angeles', priceCents: 1199, billingCycle: 'monthly' },
-    { productId: 'dmit-pvm-hkg-tiny', planName: 'PVM.HKG Tiny', location: 'Hong Kong', priceCents: 1999, billingCycle: 'monthly' },
-    { productId: 'dmit-pvm-hkg-mini', planName: 'PVM.HKG Mini', location: 'Hong Kong', priceCents: 3299, billingCycle: 'monthly' },
-    { productId: 'dmit-pvm-tyo-tiny', planName: 'PVM.TYO Tiny', location: 'Tokyo', priceCents: 1999, billingCycle: 'monthly' },
-    { productId: 'dmit-eyeball-lax-tiny', planName: 'Eyeball.LAX Tiny', location: 'Los Angeles', priceCents: 499, billingCycle: 'monthly' },
-  ];
+  // Snapshot of the 88 public cards on the DMIT pricing page (2026-08-07).
+  // The worker remains authoritative for live price and stock updates.
+  const dmitGroups = [
+    {
+      locationCode: 'lax',
+      hardware: 'as3',
+      network: 'premium',
+      location: 'Los Angeles',
+      plans: [
+        ['TINY', 1090, 'monthly'],
+        ['Pocket', 1690, 'monthly'],
+        ['STARTER', 3490, 'monthly'],
+        ['MINI', 6290, 'monthly'],
+        ['MICRO', 8790, 'monthly'],
+        ['MEDIUM', 19990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'an4',
+      network: 'premium',
+      location: 'Los Angeles',
+      plans: [
+        ['MINI', 7290, 'monthly'],
+        ['MICRO', 10290, 'monthly'],
+        ['MEDIUM', 23990, 'monthly'],
+        ['LARGE', 45990, 'monthly'],
+        ['GIANT', 92990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'an5',
+      network: 'premium',
+      location: 'Los Angeles',
+      plans: [
+        ['MINI', 7990, 'monthly'],
+        ['MICRO', 11090, 'monthly'],
+        ['MEDIUM', 28990, 'monthly'],
+        ['LARGE', 49990, 'monthly'],
+        ['GIANT', 100990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'as3',
+      network: 'eyeball',
+      location: 'Los Angeles',
+      plans: [
+        ['TINY', 1090, 'monthly'],
+        ['Pocket', 1690, 'monthly'],
+        ['STARTER', 3490, 'monthly'],
+        ['MINI', 6290, 'monthly'],
+        ['MICRO', 8790, 'monthly'],
+        ['MEDIUM', 19990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'an4',
+      network: 'eyeball',
+      location: 'Los Angeles',
+      plans: [
+        ['MINI', 7290, 'monthly'],
+        ['MICRO', 10290, 'monthly'],
+        ['MEDIUM', 23990, 'monthly'],
+        ['LARGE', 45990, 'monthly'],
+        ['GIANT', 92990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'an5',
+      network: 'eyeball',
+      location: 'Los Angeles',
+      plans: [
+        ['MINI', 7990, 'monthly'],
+        ['MICRO', 11090, 'monthly'],
+        ['MEDIUM', 28990, 'monthly'],
+        ['LARGE', 49990, 'monthly'],
+        ['GIANT', 100990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'an5',
+      network: 'tier1',
+      location: 'Los Angeles',
+      plans: [
+        ['V2C2G', 1490, 'monthly'],
+        ['V2C4G', 2390, 'monthly'],
+        ['V4C4G', 3690, 'monthly'],
+        ['V4C8G', 5290, 'monthly'],
+        ['V8C16G', 11990, 'monthly'],
+        ['V12C24G', 19990, 'monthly'],
+        ['G2C4G', 1690, 'monthly'],
+        ['G4C8G', 3690, 'monthly'],
+        ['G8C16G', 7990, 'monthly'],
+        ['G12C24G', 11990, 'monthly'],
+        ['G16C32G', 19990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'lax',
+      hardware: 'as3',
+      network: 'tier1',
+      location: 'Los Angeles',
+      plans: [
+        ['WEE', 3690, 'annually'],
+        ['TINY', 690, 'monthly'],
+        ['STARTER', 1290, 'monthly'],
+        ['MINI', 2190, 'monthly'],
+        ['MICRO', 3290, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'hkg',
+      hardware: 'an5',
+      network: 'premium',
+      location: 'Hong Kong',
+      plans: [
+        ['MINI', 14990, 'monthly'],
+        ['MICRO', 19990, 'monthly'],
+        ['MEDIUM', 27990, 'monthly'],
+        ['LARGE', 35990, 'monthly'],
+        ['GIANT', 75990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'hkg',
+      hardware: 'as3',
+      network: 'premium',
+      location: 'Hong Kong',
+      plans: [
+        ['TINY', 3990, 'monthly'],
+        ['STARTER', 7990, 'monthly'],
+        ['MINI', 12690, 'monthly'],
+        ['MICRO', 17990, 'monthly'],
+        ['MEDIUM', 23990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'hkg',
+      hardware: 'as3',
+      network: 'eyeball',
+      location: 'Hong Kong',
+      plans: [
+        ['TINYv2', 2990, 'monthly'],
+        ['STARTERv2', 5990, 'monthly'],
+        ['MINIv2', 8990, 'monthly'],
+        ['MICROv2', 12990, 'monthly'],
+        ['MEDIUMv2', 19990, 'monthly'],
+        ['LARGEv2', 38990, 'monthly'],
+        ['GIANTv2', 78990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'hkg',
+      hardware: 'as3',
+      network: 'tier1',
+      location: 'Hong Kong',
+      plans: [
+        ['WEE', 3690, 'annually'],
+        ['TINY', 690, 'monthly'],
+        ['STARTER', 1290, 'monthly'],
+        ['MINI', 2190, 'monthly'],
+        ['MICRO', 3290, 'monthly'],
+        ['MEDIUM', 4990, 'monthly'],
+        ['LARGE', 9990, 'monthly'],
+        ['GIANT', 19990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'tyo',
+      hardware: 'as3',
+      network: 'premium',
+      location: 'Tokyo',
+      plans: [
+        ['TINY', 2190, 'monthly'],
+        ['STARTER', 4590, 'monthly'],
+        ['MINI', 8990, 'monthly'],
+        ['MICRO', 18990, 'monthly'],
+        ['MEDIUM', 32090, 'monthly'],
+        ['LARGE', 42990, 'monthly'],
+        ['GIANT', 82990, 'monthly'],
+      ],
+    },
+    {
+      locationCode: 'tyo',
+      hardware: 'as3',
+      network: 'tier1',
+      location: 'Tokyo',
+      plans: [
+        ['WEE', 3690, 'annually'],
+        ['TINY', 690, 'monthly'],
+        ['STARTER', 1290, 'monthly'],
+        ['MINI', 2190, 'monthly'],
+        ['MICRO', 3290, 'monthly'],
+        ['MEDIUM', 4990, 'monthly'],
+        ['LARGE', 9990, 'monthly'],
+        ['GIANT', 19990, 'monthly'],
+      ],
+    },
+  ] as const;
+  const dmitNetworkLabels: Record<string, string> = { eyeball: 'EB', premium: 'Pro', tier1: 'T1' };
+  const dmitLineLabels: Record<string, string> = { eyeball: 'Eyeball', premium: 'Premium', tier1: 'Tier 1' };
+  const dmitLegacyIds: Record<string, string> = {
+    'hkg:as3:premium:mini': 'dmit-pvm-hkg-mini',
+    'hkg:as3:premium:tiny': 'dmit-pvm-hkg-tiny',
+    'lax:as3:eyeball:tiny': 'dmit-eyeball-lax-tiny',
+    'lax:as3:premium:mini': 'dmit-pvm-lax-mini',
+    'lax:as3:premium:tiny': 'dmit-pvm-lax-tiny',
+    'tyo:as3:premium:tiny': 'dmit-pvm-tyo-tiny',
+  };
+  const dmitSlugPart = (value: string): string =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  const dmitPlans = dmitGroups.flatMap((group) =>
+    group.plans.map(([plan, priceCents, billingCycle]) => {
+      const key = `${group.locationCode}:${group.hardware}:${group.network}:${plan.toLowerCase()}`;
+      return {
+        productId:
+          dmitLegacyIds[key] ??
+          `dmit-${dmitSlugPart(group.locationCode)}-${dmitSlugPart(group.hardware)}-${dmitSlugPart(group.network)}-${dmitSlugPart(plan)}`,
+        planName: `${group.locationCode.toUpperCase()}.${group.hardware.toUpperCase()}.${dmitNetworkLabels[group.network]}.${plan}`,
+        location: group.location,
+        lineType: dmitLineLabels[group.network],
+        priceCents,
+        billingCycle,
+      };
+    }),
+  );
 
   for (const plan of dmitPlans) {
     await prisma.product.upsert({
       where: { providerId_productId: { providerId: dmit.id, productId: plan.productId } },
-      update: {},
+      update: {
+        planName: plan.planName,
+        location: plan.location,
+        lineType: plan.lineType,
+        priceCents: plan.priceCents,
+        billingCycle: plan.billingCycle,
+      },
       create: {
         providerId: dmit.id,
         productId: plan.productId,
@@ -474,13 +749,55 @@ async function main() {
 
   // Seed known products — BuyVM
   const buyvmPlans = [
-    { productId: 'buyvm-slice-1024-lv', planName: 'Slice 1024', location: 'Las Vegas', priceCents: 350, billingCycle: 'monthly' },
-    { productId: 'buyvm-slice-2048-lv', planName: 'Slice 2048', location: 'Las Vegas', priceCents: 700, billingCycle: 'monthly' },
-    { productId: 'buyvm-slice-4096-lv', planName: 'Slice 4096', location: 'Las Vegas', priceCents: 1500, billingCycle: 'monthly' },
-    { productId: 'buyvm-slice-1024-ny', planName: 'Slice 1024', location: 'New York', priceCents: 350, billingCycle: 'monthly' },
-    { productId: 'buyvm-slice-2048-ny', planName: 'Slice 2048', location: 'New York', priceCents: 700, billingCycle: 'monthly' },
-    { productId: 'buyvm-slice-1024-lu', planName: 'Slice 1024', location: 'Luxembourg', priceCents: 350, billingCycle: 'monthly' },
-    { productId: 'buyvm-storage-256-lv', planName: 'Storage 256', location: 'Las Vegas', priceCents: 500, billingCycle: 'monthly' },
+    {
+      productId: 'buyvm-slice-1024-lv',
+      planName: 'Slice 1024',
+      location: 'Las Vegas',
+      priceCents: 350,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'buyvm-slice-2048-lv',
+      planName: 'Slice 2048',
+      location: 'Las Vegas',
+      priceCents: 700,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'buyvm-slice-4096-lv',
+      planName: 'Slice 4096',
+      location: 'Las Vegas',
+      priceCents: 1500,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'buyvm-slice-1024-ny',
+      planName: 'Slice 1024',
+      location: 'New York',
+      priceCents: 350,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'buyvm-slice-2048-ny',
+      planName: 'Slice 2048',
+      location: 'New York',
+      priceCents: 700,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'buyvm-slice-1024-lu',
+      planName: 'Slice 1024',
+      location: 'Luxembourg',
+      priceCents: 350,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'buyvm-storage-256-lv',
+      planName: 'Storage 256',
+      location: 'Las Vegas',
+      priceCents: 500,
+      billingCycle: 'monthly',
+    },
   ];
 
   for (const plan of buyvmPlans) {
@@ -501,40 +818,200 @@ async function main() {
 
   // Seed affiliate links
   const affiliateLinks = [
-    { providerId: bandwagonhost.id, slug: 'bandwagonhost', targetUrl: 'https://bandwagonhost.com/aff.php?aff=68376', shortUrl: 'https://go.uukk.de/bwg' },
-    { providerId: dmit.id, slug: 'dmit', targetUrl: 'https://www.dmit.io/aff.php?aff=6077', shortUrl: 'https://go.uukk.de/dmit' },
-    { providerId: buyvm.id, slug: 'buyvm', targetUrl: 'https://my.frantech.ca/aff.php?aff=6836', shortUrl: 'https://go.uukk.de/buyvm' },
-    { providerId: spartanhost.id, slug: 'spartanhost', targetUrl: 'https://billing.spartanhost.net/aff.php?aff=2459', shortUrl: 'https://go.uukk.de/spartanhost' },
-    { providerId: vmiss.id, slug: 'vmiss', targetUrl: 'https://app.vmiss.com/aff.php?aff=1922', shortUrl: 'https://go.uukk.de/vmiss' },
-    { providerId: vps.id, slug: 'vps', targetUrl: 'https://vps.hosting/?affid=723', shortUrl: 'https://go.uukk.de/vps' },
-    { providerId: saltyfish.id, slug: 'saltyfish', targetUrl: 'https://portal.saltyfish.io/aff.php?aff=575', shortUrl: 'https://go.uukk.de/saltyfish' },
-    { providerId: greencloudvps.id, slug: 'greencloudvps', targetUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807', shortUrl: 'https://go.uukk.de/greencloudvps' },
+    {
+      providerId: bandwagonhost.id,
+      slug: 'bandwagonhost',
+      targetUrl: 'https://bandwagonhost.com/aff.php?aff=68376',
+      shortUrl: 'https://go.uukk.de/bwg',
+    },
+    {
+      providerId: dmit.id,
+      slug: 'dmit',
+      targetUrl: 'https://www.dmit.io/aff.php?aff=6077',
+      shortUrl: 'https://go.uukk.de/dmit',
+    },
+    {
+      providerId: buyvm.id,
+      slug: 'buyvm',
+      targetUrl: 'https://my.frantech.ca/aff.php?aff=6836',
+      shortUrl: 'https://go.uukk.de/buyvm',
+    },
+    {
+      providerId: spartanhost.id,
+      slug: 'spartanhost',
+      targetUrl: 'https://billing.spartanhost.net/aff.php?aff=2459',
+      shortUrl: 'https://go.uukk.de/spartanhost',
+    },
+    {
+      providerId: vmiss.id,
+      slug: 'vmiss',
+      targetUrl: 'https://app.vmiss.com/aff.php?aff=1922',
+      shortUrl: 'https://go.uukk.de/vmiss',
+    },
+    {
+      providerId: vps.id,
+      slug: 'vps',
+      targetUrl: 'https://vps.hosting/?affid=723',
+      shortUrl: 'https://go.uukk.de/vps',
+    },
+    {
+      providerId: saltyfish.id,
+      slug: 'saltyfish',
+      targetUrl: 'https://portal.saltyfish.io/aff.php?aff=575',
+      shortUrl: 'https://go.uukk.de/saltyfish',
+    },
+    {
+      providerId: greencloudvps.id,
+      slug: 'greencloudvps',
+      targetUrl: 'https://greencloudvps.com/billing/aff.php?aff=6807',
+      shortUrl: 'https://go.uukk.de/greencloudvps',
+    },
     // Phase 4 A-Tier
-    { providerId: racknerd.id, slug: 'racknerd', targetUrl: 'https://my.racknerd.com/aff.php?aff=5550', shortUrl: 'https://go.uukk.de/racknerd' },
-    { providerId: clouvider.id, slug: 'clouvider', targetUrl: 'https://console.clouvider.co.uk/?affid=543', shortUrl: 'https://go.uukk.de/clouvider' },
-    { providerId: liteserver.id, slug: 'liteserver', targetUrl: 'https://clients.liteserver.nl/aff.php?aff=771', shortUrl: 'https://go.uukk.de/liteserver' },
-    { providerId: crunchbits.id, slug: 'crunchbits', targetUrl: 'https://crunchbits.com/', shortUrl: 'https://go.uukk.de/crunchbits' },
-    { providerId: servarica.id, slug: 'servarica', targetUrl: 'https://clients.servarica.com/', shortUrl: 'https://go.uukk.de/servarica' },
-    { providerId: evoxt.id, slug: 'evoxt', targetUrl: 'https://console.evoxt.com/aff.php?aff=994', shortUrl: 'https://go.uukk.de/evoxt' },
-    { providerId: alwyzon.id, slug: 'alwyzon', targetUrl: 'https://www.alwyzon.com/', shortUrl: 'https://go.uukk.de/alwyzon' },
-    { providerId: dedirock.id, slug: 'dedirock', targetUrl: 'https://billing.dedirock.com/aff.php?aff=77', shortUrl: 'https://go.uukk.de/dedirock' },
-    { providerId: onidel.id, slug: 'onidel', targetUrl: 'https://onidel.com/?referral=1572199', shortUrl: 'https://go.uukk.de/onidel' },
-    { providerId: bagevm.id, slug: 'bagevm', targetUrl: 'https://www.bagevm.com/aff.php?aff=10', shortUrl: 'https://go.uukk.de/bagevm' },
+    {
+      providerId: racknerd.id,
+      slug: 'racknerd',
+      targetUrl: 'https://my.racknerd.com/aff.php?aff=5550',
+      shortUrl: 'https://go.uukk.de/racknerd',
+    },
+    {
+      providerId: clouvider.id,
+      slug: 'clouvider',
+      targetUrl: 'https://console.clouvider.co.uk/?affid=543',
+      shortUrl: 'https://go.uukk.de/clouvider',
+    },
+    {
+      providerId: liteserver.id,
+      slug: 'liteserver',
+      targetUrl: 'https://clients.liteserver.nl/aff.php?aff=771',
+      shortUrl: 'https://go.uukk.de/liteserver',
+    },
+    {
+      providerId: crunchbits.id,
+      slug: 'crunchbits',
+      targetUrl: 'https://crunchbits.com/',
+      shortUrl: 'https://go.uukk.de/crunchbits',
+    },
+    {
+      providerId: servarica.id,
+      slug: 'servarica',
+      targetUrl: 'https://clients.servarica.com/',
+      shortUrl: 'https://go.uukk.de/servarica',
+    },
+    {
+      providerId: evoxt.id,
+      slug: 'evoxt',
+      targetUrl: 'https://console.evoxt.com/aff.php?aff=994',
+      shortUrl: 'https://go.uukk.de/evoxt',
+    },
+    {
+      providerId: alwyzon.id,
+      slug: 'alwyzon',
+      targetUrl: 'https://www.alwyzon.com/',
+      shortUrl: 'https://go.uukk.de/alwyzon',
+    },
+    {
+      providerId: dedirock.id,
+      slug: 'dedirock',
+      targetUrl: 'https://billing.dedirock.com/aff.php?aff=77',
+      shortUrl: 'https://go.uukk.de/dedirock',
+    },
+    {
+      providerId: onidel.id,
+      slug: 'onidel',
+      targetUrl: 'https://onidel.com/?referral=1572199',
+      shortUrl: 'https://go.uukk.de/onidel',
+    },
+    {
+      providerId: bagevm.id,
+      slug: 'bagevm',
+      targetUrl: 'https://www.bagevm.com/aff.php?aff=10',
+      shortUrl: 'https://go.uukk.de/bagevm',
+    },
     // Phase 4 B-Tier
-    { providerId: tierhive.id, slug: 'tierhive', targetUrl: 'https://tierhive.com/r/4FB89FE7369E', shortUrl: 'https://go.uukk.de/tierhive' },
-    { providerId: gullos.id, slug: 'gullos', targetUrl: 'https://hosting.gullo.me/', shortUrl: 'https://go.uukk.de/gullos' },
-    { providerId: webhorizon.id, slug: 'webhorizon', targetUrl: 'https://my.webhorizon.net/', shortUrl: 'https://go.uukk.de/webhorizon' },
-    { providerId: vmrack.id, slug: 'vmrack', targetUrl: 'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf', shortUrl: 'https://go.uukk.de/vmrack' },
-    { providerId: gomami.id, slug: 'gomami', targetUrl: 'https://gomami.io/aff.php?aff=209', shortUrl: 'https://go.uukk.de/gomami' },
-    { providerId: zgocloud.id, slug: 'zgocloud', targetUrl: 'https://clients.zgovps.com/?affid=488', shortUrl: 'https://go.uukk.de/zgovps' },
-    { providerId: colocrossing.id, slug: 'colocrossing', targetUrl: 'https://cloud.colocrossing.com/aff.php?aff=467', shortUrl: 'https://go.uukk.de/ccs' },
-    { providerId: chicagovps.id, slug: 'chicagovps', targetUrl: 'https://billing.chicagovps.net/aff.php?aff=2611', shortUrl: 'https://go.uukk.de/chicagovps' },
-    { providerId: lightlayer.id, slug: 'lightlayer', targetUrl: 'https://account.lightlayer.net/?affid=647', shortUrl: 'https://go.uukk.de/lightlayer' },
-    { providerId: speedypage.id, slug: 'speedypage', targetUrl: 'https://my.speedypage.com/aff.php?aff=405', shortUrl: 'https://go.uukk.de/speedy' },
-    { providerId: bestvm.id, slug: 'bestvm', targetUrl: 'https://bestvm.cloud/aff.php?aff=225', shortUrl: 'https://go.uukk.de/bestvm' },
-    { providerId: neburst.id, slug: 'neburst', targetUrl: 'https://neburst.com/auth/sign-up/?aff=3cvoo', shortUrl: 'https://go.uukk.de/neburst' },
-    { providerId: hncloud.id, slug: 'hncloud', targetUrl: 'https://www.hncloud.com?k=7940T0', shortUrl: 'https://go.uukk.de/hncloud' },
-    { providerId: highendnetwork.id, slug: 'highendnetwork', targetUrl: 'https://billing.highendnetwork.com/aff.php?aff=68', shortUrl: 'https://go.uukk.de/highendnetwork' },
+    {
+      providerId: tierhive.id,
+      slug: 'tierhive',
+      targetUrl: 'https://tierhive.com/r/4FB89FE7369E',
+      shortUrl: 'https://go.uukk.de/tierhive',
+    },
+    {
+      providerId: gullos.id,
+      slug: 'gullos',
+      targetUrl: 'https://hosting.gullo.me/',
+      shortUrl: 'https://go.uukk.de/gullos',
+    },
+    {
+      providerId: webhorizon.id,
+      slug: 'webhorizon',
+      targetUrl: 'https://my.webhorizon.net/',
+      shortUrl: 'https://go.uukk.de/webhorizon',
+    },
+    {
+      providerId: vmrack.id,
+      slug: 'vmrack',
+      targetUrl: 'https://www.vmrack.net/vps?ref_code=5YrpHKG16xf',
+      shortUrl: 'https://go.uukk.de/vmrack',
+    },
+    {
+      providerId: gomami.id,
+      slug: 'gomami',
+      targetUrl: 'https://gomami.io/aff.php?aff=209',
+      shortUrl: 'https://go.uukk.de/gomami',
+    },
+    {
+      providerId: zgocloud.id,
+      slug: 'zgocloud',
+      targetUrl: 'https://clients.zgovps.com/?affid=488',
+      shortUrl: 'https://go.uukk.de/zgovps',
+    },
+    {
+      providerId: colocrossing.id,
+      slug: 'colocrossing',
+      targetUrl: 'https://cloud.colocrossing.com/aff.php?aff=467',
+      shortUrl: 'https://go.uukk.de/ccs',
+    },
+    {
+      providerId: chicagovps.id,
+      slug: 'chicagovps',
+      targetUrl: 'https://billing.chicagovps.net/aff.php?aff=2611',
+      shortUrl: 'https://go.uukk.de/chicagovps',
+    },
+    {
+      providerId: lightlayer.id,
+      slug: 'lightlayer',
+      targetUrl: 'https://account.lightlayer.net/?affid=647',
+      shortUrl: 'https://go.uukk.de/lightlayer',
+    },
+    {
+      providerId: speedypage.id,
+      slug: 'speedypage',
+      targetUrl: 'https://my.speedypage.com/aff.php?aff=405',
+      shortUrl: 'https://go.uukk.de/speedy',
+    },
+    {
+      providerId: bestvm.id,
+      slug: 'bestvm',
+      targetUrl: 'https://bestvm.cloud/aff.php?aff=225',
+      shortUrl: 'https://go.uukk.de/bestvm',
+    },
+    {
+      providerId: neburst.id,
+      slug: 'neburst',
+      targetUrl: 'https://neburst.com/auth/sign-up/?aff=3cvoo',
+      shortUrl: 'https://go.uukk.de/neburst',
+    },
+    {
+      providerId: hncloud.id,
+      slug: 'hncloud',
+      targetUrl: 'https://www.hncloud.com?k=7940T0',
+      shortUrl: 'https://go.uukk.de/hncloud',
+    },
+    {
+      providerId: highendnetwork.id,
+      slug: 'highendnetwork',
+      targetUrl: 'https://billing.highendnetwork.com/aff.php?aff=68',
+      shortUrl: 'https://go.uukk.de/highendnetwork',
+    },
   ];
 
   for (const link of affiliateLinks) {

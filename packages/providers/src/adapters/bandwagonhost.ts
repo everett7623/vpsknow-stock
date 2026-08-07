@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { AnyNode } from 'domhandler';
-import type { BillingCycle } from '@vpsknow/shared';
+import { detectOptimizedLine, type BillingCycle } from '@vpsknow/shared';
 import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
@@ -250,6 +250,7 @@ export class BandwagonHostAdapter implements ProviderAdapter {
         storageGb,
         storageType: /NVMe/i.test(text) ? 'NVMe' : /SSD/i.test(text) ? 'SSD' : 'HDD',
         bandwidthTb: bandwidthInTb(text),
+        lineType: detectOptimizedLine(`${planName} ${location} ${text}`) ?? undefined,
         ipv4: true,
         ipv6: /IPv6/i.test(text),
         price: pricing.price,
@@ -297,6 +298,7 @@ export class BandwagonHostAdapter implements ProviderAdapter {
       storageGb: storageInGb(text),
       storageType: /NVMe/i.test(text) ? 'NVMe' : /SSD|RAID/i.test(text) ? 'SSD' : 'HDD',
       bandwidthTb: bandwidthInTb(text),
+      lineType: detectOptimizedLine(`${planName} ${location} ${text}`) ?? undefined,
       ipv4: true,
       ipv6: /IPv6/i.test(text),
       price: pricing.price,

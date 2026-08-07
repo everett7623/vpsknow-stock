@@ -68,6 +68,7 @@ describe('Telegram message formatters', () => {
           remark:
             'OS: Linux; Control Panel: Virtfusion; Backup/Snapshot: Daily Backups; Note: No refund/Money back on this plan.',
         },
+        lineType: 'CN2 GIA',
       },
       'https://stock.vpsknow.com/go/greencloudvps-gc-2305',
       new Date('2026-08-05T06:51:15.000Z'),
@@ -76,6 +77,7 @@ describe('Telegram message formatters', () => {
     expect(message).toContain('├ Storage: 20GB NVMe RAID-10');
     expect(message).toContain('├ Bandwidth: 500GB');
     expect(message).toContain('├ Port: 500Mbps');
+    expect(message).toContain('├ Line: CN2 GIA');
     expect(message).not.toContain('├ OS:');
     expect(message).not.toContain('├ Control Panel:');
     expect(message).not.toContain('├ Backup/Snapshot:');

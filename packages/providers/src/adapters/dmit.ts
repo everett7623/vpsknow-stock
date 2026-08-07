@@ -5,7 +5,7 @@ import {
   type BrowserPageResult,
 } from '../browser.js';
 import { fetchProviderHtml } from '../http.js';
-import type { BillingCycle } from '@vpsknow/shared';
+import { detectOptimizedLine, type BillingCycle } from '@vpsknow/shared';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 const PRICING_URL = 'https://www.dmit.io/pages/pricing?language=english';
@@ -162,6 +162,13 @@ export class DmitAdapter implements ProviderAdapter {
           storageGb: Math.round(storageGb),
           storageType: /NVMe/i.test(storageText) ? 'NVMe' : /SSD/i.test(storageText) ? 'SSD' : 'Unknown',
           bandwidthTb: Math.round((bandwidthGb / 1_000) * 1_000) / 1_000,
+          lineType: network === 'premium'
+            ? 'Premium'
+            : network === 'eyeball'
+              ? 'Eyeball'
+              : network === 'tier1'
+                ? 'Tier 1'
+                : detectOptimizedLine(`${planName} ${network}`) ?? undefined,
           ipv4: true,
           ipv6: true,
           price: Math.round(numberFrom(priceText, /\$\s*(\d+(?:\.\d+)?)/) * 100),
@@ -223,6 +230,7 @@ export class DmitAdapter implements ProviderAdapter {
           bandwidthTb: bandwidthMatch
             ? Number.parseFloat(bandwidthMatch[1]!) * (bandwidthMatch[2]!.toUpperCase() === 'GB' ? 0.001 : 1)
             : 0,
+          lineType: detectOptimizedLine(`${productLine} ${planName} ${text}`) ?? undefined,
           ipv4: true,
           ipv6: true,
           price,

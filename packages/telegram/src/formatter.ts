@@ -47,6 +47,7 @@ function formatSpecificationLines(result: StockResult, price: string): string[] 
     ['RAM', formatRam(result.ramMb)],
     ['Storage', display?.storage ?? `${result.storageGb} GB ${result.storageType}`.trim()],
     ['Bandwidth', display?.bandwidth ?? `${result.bandwidthTb} TB`],
+    ...(result.lineType ? [['Line', result.lineType] as const] : []),
     ...(display?.port ? [['Port', display.port] as const] : []),
     ['IPv4', result.ipv4 ? 'Yes' : 'No'],
     ['IPv6', result.ipv6 ? 'Yes' : 'No'],
@@ -143,4 +144,3 @@ export function formatOfferMessage(opts: {
     ...MESSAGE_FOOTER,
   ].join('\n');
 }
-

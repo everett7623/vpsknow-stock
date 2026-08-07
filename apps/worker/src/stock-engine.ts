@@ -6,6 +6,7 @@ import {
   CONSECUTIVE_CONFIRMS_REQUIRED,
   buildProductAffiliateUrl,
   buildStockGoUrl,
+  detectOptimizedLine,
   extractWhmcsPid,
   generateShortLinkSlug,
 } from '@vpsknow/shared';
@@ -79,6 +80,15 @@ function restockNotificationProductIds(providerSlug: string, results: StockResul
   return selected;
 }
 
+function resultLineType(result: StockResult): string | null {
+  return result.lineType?.trim()
+    || detectOptimizedLine(
+      [result.planName, result.location, result.displaySpecs?.remark]
+        .filter((value): value is string => Boolean(value))
+        .join(' '),
+    );
+}
+
 function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
   const displaySpecs = result.displaySpecs
     ? {
@@ -101,6 +111,7 @@ function toStockEventMetadata(result: StockResult): Prisma.InputJsonObject {
       storageGb: result.storageGb,
       storageType: result.storageType,
       bandwidthTb: result.bandwidthTb,
+      ...(resultLineType(result) ? { lineType: resultLineType(result) } : {}),
       ipv4: result.ipv4,
       ipv6: result.ipv6,
       price: result.price,
@@ -151,6 +162,7 @@ export async function processStockResults(
 
       const availabilitySource = isPublishedCatalogResult(result) ? 'catalog' : 'live';
       const bandwidthLabel = result.displaySpecs?.bandwidth?.trim() || null;
+      const lineType = resultLineType(result);
 
       // Upsert product
       const product = await prisma.product.upsert({
@@ -165,6 +177,7 @@ export async function processStockResults(
           storageType: result.storageType,
           bandwidthTb: result.bandwidthTb,
           bandwidthLabel,
+          lineType,
           ipv4: result.ipv4,
           availabilitySource,
           priceCents: result.price,
@@ -186,6 +199,7 @@ export async function processStockResults(
           storageType: result.storageType,
           bandwidthTb: result.bandwidthTb,
           bandwidthLabel,
+          lineType,
           ipv4: result.ipv4,
           availabilitySource,
           priceCents: result.price,

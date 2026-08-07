@@ -18,6 +18,7 @@ export interface StockResult {
   storageGb: number;
   storageType: string;
   bandwidthTb: number;
+  lineType?: string;
   ipv4: boolean;
   ipv6: boolean;
   price: number; // cents
