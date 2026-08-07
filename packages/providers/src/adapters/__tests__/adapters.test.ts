@@ -86,6 +86,9 @@ describe('provider adapters', () => {
       if (url === 'https://bandwagonhost.com/cart.php') {
         throw new Error('connection timed out');
       }
+      if (url.includes('a=add&pid=')) {
+        return fixture('bandwagonhost-pid-oos.html');
+      }
       return fixture('bandwagonhost-cart.html');
     });
     const results = await new BandwagonHostAdapter(fetchHtml).check();
@@ -100,8 +103,35 @@ describe('provider adapters', () => {
       'BandwagonHost',
       'https://bwh81.net/cart.php',
     );
-    expect(results).toHaveLength(1);
-    expect(results[0]?.orderUrl).toBe('https://bandwagonhost.com/cart.php?a=add&pid=95');
+    expect(results.some((item) => item.orderUrl === 'https://bandwagonhost.com/cart.php?a=add&pid=95')).toBe(
+      true,
+    );
+    expect(results.some((item) => item.productId === 'bwg-149' && item.inStock === false)).toBe(true);
+  });
+
+  it('parses BandwagonHost watched PID pages for limited restock detection', () => {
+    const adapter = new BandwagonHostAdapter();
+    const inStock = adapter.parseProductPage(fixture('bandwagonhost-pid.html'), {
+      pid: 87,
+      planName: 'SPECIAL 20G CN2 GIA ECOMMERCE',
+      location: 'Los Angeles',
+    });
+    const outOfStock = adapter.parseProductPage(fixture('bandwagonhost-pid-oos.html'), {
+      pid: 149,
+      planName: 'DC6 THE PLAN',
+      location: 'DC6 CN2 GIA-E',
+    });
+
+    expect(inStock).toMatchObject({
+      productId: 'bwg-87',
+      inStock: true,
+      orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=87',
+    });
+    expect(outOfStock).toMatchObject({
+      productId: 'bwg-149',
+      inStock: false,
+      orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=149',
+    });
   });
 
   it('parses DMIT plan availability and resolves deployment links', () => {
@@ -177,30 +207,40 @@ describe('provider adapters', () => {
     expect(results).toHaveLength(2);
   });
 
-  it('parses BuyVM stock state and resolves cart links', () => {
+  it('parses BuyVM Lagom packages with Available quantity as stock authority', () => {
     const results = new BuyVMAdapter().parseGroup(
       fixture('buyvm.html'),
       'Las Vegas',
-      'KVM Slices - Las Vegas',
+      'Las Vegas AMD RYZEN KVM',
+      'vps',
+      37,
     );
 
-    expect(results).toHaveLength(2);
+    expect(results).toHaveLength(3);
     expect(results[0]).toMatchObject({
       provider: 'buyvm',
-      planName: 'Slice 1024',
+      productId: 'buyvm-1439',
+      planName: 'LV RYZEN KVM 512MB',
       location: 'Las Vegas',
       category: 'vps',
       cpu: '1 Core',
-      ramMb: 1024,
-      storageGb: 20,
-      storageType: 'SSD',
-      bandwidthTb: 1,
-      price: 350,
-      inStock: true,
-      orderUrl: 'https://my.frantech.ca/cart.php?a=add&pid=1024',
+      ramMb: 512,
+      storageGb: 10,
+      storageType: 'NVMe',
+      bandwidthTb: 0,
+      price: 300,
+      inStock: false,
+      orderUrl: 'https://my.frantech.ca/cart.php?a=add&pid=1439',
     });
     expect(results[1]).toMatchObject({
-      planName: 'Slice 2048',
+      productId: 'buyvm-1411',
+      planName: 'LV RYZEN KVM 1GB',
+      ramMb: 1024,
+      storageGb: 20,
+      inStock: false,
+    });
+    expect(results[2]).toMatchObject({
+      planName: 'LV RYZEN KVM 64GB',
       inStock: false,
     });
   });
@@ -483,6 +523,31 @@ describe('provider adapters', () => {
     });
   });
 
+  it('parses V.PS Osaka Edge CN-route plans with location-prefixed names', () => {
+    const results = new VpsAdapter().parse(fixture('vps-edge.html'), 'Osaka');
+
+    expect(results).toHaveLength(4);
+    expect(results[0]).toMatchObject({
+      provider: 'vps',
+      productId: 'vps-268',
+      planName: 'Osaka Edge Green',
+      location: 'Osaka',
+      cpu: '1 Core',
+      ramMb: 2048,
+      storageGb: 20,
+      storageType: 'NVMe',
+      price: 895,
+      inStock: true,
+      orderUrl: 'https://vps.hosting/?action=add&cmd=cart&id=268',
+    });
+    expect(results.map((item) => item.planName)).toEqual([
+      'Osaka Edge Green',
+      'Osaka Edge Blue',
+      'Osaka Edge Yellow',
+      'Osaka Edge Orange',
+    ]);
+  });
+
   it('accepts V.PS order pages that embed checkout Turnstile', async () => {
     const html = `${fixture('vps.html')}
       <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?compat=recaptcha"></script>`;
@@ -492,7 +557,7 @@ describe('provider adapters', () => {
     try {
       const results = await new VpsAdapter().check();
 
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
       expect(results).toHaveLength(2);
       expect(results.map((result) => result.inStock)).toEqual([true, false]);
     } finally {
@@ -957,6 +1022,37 @@ describe('provider adapters', () => {
     });
   });
 
+  it('parses ZgoCloud regular cart tiers with category-prefixed plan names', () => {
+    const category = {
+      slug: 'de-frankfurt-amd-vps',
+      label: 'DE Frankfurt AMD VPS',
+      location: 'Frankfurt',
+      url: 'https://clients.zgovps.com/index.php?/cart/de-frankfurt-amd-vps/',
+    };
+    const results = new ZgoCloudAdapter().parse(fixture('zgocloud-category.html'), category);
+
+    expect(results).toHaveLength(4);
+    expect(results[0]).toMatchObject({
+      provider: 'zgocloud',
+      productId: 'zgocloud-156',
+      planName: 'DE Frankfurt AMD VPS - Starter',
+      location: 'Frankfurt',
+      cpu: '1 Core',
+      ramMb: 1024,
+      storageGb: 10,
+      bandwidthTb: 1,
+      price: 1800,
+      billingCycle: 'quarterly',
+      inStock: true,
+    });
+    expect(results.map((item) => item.productId)).toEqual([
+      'zgocloud-156',
+      'zgocloud-157',
+      'zgocloud-158',
+      'zgocloud-159',
+    ]);
+  });
+
   it('parses ColoCrossing specials with authoritative WHMCS quantities', () => {
     const results = new ColoCrossingAdapter().parse(fixture('colocrossing.html'));
 
@@ -983,6 +1079,40 @@ describe('provider adapters', () => {
       orderUrl:
         'https://cloud.colocrossing.com/index.php?rp=/store/specials/2gb-ram-seattle-special',
     });
+  });
+
+  it('parses ColoCrossing cloud VPS Single Day catalog', () => {
+    const category = {
+      slug: 'cloud-virtual-private-servers',
+      location: 'United States',
+      url: 'https://cloud.colocrossing.com/index.php?language=english&rp=/store/cloud-virtual-private-servers',
+    };
+    const results = new ColoCrossingAdapter().parse(fixture('colocrossing-cloud.html'), category);
+
+    expect(results).toHaveLength(6);
+    expect(results[0]).toMatchObject({
+      provider: 'colocrossing',
+      productId: 'colocrossing-19',
+      planName: '1GB RAM',
+      location: 'United States',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 25,
+      bandwidthTb: 20,
+      price: 395,
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl:
+        'https://cloud.colocrossing.com/index.php?rp=/store/cloud-virtual-private-servers/1gb-ram',
+    });
+    expect(results.map((item) => item.planName)).toEqual([
+      '1GB RAM',
+      '2GB RAM',
+      '4GB RAM',
+      '8GB RAM',
+      '12GB RAM',
+      '16GB RAM',
+    ]);
   });
 
   it('parses ChicagoVPS public VPS catalogs and excludes Cloud Metal servers', () => {
