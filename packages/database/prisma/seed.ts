@@ -24,12 +24,6 @@ const ACTIVE_PROVIDER_SLUGS = [
   'bestvm',
   'neburst',
   'hncloud',
-  // Re-activated after affiliate URL sync (real aff IDs, adapters present)
-  'clouvider',
-  'liteserver',
-  'evoxt',
-  'onidel',
-  'tierhive',
   'zgocloud',
 ];
 

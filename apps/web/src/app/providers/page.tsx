@@ -365,13 +365,13 @@ export default async function ProvidersPage({
     <main className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-[calc(100vh-3.5rem)] w-full flex-col lg:flex-row">
         <aside className="border-b border-border lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r xl:w-72">
-          <div className="space-y-3 p-3 sm:p-4 lg:sticky lg:top-14 lg:max-h-[calc(100vh-3.5rem)] lg:space-y-4 lg:overflow-hidden lg:p-5">
+          <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-5">
             <div className="flex items-baseline justify-between gap-3 lg:block lg:space-y-1">
               <h1 className="text-lg font-bold text-foreground sm:text-xl">Providers</h1>
               <p className="text-xs text-muted-foreground/80">{providers.length} monitored</p>
             </div>
 
-            <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:max-h-[calc(100vh-9rem)] lg:flex-col lg:gap-1 lg:overflow-y-auto lg:px-0 lg:pb-0">
+            <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:gap-1 lg:px-0 lg:pb-0">
               {providers.map((provider) => {
                 const active = provider.slug === selected?.slug;
                 return (

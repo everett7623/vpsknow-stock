@@ -14,16 +14,11 @@ import {
 describe('subscription helpers', () => {
   it('exposes the full active monitoring provider set', () => {
     const slugs = PROVIDERS.map(([slug]) => slug);
-    expect(slugs).toHaveLength(26);
-    expect(slugs).toEqual(expect.arrayContaining([
-      'clouvider',
-      'liteserver',
-      'evoxt',
-      'onidel',
-      'tierhive',
-      'zgocloud',
-      'hncloud',
-    ]));
+    expect(slugs).toHaveLength(21);
+    expect(slugs).toEqual(expect.arrayContaining(['zgocloud', 'hncloud', 'buyvm', 'dmit']));
+    expect(slugs).not.toEqual(
+      expect.arrayContaining(['onidel', 'tierhive', 'clouvider', 'liteserver', 'evoxt']),
+    );
   });
 
   it('uses coarse regions shared with the website', () => {

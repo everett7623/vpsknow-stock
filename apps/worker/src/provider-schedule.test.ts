@@ -23,11 +23,6 @@ const IMPLEMENTED_ALLOWLIST = [
   'bestvm',
   'neburst',
   'hncloud',
-  'clouvider',
-  'liteserver',
-  'evoxt',
-  'onidel',
-  'tierhive',
   'zgocloud',
 ] as const;
 
@@ -43,6 +38,11 @@ describe('provider scheduling allowlist', () => {
     expect(isMonitoredProvider('crunchbits')).toBe(false);
     expect(isMonitoredProvider('alwyzon')).toBe(false);
     expect(isMonitoredProvider('gullos')).toBe(false);
+    expect(isMonitoredProvider('onidel')).toBe(false);
+    expect(isMonitoredProvider('tierhive')).toBe(false);
+    expect(isMonitoredProvider('clouvider')).toBe(false);
+    expect(isMonitoredProvider('liteserver')).toBe(false);
+    expect(isMonitoredProvider('evoxt')).toBe(false);
     expect(isMonitoredProvider('highendnetwork')).toBe(false);
   });
 });
