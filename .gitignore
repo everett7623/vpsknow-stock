@@ -39,6 +39,10 @@ coverage/
 # ESLint
 .eslintcache
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Playwright
 playwright-report/
 test-results/

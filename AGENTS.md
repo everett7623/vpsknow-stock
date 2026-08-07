@@ -117,38 +117,16 @@ docker compose down             # Stop all services
 
 ## Current Status
 
-**Phase 1 — MVP (In Progress)**
+**Phase 1 — MVP (acceptance) + Phase 4 polish (in progress)**
 
-### Completed
-- [x] Monorepo scaffold (Turborepo + pnpm workspace)
-- [x] All apps and packages created with proper tsconfig
-- [x] Prisma schema with all tables
-- [x] Seed script for 3 Phase 1 providers
-- [x] Provider adapter framework (types, registry)
-- [x] 3 adapters implemented (BandwagonHost, DMIT, BuyVM)
-- [x] Worker entry point with BullMQ job scheduling
-- [x] Telegram message formatter + sender
-- [x] Bot basic commands (/start, /providers, /help)
-- [x] Docker Compose for local PostgreSQL + Redis
-- [x] Environment variable template
-- [x] Stock engine: state comparison, consecutive confirm, cooldown dedup
-- [x] Stock engine: DB writes (stock_checks, stock_events, product upsert)
-- [x] Stock engine: Telegram push on confirmed restock
-- [x] Website: Homepage with provider summary + recent events timeline
-- [x] Website: Provider list page (`/providers`)
-- [x] Website: Provider detail page (`/provider/[slug]`) with stock table
-- [x] Website: Filterable offers page (`/offers`) with URL-backed filters and sorting
-- [x] Web data layer (`lib/data.ts` — getProviders, getProviderBySlug, getStockSummary, getRecentStockEvents)
-- [x] GreenCloudVPS adapter (Phase 2 early implementation)
-- [x] LET offer discovery, filtering, and Telegram push implementation
+Monitoring allowlist: **26 active** providers (seed + worker + bot aligned).
+Recent polish on `main`: provider spec filters, offers region/limited, bot coarse regions + `subscribe_{slug}`, product `ipv4` / `bandwidthLabel` / catalog `Unknown` status.
 
-### Remaining Phase 1 Tasks
-- [x] Activate Prisma/esbuild build scripts and generate Prisma Client
-- [x] Run `pnpm build` with no type errors
-- [x] Add production Docker Compose for the complete stack
-- [x] Validate production Docker Compose on a Docker-enabled host
+### Remaining
 - [ ] 24h stability test run
-- [ ] Live end-to-end integration test
+- [ ] Live end-to-end integration / false-positive rate check
+- [ ] VMISS Playwright fallback validation
+- [ ] HighEndNetwork adapter (blocked on CF challenge)
 
 ---
 
