@@ -410,7 +410,7 @@ async function main() {
     data: { isActive: true },
   });
 
-  // Seed known products — BandwagonHost
+  // Seed the current special/promo VPS cards from the official cart snapshot (2026-08-07).
   const bwgPlans = [
     {
       productId: 'bwg-the-plan-dc6',
@@ -446,7 +446,7 @@ async function main() {
     },
     {
       productId: 'bwg-hk-cn2gia',
-      planName: 'HK CN2 GIA',
+      planName: 'SPECIAL 40G KVM PROMO V5 - HONG KONG CN2 GIA VPS',
       location: 'Hong Kong',
       lineType: 'CN2 GIA',
       priceCents: 8999,
@@ -454,18 +454,143 @@ async function main() {
     },
     {
       productId: 'bwg-jp-cn2gia',
-      planName: 'Tokyo CN2 GIA',
+      planName: 'SPECIAL 40G KVM PROMO V5 - TOKYO CN2 GIA VPS',
       location: 'Tokyo',
       lineType: 'CN2 GIA',
       priceCents: 8999,
       billingCycle: 'monthly',
     },
+    {
+      productId: 'bwg-44',
+      planName: '20G KVM - PROMO VPS',
+      location: 'Multi-DC',
+      lineType: null,
+      priceCents: 4999,
+      billingCycle: 'annually',
+    },
+    {
+      productId: 'bwg-45',
+      planName: '40G KVM - PROMO VPS',
+      location: 'Multi-DC',
+      lineType: null,
+      priceCents: 5299,
+      billingCycle: 'semi-annually',
+    },
+    {
+      productId: 'bwg-46',
+      planName: '80G KVM - PROMO VPS',
+      location: 'Multi-DC',
+      lineType: null,
+      priceCents: 1999,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'bwg-47',
+      planName: '160G KVM - PROMO VPS',
+      location: 'Multi-DC',
+      lineType: null,
+      priceCents: 3999,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'bwg-48',
+      planName: '320G KVM - PROMO VPS',
+      location: 'Multi-DC',
+      lineType: null,
+      priceCents: 7999,
+      billingCycle: 'monthly',
+    },
+    {
+      productId: 'bwg-49',
+      planName: '480G KVM - PROMO VPS',
+      location: 'Multi-DC',
+      lineType: null,
+      priceCents: 11999,
+      billingCycle: 'monthly',
+    },
+    ...[
+      ['bwg-173', 'SPECIAL 40G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', 4999],
+      ['bwg-174', 'SPECIAL 80G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', 8699],
+      ['bwg-175', 'SPECIAL 160G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', 16599],
+      ['bwg-176', 'SPECIAL 320G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', 32999],
+      ['bwg-177', 'SPECIAL 640G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', 54999],
+      ['bwg-178', 'SPECIAL 1280G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', 105999],
+      ['bwg-134', 'SPECIAL 40G KVM PROMO V5 - OSAKA CN2 GIA VPS', 4999],
+      ['bwg-135', 'SPECIAL 80G KVM PROMO V5 - OSAKA CN2 GIA VPS', 8699],
+      ['bwg-136', 'SPECIAL 160G KVM PROMO V5 - OSAKA CN2 GIA VPS', 16599],
+      ['bwg-137', 'SPECIAL 320G KVM PROMO V5 - OSAKA CN2 GIA VPS', 32999],
+      ['bwg-138', 'SPECIAL 640G KVM PROMO V5 - OSAKA CN2 GIA VPS', 54999],
+      ['bwg-139', 'SPECIAL 1280G KVM PROMO V5 - OSAKA CN2 GIA VPS', 105999],
+      ['bwg-96', 'SPECIAL 80G KVM PROMO V5 - HONG KONG CN2 GIA VPS', 15599],
+      ['bwg-97', 'SPECIAL 160G KVM PROMO V5 - HONG KONG CN2 GIA VPS', 29999],
+      ['bwg-98', 'SPECIAL 320G KVM PROMO V5 - HONG KONG CN2 GIA VPS', 58999],
+      ['bwg-122', 'SPECIAL 640G KVM PROMO V5 - HONG KONG CN2 GIA VPS', 98999],
+      ['bwg-124', 'SPECIAL 1280G KVM PROMO V5 - HONG KONG CN2 GIA VPS', 188999],
+      ['bwg-109', 'SPECIAL 80G KVM PROMO V5 - TOKYO CN2 GIA VPS', 15599],
+      ['bwg-110', 'SPECIAL 160G KVM PROMO V5 - TOKYO CN2 GIA VPS', 29999],
+      ['bwg-111', 'SPECIAL 320G KVM PROMO V5 - TOKYO CN2 GIA VPS', 58999],
+      ['bwg-123', 'SPECIAL 640G KVM PROMO V5 - TOKYO CN2 GIA VPS', 98999],
+      ['bwg-125', 'SPECIAL 1280G KVM PROMO V5 - TOKYO CN2 GIA VPS', 188999],
+    ].map(([productId, planName, priceCents]) => ({
+      productId: productId as string,
+      planName: planName as string,
+      location: (planName as string).match(/SINGAPORE/i)
+        ? 'Singapore'
+        : (planName as string).match(/OSAKA/i)
+          ? 'Osaka'
+          : (planName as string).match(/HONG KONG/i)
+            ? 'Hong Kong'
+            : 'Tokyo',
+      lineType: 'CN2 GIA',
+      priceCents: priceCents as number,
+      billingCycle: 'monthly',
+    })),
+    ...[
+      ['bwg-87', 'SPECIAL 20G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 4999, 'quarterly'],
+      ['bwg-88', 'SPECIAL 40G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 8999, 'quarterly'],
+      ['bwg-89', 'SPECIAL 80G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 5699, 'monthly'],
+      ['bwg-90', 'SPECIAL 160G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 8699, 'monthly'],
+      ['bwg-91', 'SPECIAL 320G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 15999, 'monthly'],
+      ['bwg-92', 'SPECIAL 640G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 28999, 'monthly'],
+      ['bwg-93', 'SPECIAL 1280G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', 54999, 'monthly'],
+      ['bwg-160', 'SPECIAL 1280G KVM PROMO V5 - CN2 GIA ECOMMERCE HIBW 15T VPS', 67900, 'monthly'],
+      ['bwg-161', 'SPECIAL 1280G KVM PROMO V5 - CN2 GIA ECOMMERCE HIBW 20T VPS', 89900, 'monthly'],
+    ].map(([productId, planName, priceCents, billingCycle]) => ({
+      productId: productId as string,
+      planName: planName as string,
+      location: 'Multi-DC',
+      lineType: 'CN2 GIA',
+      priceCents: priceCents as number,
+      billingCycle: billingCycle as string,
+    })),
+    ...[
+      ['bwg-114', 'SPECIAL 20G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 1999],
+      ['bwg-115', 'SPECIAL 40G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 3299],
+      ['bwg-116', 'SPECIAL 80G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 5699],
+      ['bwg-117', 'SPECIAL 160G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 8699],
+      ['bwg-118', 'SPECIAL 320G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 15999],
+      ['bwg-119', 'SPECIAL 640G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 28999],
+      ['bwg-120', 'SPECIAL 1280G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', 54999],
+    ].map(([productId, planName, priceCents]) => ({
+      productId: productId as string,
+      planName: planName as string,
+      location: 'Dubai',
+      lineType: 'E-commerce',
+      priceCents: priceCents as number,
+      billingCycle: 'monthly',
+    })),
   ];
 
   for (const plan of bwgPlans) {
     await prisma.product.upsert({
       where: { providerId_productId: { providerId: bandwagonhost.id, productId: plan.productId } },
-      update: { lineType: plan.lineType },
+      update: {
+        planName: plan.planName,
+        location: plan.location,
+        lineType: plan.lineType,
+        priceCents: plan.priceCents,
+        billingCycle: plan.billingCycle,
+      },
       create: {
         providerId: bandwagonhost.id,
         productId: plan.productId,

@@ -109,7 +109,7 @@ describe('provider adapters', () => {
     expect(results.some((item) => item.orderUrl === 'https://bandwagonhost.com/cart.php?a=add&pid=95')).toBe(
       true,
     );
-    expect(results.some((item) => item.productId === 'bwg-149' && item.inStock === false)).toBe(true);
+    expect(results.some((item) => item.productId === 'bwg-the-plan-dc6' && item.inStock === false)).toBe(true);
   });
 
   it('parses BandwagonHost watched PID pages for limited restock detection', () => {
@@ -131,7 +131,7 @@ describe('provider adapters', () => {
       orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=87',
     });
     expect(outOfStock).toMatchObject({
-      productId: 'bwg-149',
+      productId: 'bwg-the-plan-dc6',
       inStock: false,
       orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=149',
     });

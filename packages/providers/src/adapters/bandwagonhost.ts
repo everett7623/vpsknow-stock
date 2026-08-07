@@ -32,13 +32,53 @@ const WATCHED_PIDS: readonly {
   { pid: 146, planName: 'DC39 Tokyo v2', location: 'Tokyo' },
   { pid: 147, planName: 'Japan Softbank', location: 'Tokyo' },
   { pid: 94, planName: 'Classic Plan V1', location: 'Multi-DC' },
-  { pid: 87, planName: 'SPECIAL 20G CN2 GIA ECOMMERCE', location: 'Los Angeles' },
-  { pid: 44, planName: '20G KVM PROMO (Basic)', location: 'Multi-DC' },
-  { pid: 134, planName: 'Osaka CN2 GIA', location: 'Osaka' },
-  { pid: 108, planName: 'Tokyo CN2 GIA', location: 'Tokyo' },
-  { pid: 95, planName: 'Hong Kong CN2 GIA', location: 'Hong Kong' },
-  { pid: 173, planName: 'Singapore CN2 GIA', location: 'Singapore' },
+  { pid: 87, planName: 'SPECIAL 20G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 44, planName: '20G KVM - PROMO VPS', location: 'Multi-DC' },
+  { pid: 45, planName: '40G KVM - PROMO VPS', location: 'Multi-DC' },
+  { pid: 46, planName: '80G KVM - PROMO VPS', location: 'Multi-DC' },
+  { pid: 47, planName: '160G KVM - PROMO VPS', location: 'Multi-DC' },
+  { pid: 48, planName: '320G KVM - PROMO VPS', location: 'Multi-DC' },
+  { pid: 49, planName: '480G KVM - PROMO VPS', location: 'Multi-DC' },
+  { pid: 173, planName: 'SPECIAL 40G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', location: 'Singapore' },
+  { pid: 174, planName: 'SPECIAL 80G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', location: 'Singapore' },
+  { pid: 175, planName: 'SPECIAL 160G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', location: 'Singapore' },
+  { pid: 176, planName: 'SPECIAL 320G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', location: 'Singapore' },
+  { pid: 177, planName: 'SPECIAL 640G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', location: 'Singapore' },
+  { pid: 178, planName: 'SPECIAL 1280G KVM PROMO V5 - SINGAPORE CN2 GIA VPS', location: 'Singapore' },
+  { pid: 134, planName: 'SPECIAL 40G KVM PROMO V5 - OSAKA CN2 GIA VPS', location: 'Osaka' },
+  { pid: 135, planName: 'SPECIAL 80G KVM PROMO V5 - OSAKA CN2 GIA VPS', location: 'Osaka' },
+  { pid: 136, planName: 'SPECIAL 160G KVM PROMO V5 - OSAKA CN2 GIA VPS', location: 'Osaka' },
+  { pid: 137, planName: 'SPECIAL 320G KVM PROMO V5 - OSAKA CN2 GIA VPS', location: 'Osaka' },
+  { pid: 138, planName: 'SPECIAL 640G KVM PROMO V5 - OSAKA CN2 GIA VPS', location: 'Osaka' },
+  { pid: 139, planName: 'SPECIAL 1280G KVM PROMO V5 - OSAKA CN2 GIA VPS', location: 'Osaka' },
+  { pid: 108, planName: 'SPECIAL 40G KVM PROMO V5 - TOKYO CN2 GIA VPS', location: 'Tokyo' },
+  { pid: 109, planName: 'SPECIAL 80G KVM PROMO V5 - TOKYO CN2 GIA VPS', location: 'Tokyo' },
+  { pid: 110, planName: 'SPECIAL 160G KVM PROMO V5 - TOKYO CN2 GIA VPS', location: 'Tokyo' },
+  { pid: 111, planName: 'SPECIAL 320G KVM PROMO V5 - TOKYO CN2 GIA VPS', location: 'Tokyo' },
+  { pid: 122, planName: 'SPECIAL 640G KVM PROMO V5 - HONG KONG CN2 GIA VPS', location: 'Hong Kong' },
+  { pid: 123, planName: 'SPECIAL 640G KVM PROMO V5 - TOKYO CN2 GIA VPS', location: 'Tokyo' },
+  { pid: 124, planName: 'SPECIAL 1280G KVM PROMO V5 - HONG KONG CN2 GIA VPS', location: 'Hong Kong' },
+  { pid: 125, planName: 'SPECIAL 1280G KVM PROMO V5 - TOKYO CN2 GIA VPS', location: 'Tokyo' },
+  { pid: 95, planName: 'SPECIAL 40G KVM PROMO V5 - HONG KONG CN2 GIA VPS', location: 'Hong Kong' },
+  { pid: 96, planName: 'SPECIAL 80G KVM PROMO V5 - HONG KONG CN2 GIA VPS', location: 'Hong Kong' },
+  { pid: 97, planName: 'SPECIAL 160G KVM PROMO V5 - HONG KONG CN2 GIA VPS', location: 'Hong Kong' },
+  { pid: 98, planName: 'SPECIAL 320G KVM PROMO V5 - HONG KONG CN2 GIA VPS', location: 'Hong Kong' },
   { pid: 164, planName: 'Los Angeles SLA CN2 GIA', location: 'Los Angeles' },
+  { pid: 114, planName: 'SPECIAL 20G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 115, planName: 'SPECIAL 40G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 116, planName: 'SPECIAL 80G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 117, planName: 'SPECIAL 160G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 118, planName: 'SPECIAL 320G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 119, planName: 'SPECIAL 640G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 120, planName: 'SPECIAL 1280G KVM PROMO V5 - DUBAI - ECOMMERCE VPS', location: 'Dubai' },
+  { pid: 88, planName: 'SPECIAL 40G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 89, planName: 'SPECIAL 80G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 90, planName: 'SPECIAL 160G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 91, planName: 'SPECIAL 320G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 92, planName: 'SPECIAL 640G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 93, planName: 'SPECIAL 1280G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS', location: 'Multi-DC' },
+  { pid: 160, planName: 'SPECIAL 1280G KVM PROMO V5 - CN2 GIA ECOMMERCE HIBW 15T VPS', location: 'Multi-DC' },
+  { pid: 161, planName: 'SPECIAL 1280G KVM PROMO V5 - CN2 GIA ECOMMERCE HIBW 20T VPS', location: 'Multi-DC' },
 ] as const;
 
 type FetchHtml = (provider: string, url: string) => Promise<string>;
@@ -179,11 +219,11 @@ export class BandwagonHostAdapter implements ProviderAdapter {
     const pidFailures: string[] = [];
 
     for (const watched of WATCHED_PIDS) {
-      const productId = `bwg-${watched.pid}`;
+      const url = `${CART_URL}?a=add&pid=${watched.pid}`;
+      const productId = productIdFor(watched.planName, watched.planName, url, watched.location);
       if (seen.has(productId)) continue;
 
       try {
-        const url = `${CART_URL}?a=add&pid=${watched.pid}`;
         const html = await this.fetchHtml(this.name, url);
         const result = this.parseProductPage(html, watched);
         if (!result) {
@@ -289,7 +329,7 @@ export class BandwagonHostAdapter implements ProviderAdapter {
 
     return {
       provider: this.slug,
-      productId: `bwg-${watched.pid}`,
+      productId: productIdFor(planName, text, orderUrl, location),
       planName,
       location,
       category: 'vps',
