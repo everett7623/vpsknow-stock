@@ -60,6 +60,10 @@ services:
       TELEGRAM_OFFERS_CHANNEL_ID: ${TELEGRAM_OFFERS_CHANNEL_ID:-@vpsknow_offers}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:?TELEGRAM_ADMIN_CHAT_ID is required}
       AFFILIATE_BASE_URL: ${AFFILIATE_BASE_URL:-https://go.uukk.de}
+      DMIT_PROXY_URL: ${DMIT_PROXY_URL:-}
+      VMISS_PROXY_URL: ${VMISS_PROXY_URL:-}
+      VPS_PROXY_URL: ${VPS_PROXY_URL:-}
+      PROVIDER_PROXY_URL: ${PROVIDER_PROXY_URL:-}
     depends_on:
       migrate:
         condition: service_completed_successfully
