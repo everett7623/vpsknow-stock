@@ -7,19 +7,15 @@ import { NextRequest, NextResponse } from 'next/server';
  * 用户点击: https://stock.vpsknow.com/go/greencloudvps-gc-2017
  *       ↓
  * 302 重定向: https://provider.com/aff.php?aff=YOUR_ID&pid=123
- *       ↓
- * 最终页面: https://provider.com/cart.php?a=confproduct&i=1
  *
- * 特点:
- * - 服务器端重定向,用户看不到中间的 affiliate 链接
- * - 自动记录点击统计
- * - 支持产品级别和 provider 级别链接
- * - Slug 格式校验 + 仅允许 http(s) 目标, 防止路径注入与开放重定向
+ * - 服务器端重定向，用户看不到中间的 affiliate 链接
+ * - 记录累计 clicks + 单次 AffiliateClick 事件（供 admin 分时段统计）
+ * - Slug 格式校验 + 仅允许 http(s) 目标，防止路径注入与开放重定向
  */
 
-const CACHE_SECONDS = 3600; // 缓存 1 小时
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const MAX_SLUG_LENGTH = 200;
+const MAX_META_LENGTH = 300;
 
 function isSafeRedirectTarget(targetUrl: string): boolean {
   try {
@@ -30,8 +26,41 @@ function isSafeRedirectTarget(targetUrl: string): boolean {
   }
 }
 
+function truncateMeta(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.length > MAX_META_LENGTH ? `${trimmed.slice(0, MAX_META_LENGTH)}…` : trimmed;
+}
+
+async function recordClick(input: {
+  linkId: string;
+  slug: string;
+  referer: string | null;
+  userAgent: string | null;
+}): Promise<void> {
+  const clickedAt = new Date();
+  await prisma.$transaction([
+    prisma.affiliateClick.create({
+      data: {
+        affiliateLinkId: input.linkId,
+        clickedAt,
+        referer: input.referer,
+        userAgent: input.userAgent,
+      },
+    }),
+    prisma.affiliateLink.update({
+      where: { slug: input.slug },
+      data: {
+        clicks: { increment: 1 },
+        lastClickedAt: clickedAt,
+      },
+    }),
+  ]);
+}
+
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
@@ -41,10 +70,10 @@ export async function GET(
   }
 
   try {
-    // 查询数据库获取目标链接（targetUrl 由 worker 用正确 aff+pid 写入）
     const link = await prisma.affiliateLink.findUnique({
       where: { slug: id },
       select: {
+        id: true,
         targetUrl: true,
       },
     });
@@ -53,19 +82,22 @@ export async function GET(
       return new NextResponse('Short link not found', { status: 404 });
     }
 
-    // 异步更新点击计数(不阻塞重定向)
-    prisma.affiliateLink
-      .update({
-        where: { slug: id },
-        data: { clicks: { increment: 1 } },
-      })
-      .catch((err) => console.error('Failed to update click count:', err));
+    const referer = truncateMeta(request.headers.get('referer'));
+    const userAgent = truncateMeta(request.headers.get('user-agent'));
 
-    // 302 重定向到目标链接；忽略请求 query，避免用户篡改 aff/pid
+    // Fire-and-forget so redirect latency stays low; failures are logged only.
+    void recordClick({
+      linkId: link.id,
+      slug: id,
+      referer,
+      userAgent,
+    }).catch((err) => console.error('Failed to record short-link click:', err));
+
+    // Do not cache redirects — cached 302s would under-count clicks.
     return NextResponse.redirect(link.targetUrl, {
       status: 302,
       headers: {
-        'Cache-Control': `public, max-age=${CACHE_SECONDS}, s-maxage=${CACHE_SECONDS}`,
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
         'Referrer-Policy': 'no-referrer',
       },
     });

@@ -104,16 +104,32 @@ model StockEvent {
 }
 
 model AffiliateLink {
-  id         String  @id @default(cuid())
-  providerId String
-  slug       String  @unique // e.g. "buyvm-slice-1024-lv"
-  targetUrl  String
-  shortUrl   String  // go.uukk.de/...
-  clicks     Int     @default(0)
+  id            String    @id @default(cuid())
+  providerId    String
+  slug          String    @unique // e.g. "buyvm-slice-1024-lv"
+  targetUrl     String
+  shortUrl      String // go.uukk.de/...
+  clicks        Int       @default(0)
+  lastClickedAt DateTime?
 
-  provider Provider @relation(fields: [providerId], references: [id])
+  provider    Provider         @relation(fields: [providerId], references: [id])
+  clickEvents AffiliateClick[]
 
   @@map("affiliate_links")
+}
+
+model AffiliateClick {
+  id              String   @id @default(cuid())
+  affiliateLinkId String
+  clickedAt       DateTime @default(now())
+  referer         String?
+  userAgent       String?
+
+  affiliateLink AffiliateLink @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+
+  @@index([clickedAt])
+  @@index([affiliateLinkId, clickedAt])
+  @@map("affiliate_clicks")
 }
 
 model TelegramMessage {
