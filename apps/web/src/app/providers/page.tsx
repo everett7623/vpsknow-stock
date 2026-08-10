@@ -410,7 +410,7 @@ export default async function ProvidersPage({
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-[calc(100vh-3.5rem)] w-full flex-col lg:flex-row">
-        <aside className="border-b border-border lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r xl:w-72">
+        <aside className="sticky top-14 z-30 border-b border-border bg-background lg:h-[calc(100vh-3.5rem)] lg:w-64 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r xl:w-72">
           <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-5">
             <div className="flex items-baseline justify-between gap-3 lg:block lg:space-y-1">
               <h1 className="text-lg font-bold text-foreground sm:text-xl">Providers</h1>

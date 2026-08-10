@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -9,9 +12,18 @@ const links = [
 ] as const;
 
 export function SiteHeader(): React.JSX.Element {
+  const pathname = usePathname();
+  const isProviders = pathname.startsWith('/providers');
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex w-full items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-5 lg:px-6">
+      <div
+        className={
+          isProviders
+            ? 'flex w-full items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-4 lg:px-5'
+            : 'mx-auto flex w-full max-w-[1440px] items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-5 lg:px-6'
+        }
+      >
         <Link href="/" className="min-w-0 shrink transition-opacity hover:opacity-90">
           <BrandLogo size="sm" />
         </Link>
