@@ -41,16 +41,37 @@ export function redactProxyUrl(proxyUrl: string): string {
 
 /**
  * Resolve an optional provider proxy from env.
- * Prefers provider-specific vars (e.g. VMISS_PROXY_URL), then PROVIDER_PROXY_URL.
+ * Prefers provider-specific vars (e.g. DMIT_PROXY_URL), then PROVIDER_PROXY_URL.
  */
 export function resolveProviderProxyUrl(provider: string): string | undefined {
   const slug = provider.trim().toLowerCase().replace(/\s+/g, '');
-  const specific =
-    slug === 'vmiss'
-      ? process.env.VMISS_PROXY_URL
-      : undefined;
+  const specificKey = (() => {
+    if (slug === 'vmiss' || slug === 'dmit' || slug === 'vps' || slug === 'v.ps') {
+      const normalized = slug === 'v.ps' ? 'VPS' : slug.toUpperCase();
+      return `${normalized}_PROXY_URL`;
+    }
+    return undefined;
+  })();
+  const specific = specificKey ? process.env[specificKey] : undefined;
   const value = specific?.trim() || process.env.PROVIDER_PROXY_URL?.trim();
   return value || undefined;
+}
+
+/** Parse an HTTP(S)/SOCKS proxy URL into Playwright launch options (never log secrets). */
+export function parseProxyForPlaywright(proxyUrl: string): {
+  server: string;
+  username?: string;
+  password?: string;
+} {
+  const parsed = new URL(proxyUrl);
+  const server = `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}`;
+  const username = parsed.username ? decodeURIComponent(parsed.username) : undefined;
+  const password = parsed.password ? decodeURIComponent(parsed.password) : undefined;
+  return {
+    server,
+    ...(username ? { username } : {}),
+    ...(password ? { password } : {}),
+  };
 }
 
 interface CurlResult {

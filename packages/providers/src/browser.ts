@@ -1,4 +1,5 @@
-import { chromium, type Browser } from 'playwright-core';
+import { chromium, type Browser, type BrowserContextOptions } from 'playwright-core';
+import { parseProxyForPlaywright, resolveProviderProxyUrl } from './http.js';
 
 const USER_AGENT = 'VPSKnow-Stock/1.0';
 const NAVIGATION_TIMEOUT_MS = 30_000;
@@ -12,10 +13,11 @@ function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function launchBrowser(): Promise<Browser> {
-  const options = {
+async function launchBrowser(proxyUrl?: string): Promise<Browser> {
+  const options: Parameters<typeof chromium.launch>[0] = {
     headless: true,
     args: ['--disable-dev-shm-usage'],
+    ...(proxyUrl ? { proxy: parseProxyForPlaywright(proxyUrl) } : {}),
   };
 
   try {
@@ -39,21 +41,23 @@ export async function fetchProviderPagesWithBrowser(
   urls: readonly string[],
   readySelector: string,
 ): Promise<BrowserPageResult[]> {
+  const proxyUrl = resolveProviderProxyUrl(provider);
   let browser: Browser;
   try {
-    browser = await launchBrowser();
+    browser = await launchBrowser(proxyUrl);
   } catch (error) {
     throw new Error(`${provider} could not launch Chromium: ${messageFrom(error)}`);
   }
 
   const results: BrowserPageResult[] = [];
-  const context = await browser.newContext({
+  const contextOptions: BrowserContextOptions = {
     userAgent: USER_AGENT,
     locale: 'en-US',
     extraHTTPHeaders: {
       'Accept-Language': 'en-US,en;q=0.9',
     },
-  });
+  };
+  const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
 
   try {

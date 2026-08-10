@@ -4,7 +4,7 @@ import {
   fetchProviderPagesWithBrowser,
   type BrowserPageResult,
 } from '../browser.js';
-import { fetchProviderHtml } from '../http.js';
+import { fetchProviderHtml, resolveProviderProxyUrl } from '../http.js';
 import { detectOptimizedLine, type BillingCycle } from '@vpsknow/shared';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
@@ -83,7 +83,8 @@ export class DmitAdapter implements ProviderAdapter {
   readonly name = 'DMIT';
 
   constructor(
-    private readonly fetchHtml: FetchHtml = fetchProviderHtml,
+    private readonly fetchHtml: FetchHtml = (provider, url) =>
+      fetchProviderHtml(provider, url, { proxyUrl: resolveProviderProxyUrl(provider) }),
     private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
   ) {}
 

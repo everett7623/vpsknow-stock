@@ -212,7 +212,9 @@ LOG_LEVEL             # info | debug | warn | error
 Optional provider proxies (Cloudflare-blocked scrapes; never commit credentials):
 
 ```
+DMIT_PROXY_URL        # Preferred egress for DMIT HTTP/curl/Playwright
 VMISS_PROXY_URL       # Preferred egress for VMISS HTTP/curl fetches
+VPS_PROXY_URL         # Preferred egress for V.PS
 PROVIDER_PROXY_URL    # Shared fallback for providers that honor resolveProviderProxyUrl()
 ```
 

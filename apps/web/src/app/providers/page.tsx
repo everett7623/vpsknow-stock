@@ -222,8 +222,8 @@ function filterProducts(
   });
 
   products = [...products].sort((a, b) => {
-    // Default browsing: Regular plans above Promo/Special/Limited, then price.
-    // Also sink $0 / missing-spec / Unknown-heavy junk so restock-relevant plans surface.
+    // Default browsing: Promo / Limited / Special first, then price.
+    // Sink $0 / missing-spec / Unknown-heavy junk so deal-relevant plans surface.
     const junkDelta = planJunkRank(a) - planJunkRank(b);
     if (junkDelta !== 0) return junkDelta;
 
@@ -239,13 +239,13 @@ function filterProducts(
   return products;
 }
 
-/** Lower rank sorts first. Regular (null tag) = 0; Limited/Special/Promo demoted. */
+/** Lower rank sorts first. Promo/Limited/Special pin above regular plans. */
 function planOfferRank(planName: string, productId: string): number {
   const tag = detectPlanOfferTag(planName, productId);
-  if (tag === null) return 0;
+  if (tag === 'promo') return 0;
   if (tag === 'limited') return 1;
   if (tag === 'special') return 2;
-  return 3; // promo
+  return 3; // regular
 }
 
 /** Sink unusable rows ($0, missing RAM/disk, Unknown CPU) below real plans. */
@@ -715,7 +715,7 @@ export default async function ProvidersPage({
                     defaultValue={sort}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="price_asc">Price ↑ (regular first)</option>
+                    <option value="price_asc">Price ↑ (promo first)</option>
                     <option value="price_desc">Price ↓</option>
                     <option value="name">Plan name</option>
                   </select>

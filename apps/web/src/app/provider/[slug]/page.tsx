@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductOrderUrl, getProviderBySlug, getProviderSiteUrl } from '@/lib/data';
 import { formatDate, formatPrice, botSubscribeUrl, formatBandwidth, resolveStockAvailability } from '@/lib/utils';
-import { lineTypeLabel } from '@/lib/plan-tags';
+import { lineTypeLabel, detectPlanOfferTag } from '@/lib/plan-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +48,27 @@ export default async function ProviderDetailPage({
     return !latest || product.lastCheckedAt > latest ? product.lastCheckedAt : latest;
   }, null);
   const isStale = !lastCheckedAt || Date.now() - lastCheckedAt.getTime() > 30 * 60 * 1_000;
+
+  const pinPromoThenPrice = <T extends {
+    planName: string;
+    productId: string;
+    priceCents: number;
+  }>(products: T[]): T[] => [...products].sort((a, b) => {
+    const tagRank = (planName: string, productId: string): number => {
+      const tag = detectPlanOfferTag(planName, productId);
+      if (tag === 'promo') return 0;
+      if (tag === 'limited') return 1;
+      if (tag === 'special') return 2;
+      return 3;
+    };
+    const offerDelta = tagRank(a.planName, a.productId) - tagRank(b.planName, b.productId);
+    if (offerDelta !== 0) return offerDelta;
+    return a.priceCents - b.priceCents;
+  });
+
+  const inStockProductsSorted = pinPromoThenPrice(inStockProducts);
+  const outOfStockProductsSorted = pinPromoThenPrice(outOfStockProducts);
+  const unknownProductsSorted = pinPromoThenPrice(unknownProducts);
 
   return (
     <main className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
@@ -114,7 +135,7 @@ export default async function ProviderDetailPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {inStockProducts.map((product) => (
+                  {inStockProductsSorted.map((product) => (
                     <tr key={product.id} className="border-b border-border/50">
                       <td className="py-3 pr-4 font-medium text-foreground">
                         <Link
@@ -176,7 +197,7 @@ export default async function ProviderDetailPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {unknownProducts.map((product) => (
+                  {unknownProductsSorted.map((product) => (
                     <tr key={product.id} className="border-b border-border/30">
                       <td className="py-2 pr-4 text-foreground/80">
                         <Link
@@ -208,7 +229,7 @@ export default async function ProviderDetailPage({
                   <th className="pb-2 pr-4">Line</th>
                   <th className="pb-2 pr-4">Price</th><th className="pb-2">Last Checked</th>
                 </tr></thead>
-                <tbody>{outOfStockProducts.map((product) => (
+                <tbody>{outOfStockProductsSorted.map((product) => (
                   <tr key={product.id} className="border-b border-border/30">
                     <td className="py-2 pr-4 text-muted-foreground">
                       <Link
