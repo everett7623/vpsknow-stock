@@ -4,14 +4,20 @@ import {
   fetchProviderPagesWithBrowser,
   type BrowserPageResult,
 } from '../browser.js';
-import { fetchProviderHtml } from '../http.js';
+import { fetchProviderHtml, resolveProviderProxyUrl } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
-import { VMISS_CATALOG } from './vmiss-catalog.js';
+import { VMISS_CATALOG, type VmissCatalogPlan } from './vmiss-catalog.js';
 
 interface Category {
   slug: string;
   location: string;
   url: string;
+}
+
+interface WatchedPid {
+  pid: string;
+  planName: string;
+  location: string;
 }
 
 const CATEGORIES: readonly Category[] = [
@@ -30,6 +36,25 @@ const CATEGORIES: readonly Category[] = [
   { slug: 'la-cmin2', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cmin2' },
   { slug: 'la-cn2-gia', location: 'Los Angeles', url: 'https://app.vmiss.com/store/us-los-angeles-cn2' },
 ] as const;
+
+/**
+ * High-signal WHMCS PIDs polled via cart.php when category pages are CF-blocked.
+ * Prefer Basic (+ Core for popular LA CN routes) — these restock most often.
+ */
+const HIGH_SIGNAL_PLAN_RE =
+  /^(?:US\.LA\.(?:9929|CMIN2|CN2|TRI)\.(?:Basic|Core)|CN\.HK\.(?:BGP|BGP-V2|INTL)\.Basic|JP\.(?:TKY|OSA)\.(?:IIJ|BGP|TRI)\.Basic|KR\.SEL\.BGP\.Basic)$/i;
+
+function buildWatchedPids(catalog: readonly VmissCatalogPlan[]): readonly WatchedPid[] {
+  return catalog
+    .filter((plan) => HIGH_SIGNAL_PLAN_RE.test(plan.planName))
+    .map((plan) => ({
+      pid: plan.pid,
+      planName: plan.planName,
+      location: plan.location,
+    }));
+}
+
+const WATCHED_PIDS: readonly WatchedPid[] = buildWatchedPids(VMISS_CATALOG);
 
 type FetchHtml = (provider: string, url: string) => Promise<string>;
 type FetchBrowserPages = (
@@ -76,23 +101,63 @@ function orderUrlForPid(pid: string): string {
   return `https://app.vmiss.com/cart.php?a=add&pid=${pid}`;
 }
 
+function catalogPlanByPid(pid: string): VmissCatalogPlan | undefined {
+  return VMISS_CATALOG.find((plan) => plan.pid === pid);
+}
+
+function stockResultFromCatalog(
+  plan: VmissCatalogPlan,
+  overrides: Partial<StockResult> & { inStock: boolean; raw?: StockResult['raw'] },
+): StockResult {
+  return {
+    provider: 'vmiss',
+    productId: `vmiss-${plan.pid}`,
+    planName: plan.planName,
+    location: plan.location,
+    category: 'vps',
+    cpu: `${plan.cpuCores} Core${plan.cpuCores === 1 ? '' : 's'}`,
+    ramMb: plan.ramMb,
+    storageGb: plan.storageGb,
+    storageType: 'SSD',
+    bandwidthTb: plan.bandwidthTb,
+    ipv4: true,
+    ipv6: false,
+    price: plan.priceCents,
+    currency: plan.currency,
+    billingCycle: plan.billingCycle,
+    orderUrl: orderUrlForPid(plan.pid),
+    displaySpecs: {
+      port: `${plan.portMbps}Mbps`,
+    },
+    ...overrides,
+  };
+}
+
 export class VmissAdapter implements ProviderAdapter {
   readonly slug = 'vmiss';
   readonly name = 'VMISS';
   warnings: readonly string[] = [];
 
   constructor(
-    private readonly fetchHtml: FetchHtml = fetchProviderHtml,
+    private readonly fetchHtml: FetchHtml = (provider, url) =>
+      fetchProviderHtml(provider, url, { proxyUrl: resolveProviderProxyUrl(provider) }),
     private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
   ) {}
 
+  /** Exposed for tests — high-signal PID watch list. */
+  static watchedPids(): readonly WatchedPid[] {
+    return WATCHED_PIDS;
+  }
+
   async check(): Promise<StockResult[]> {
     this.warnings = [];
+    const proxyConfigured = Boolean(resolveProviderProxyUrl(this.name));
 
     const direct = await this.checkDirect();
     if (direct.results.length > 0) {
-      this.warnings = direct.failures;
-      return direct.results;
+      const watched = await this.checkWatchedPids(new Set(direct.results.map((item) => item.productId)));
+      this.warnings = [...direct.failures, ...watched.failures];
+      return this.mergeLiveResults(direct.results, watched.results);
     }
 
     const pages = await this.fetchBrowserPages(
@@ -100,7 +165,7 @@ export class VmissAdapter implements ProviderAdapter {
       CATEGORIES.map(englishUrl),
       '.product',
     );
-    const results: StockResult[] = [];
+    const browserResults: StockResult[] = [];
     const seen = new Set<string>();
     const failures: string[] = [];
 
@@ -122,53 +187,89 @@ export class VmissAdapter implements ProviderAdapter {
         const key = `${result.productId}:${result.location}`;
         if (!seen.has(key)) {
           seen.add(key);
-          results.push(result);
+          browserResults.push(result);
         }
       }
     }
 
-    if (results.length > 0) {
-      this.warnings = failures;
-      return results;
+    if (browserResults.length > 0) {
+      const watched = await this.checkWatchedPids(
+        new Set(browserResults.map((item) => item.productId)),
+      );
+      this.warnings = [...failures, ...watched.failures];
+      return this.mergeLiveResults(browserResults, watched.results);
     }
 
-    // Cloudflare often blocks app.vmiss.com from the worker IP. Fall back to the
-    // published WHMCS PID catalog so order URLs / PIDs stay available, but never
-    // claim live stock — stock-engine skips transitions for catalog-only rows.
-    const catalog = this.parseCatalog();
+    // Category pages blocked — poll high-signal cart PIDs for live stock, then
+    // fill remaining rows from the published catalog (no stock claims).
+    const watched = await this.checkWatchedPids(new Set());
+    const catalog = this.parseCatalog().filter(
+      (item) => !watched.results.some((live) => live.productId === item.productId),
+    );
+
+    const proxyHint = proxyConfigured
+      ? 'VMISS_PROXY_URL/PROVIDER_PROXY_URL is set'
+      : 'no VMISS_PROXY_URL/PROVIDER_PROXY_URL configured — residential egress may be required';
+
     this.warnings = [
-      `live scrape blocked; using published PID catalog without stock claims (${catalog.length} plans)`,
+      `live category scrape blocked; PID watch returned ${watched.results.length}/${WATCHED_PIDS.length} live results (${proxyHint})`,
+      catalog.length > 0
+        ? `using published PID catalog without stock claims for ${catalog.length} remaining plans`
+        : 'published PID catalog unused (all watched PIDs returned live)',
       ...direct.failures.slice(0, 2),
       ...failures.slice(0, 2),
+      ...watched.failures.slice(0, 4),
     ];
-    return catalog;
+
+    return [...watched.results, ...catalog];
   }
 
   /** Build StockResult rows from the published PID catalog (stock unknown). */
   parseCatalog(): StockResult[] {
-    return VMISS_CATALOG.map((plan) => ({
-      provider: this.slug,
-      productId: `vmiss-${plan.pid}`,
-      planName: plan.planName,
-      location: plan.location,
-      category: 'vps' as const,
-      cpu: `${plan.cpuCores} Core${plan.cpuCores === 1 ? '' : 's'}`,
-      ramMb: plan.ramMb,
-      storageGb: plan.storageGb,
-      storageType: 'SSD',
-      bandwidthTb: plan.bandwidthTb,
-      ipv4: true,
-      ipv6: false,
-      price: plan.priceCents,
-      currency: plan.currency,
-      billingCycle: plan.billingCycle,
-      inStock: false,
-      orderUrl: orderUrlForPid(plan.pid),
-      displaySpecs: {
-        port: `${plan.portMbps}Mbps`,
-      },
-      raw: { source: 'published-catalog', pid: plan.pid },
-    }));
+    return VMISS_CATALOG.map((plan) =>
+      stockResultFromCatalog(plan, {
+        inStock: false,
+        raw: { source: 'published-catalog', pid: plan.pid },
+      }),
+    );
+  }
+
+  private mergeLiveResults(primary: StockResult[], watched: StockResult[]): StockResult[] {
+    const seen = new Set(primary.map((item) => item.productId));
+    const merged = [...primary];
+    for (const result of watched) {
+      if (seen.has(result.productId)) continue;
+      seen.add(result.productId);
+      merged.push(result);
+    }
+    return merged;
+  }
+
+  private async checkWatchedPids(
+    alreadySeen: ReadonlySet<string>,
+  ): Promise<{ results: StockResult[]; failures: string[] }> {
+    const results: StockResult[] = [];
+    const failures: string[] = [];
+
+    for (const watched of WATCHED_PIDS) {
+      const productId = `vmiss-${watched.pid}`;
+      if (alreadySeen.has(productId)) continue;
+
+      try {
+        const html = await this.fetchHtml(this.name, orderUrlForPid(watched.pid));
+        const result = this.parseProductPage(html, watched);
+        if (!result) {
+          failures.push(`pid=${watched.pid}: unparseable`);
+          continue;
+        }
+        results.push(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`pid=${watched.pid}: ${message}`);
+      }
+    }
+
+    return { results, failures };
   }
 
   private async checkDirect(): Promise<{ results: StockResult[]; failures: string[] }> {
@@ -253,4 +354,65 @@ export class VmissAdapter implements ProviderAdapter {
 
     return results;
   }
+
+  /**
+   * Parse a WHMCS cart.php?a=add&pid=N product page for live stock.
+   * Specs fall back to the published catalog so OOS stubs do not wipe metadata.
+   */
+  parseProductPage(html: string, watched: WatchedPid): StockResult | null {
+    if (isChallengePage(html)) return null;
+
+    const $ = cheerio.load(html);
+    const text = $.root().text().replace(/\s+/g, ' ').trim();
+    const unavailable = /\.errorbox[\s\S]*?Out of Stock|Out of Stock/i.test(html)
+      || /out of stock|sold out|unavailable/i.test(text)
+      || /product is unavailable/i.test(text);
+    const canOrder = $('input[type="submit"][value*="Add to Cart" i]').length > 0
+      || $('button[type="submit"]').filter((_, el) => /add to cart/i.test($(el).text())).length > 0
+      || (/Billing Cycle/i.test(text) && /\$\s*\d+/i.test(text) && !unavailable);
+
+    const catalog = catalogPlanByPid(watched.pid);
+    if (!catalog && unavailable && !canOrder) {
+      // Still emit an OOS signal with watched metadata when cart confirms unavailability.
+      return {
+        provider: this.slug,
+        productId: `vmiss-${watched.pid}`,
+        planName: watched.planName,
+        location: watched.location,
+        category: 'vps',
+        cpu: 'Unknown',
+        ramMb: 0,
+        storageGb: 0,
+        storageType: 'Unknown',
+        bandwidthTb: 0,
+        ipv4: true,
+        ipv6: false,
+        price: 0,
+        currency: 'CAD',
+        billingCycle: 'monthly',
+        inStock: false,
+        orderUrl: orderUrlForPid(watched.pid),
+        raw: { source: 'pid-watch', pid: watched.pid },
+      };
+    }
+
+    if (!catalog) return null;
+
+    // Ambiguous challenge-like / empty cart pages without a clear stock signal.
+    if (!unavailable && !canOrder && !/\$\s*\d+/i.test(text) && text.length < 80) {
+      return null;
+    }
+
+    const inStock = !unavailable && canOrder;
+    return stockResultFromCatalog(catalog, {
+      inStock,
+      // Live PID watch — stock-engine may fire transitions.
+      raw: { source: 'pid-watch', pid: watched.pid },
+      orderUrl: orderUrlForPid(watched.pid),
+    });
+  }
+}
+
+function isChallengePage(html: string): boolean {
+  return /<title>\s*(?:just a moment|attention required)|id=["']challenge-form["']|cf-browser-verification/i.test(html);
 }

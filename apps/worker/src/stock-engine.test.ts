@@ -166,6 +166,84 @@ describe('processStockResults', () => {
     expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();
   });
 
+  it('preserves last-known specs when an OOS PID stub returns empty fields', async () => {
+    const logger = createLogger();
+    databaseMocks.productFindUnique.mockResolvedValue({
+      id: 'product-1',
+      cpu: '2 Core',
+      ramMb: 2048,
+      storageGb: 40,
+      storageType: 'NVMe',
+      bandwidthTb: 2,
+      bandwidthLabel: null,
+      lineType: 'CN2 GIA-E',
+      priceCents: 4999,
+      currency: 'USD',
+      billingCycle: 'annually',
+    });
+    const stubResult: StockResult = {
+      ...stockResult,
+      provider: 'bandwagonhost',
+      productId: 'bwg-the-plan-dc6',
+      planName: 'DC6 THE PLAN',
+      location: 'DC6 CN2 GIA-E',
+      cpu: 'Unknown',
+      ramMb: 0,
+      storageGb: 0,
+      storageType: 'Unknown',
+      bandwidthTb: 0,
+      price: 0,
+      inStock: false,
+      orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=149',
+      raw: { source: 'pid-watch-stub', pid: 149 },
+    };
+
+    await processStockResults('bandwagonhost', [stubResult], logger);
+
+    expect(databaseMocks.productUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          cpu: '2 Core',
+          ramMb: 2048,
+          storageGb: 40,
+          storageType: 'NVMe',
+          bandwidthTb: 2,
+          priceCents: 4999,
+          currency: 'USD',
+          billingCycle: 'annually',
+          availabilitySource: 'live',
+        }),
+      }),
+    );
+  });
+
+  it('skips stock transitions for published-catalog rows', async () => {
+    const logger = createLogger();
+    const catalogResult: StockResult = {
+      ...stockResult,
+      provider: 'vmiss',
+      productId: 'vmiss-57',
+      planName: 'US.LA.9929.Basic',
+      inStock: false,
+      raw: { source: 'published-catalog', pid: '57' },
+    };
+
+    await expect(processStockResults('vmiss', [catalogResult], logger)).resolves.toEqual({
+      checked: 1,
+      restocked: 0,
+      soldOut: 0,
+      errors: 0,
+    });
+
+    expect(databaseMocks.productUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ availabilitySource: 'catalog' }),
+      }),
+    );
+    expect(databaseMocks.stockCheckCreate).not.toHaveBeenCalled();
+    expect(databaseMocks.stockEventCreate).not.toHaveBeenCalled();
+  });
+
   it('records a newly discovered in-stock product as a baseline without notifying', async () => {
     const logger = createLogger();
     const infoSpy = vi.spyOn(logger, 'info');

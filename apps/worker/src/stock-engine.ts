@@ -29,6 +29,15 @@ function isPublishedCatalogResult(result: StockResult): boolean {
   return (result.raw as { source?: unknown }).source === 'published-catalog';
 }
 
+/** True when an adapter returned an empty/stub row that should not wipe DB specs. */
+function isSpecStub(result: StockResult): boolean {
+  return result.ramMb <= 0
+    || result.storageGb <= 0
+    || result.price <= 0
+    || !result.cpu
+    || result.cpu === 'Unknown';
+}
+
 function vmrackNotificationGroupKey(result: StockResult): string | null {
   const planSeries = result.planName.match(/\b((?:L\d\.)?B?VPS)\.(DC\d+)(?:\.|$)/i);
   if (!planSeries) return null;
@@ -155,7 +164,19 @@ export async function processStockResults(
       };
       const existingProduct = await prisma.product.findUnique({
         where: productIdentity,
-        select: { id: true },
+        select: {
+          id: true,
+          cpu: true,
+          ramMb: true,
+          storageGb: true,
+          storageType: true,
+          bandwidthTb: true,
+          bandwidthLabel: true,
+          lineType: true,
+          priceCents: true,
+          currency: true,
+          billingCycle: true,
+        },
       });
       const isNewProduct = existingProduct === null;
       const whmcsPid = extractWhmcsPid(providerSlug, result.orderUrl, result.productId);
@@ -163,6 +184,8 @@ export async function processStockResults(
       const availabilitySource = isPublishedCatalogResult(result) ? 'catalog' : 'live';
       const bandwidthLabel = result.displaySpecs?.bandwidth?.trim() || null;
       const lineType = resultLineType(result);
+      // Preserve last-known good specs when OOS PID stubs return empty/zero fields.
+      const preserveSpecs = existingProduct !== null && isSpecStub(result);
 
       // Upsert product
       const product = await prisma.product.upsert({
@@ -171,18 +194,26 @@ export async function processStockResults(
           planName: result.planName,
           location: result.location,
           category: result.category,
-          cpu: result.cpu,
-          ramMb: result.ramMb,
-          storageGb: result.storageGb,
-          storageType: result.storageType,
-          bandwidthTb: result.bandwidthTb,
-          bandwidthLabel,
-          lineType,
+          cpu: preserveSpecs ? existingProduct.cpu : result.cpu,
+          ramMb: preserveSpecs ? existingProduct.ramMb : result.ramMb,
+          storageGb: preserveSpecs ? existingProduct.storageGb : result.storageGb,
+          storageType: preserveSpecs ? existingProduct.storageType : result.storageType,
+          bandwidthTb: preserveSpecs ? existingProduct.bandwidthTb : result.bandwidthTb,
+          bandwidthLabel: preserveSpecs
+            ? (existingProduct.bandwidthLabel ?? bandwidthLabel)
+            : bandwidthLabel,
+          lineType: preserveSpecs ? (existingProduct.lineType ?? lineType) : lineType,
           ipv4: result.ipv4,
           availabilitySource,
-          priceCents: result.price,
-          currency: result.currency,
-          billingCycle: result.billingCycle,
+          priceCents: preserveSpecs && result.price <= 0
+            ? existingProduct.priceCents
+            : result.price,
+          currency: preserveSpecs && result.price <= 0
+            ? existingProduct.currency
+            : result.currency,
+          billingCycle: preserveSpecs && result.price <= 0
+            ? existingProduct.billingCycle
+            : result.billingCycle,
           orderUrl: result.orderUrl,
           ...(whmcsPid ? { whmcsPid } : {}),
           lastCheckedAt: new Date(),

@@ -119,13 +119,13 @@ docker compose down             # Stop all services
 
 **Phase 1 — MVP (acceptance) + Phase 4 polish (in progress)**
 
-Monitoring allowlist: **26 active** providers (seed + worker + bot aligned).
+Monitoring allowlist: **21 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
 Recent polish on `main`: provider spec filters, offers region/limited, bot coarse regions + `subscribe_{slug}`, product `ipv4` / `bandwidthLabel` / catalog `Unknown` status.
 
 ### Remaining
 - [ ] 24h stability test run
 - [ ] Live end-to-end integration / false-positive rate check
-- [ ] VMISS Playwright fallback validation
+- [ ] VMISS PID-watch + optional residential proxy validation (Playwright alone often blocked)
 - [ ] HighEndNetwork adapter (blocked on CF challenge)
 
 ---
@@ -209,6 +209,13 @@ NODE_ENV              # development | production
 LOG_LEVEL             # info | debug | warn | error
 ```
 
+Optional provider proxies (Cloudflare-blocked scrapes; never commit credentials):
+
+```
+VMISS_PROXY_URL       # Preferred egress for VMISS HTTP/curl fetches
+PROVIDER_PROXY_URL    # Shared fallback for providers that honor resolveProviderProxyUrl()
+```
+
 ---
 
 ## Key Interfaces
@@ -263,8 +270,8 @@ interface ProviderAdapter {
 1. Create `packages/providers/src/adapters/{slug}.ts`
 2. Implement `ProviderAdapter` interface
 3. Register in `packages/providers/src/registry.ts`
-4. Add check interval to `apps/worker/src/index.ts` PROVIDER_INTERVALS
-5. Add seed data in `packages/database/prisma/seed.ts`
+4. Add entry to `packages/shared/src/monitored-providers.ts` (`MONITORED_PROVIDERS`)
+5. Add seed provider/affiliate records in `packages/database/prisma/seed.ts`
 6. Add HTML fixture test in `packages/providers/src/adapters/__tests__/`
 7. Update Provider Registry table in `docs/TASKS.md`
 

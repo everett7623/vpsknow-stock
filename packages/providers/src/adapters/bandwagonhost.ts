@@ -83,6 +83,19 @@ const WATCHED_PIDS: readonly {
 
 type FetchHtml = (provider: string, url: string) => Promise<string>;
 
+/** WHMCS cart often lists OS options as product rows — never treat those as VPS plans. */
+const OS_NAME_PLAN_RE =
+  /^(?:Alma(?:Linux)?|Rocky(?:\s*Linux)?|CentOS(?:\s*Stream)?|Debian|Ubuntu(?:\s*LTS)?|Windows(?:\s*Server)?(?:\s*\d+)?|FreeBSD|Fedora|openSUSE|Arch(?:\s*Linux)?|Alpine(?:\s*Linux)?|OpenBSD|NetBSD)(?:\s*[\/|,]\s*(?:Alma(?:Linux)?|Rocky(?:\s*Linux)?|CentOS(?:\s*Stream)?|Debian|Ubuntu(?:\s*LTS)?|Windows(?:\s*Server)?(?:\s*\d+)?|FreeBSD|Fedora|openSUSE|Arch(?:\s*Linux)?|Alpine(?:\s*Linux)?|OpenBSD|NetBSD|\w+))*$/i;
+
+function isOsNamePlan(planName: string): boolean {
+  const normalized = planName.replace(/\s+/g, ' ').trim();
+  if (!normalized) return true;
+  if (/VPS|KVM|PROMO|SPECIAL|PLAN|BOX|SLICE|STORAGE|CN2|GIA|DC\d+/i.test(normalized)) {
+    return false;
+  }
+  return OS_NAME_PLAN_RE.test(normalized);
+}
+
 function slugPart(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
@@ -263,12 +276,14 @@ export class BandwagonHostAdapter implements ProviderAdapter {
         '.plan-name, .product-name, [id$="-name"], header span, header, h3, h4, td:first-child strong, td:first-child b',
       ).first().text().replace(/\s+/g, ' ').trim()
         || card.find('td:first-child').first().text().replace(/\s+/g, ' ').trim();
-      if (!planName || /^(Plan|Product\/Service)$/i.test(planName)) return;
+      if (!planName || /^(Plan|Product\/Service|N\/A|NA|-)$/i.test(planName)) return;
+      if (isOsNamePlan(planName)) return;
 
       const ramMb = memoryInMb(text);
       const storageGb = storageInGb(text);
       const cpu = cpuFrom(text);
       const pricing = priceFrom(text);
+      // Drop $0 / missing-spec stub rows (sold-out placeholders, config noise).
       if (ramMb === 0 || storageGb === 0 || cpu === 'Unknown' || pricing.price === 0) return;
 
       const explicitOutOfStock = /out of stock|sold out|unavailable/i.test(text);
@@ -326,6 +341,13 @@ export class BandwagonHostAdapter implements ProviderAdapter {
       : watched.location;
     const pricing = priceFrom(text);
     const orderUrl = `${CART_URL}?a=add&pid=${watched.pid}`;
+    const cpu = cpuFrom(text);
+    const ramMb = memoryInMb(text);
+    const storageGb = storageInGb(text);
+    const bandwidthTb = bandwidthInTb(text);
+    // OOS cart pages often have no specs — emit stock signal only; stock-engine
+    // preserves last-known good specs when incoming values are empty stubs.
+    const stubSpecs = ramMb === 0 || storageGb === 0 || cpu === 'Unknown' || pricing.price === 0;
 
     return {
       provider: this.slug,
@@ -333,11 +355,11 @@ export class BandwagonHostAdapter implements ProviderAdapter {
       planName,
       location,
       category: 'vps',
-      cpu: cpuFrom(text),
-      ramMb: memoryInMb(text),
-      storageGb: storageInGb(text),
-      storageType: /NVMe/i.test(text) ? 'NVMe' : /SSD|RAID/i.test(text) ? 'SSD' : 'HDD',
-      bandwidthTb: bandwidthInTb(text),
+      cpu,
+      ramMb,
+      storageGb,
+      storageType: /NVMe/i.test(text) ? 'NVMe' : /SSD|RAID/i.test(text) ? 'SSD' : stubSpecs ? 'Unknown' : 'HDD',
+      bandwidthTb,
       lineType: detectOptimizedLine(`${planName} ${location} ${text}`) ?? undefined,
       ipv4: true,
       ipv6: /IPv6/i.test(text),
@@ -346,6 +368,7 @@ export class BandwagonHostAdapter implements ProviderAdapter {
       billingCycle: pricing.billingCycle,
       inStock: !unavailable && canOrder,
       orderUrl,
+      ...(stubSpecs ? { raw: { source: 'pid-watch-stub', pid: watched.pid } } : {}),
     };
   }
 }

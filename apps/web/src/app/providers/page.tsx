@@ -222,6 +222,14 @@ function filterProducts(
   });
 
   products = [...products].sort((a, b) => {
+    // Default browsing: Regular plans above Promo/Special/Limited, then price.
+    // Also sink $0 / missing-spec / Unknown-heavy junk so restock-relevant plans surface.
+    const junkDelta = planJunkRank(a) - planJunkRank(b);
+    if (junkDelta !== 0) return junkDelta;
+
+    const offerDelta = planOfferRank(a.planName, a.productId) - planOfferRank(b.planName, b.productId);
+    if (offerDelta !== 0) return offerDelta;
+
     if (sort === 'name') return a.planName.localeCompare(b.planName);
     const left = a.priceCents ?? Number.POSITIVE_INFINITY;
     const right = b.priceCents ?? Number.POSITIVE_INFINITY;
@@ -229,6 +237,31 @@ function filterProducts(
   });
 
   return products;
+}
+
+/** Lower rank sorts first. Regular (null tag) = 0; Limited/Special/Promo demoted. */
+function planOfferRank(planName: string, productId: string): number {
+  const tag = detectPlanOfferTag(planName, productId);
+  if (tag === null) return 0;
+  if (tag === 'limited') return 1;
+  if (tag === 'special') return 2;
+  return 3; // promo
+}
+
+/** Sink unusable rows ($0, missing RAM/disk, Unknown CPU) below real plans. */
+function planJunkRank(product: {
+  priceCents: number;
+  ramMb: number | null;
+  storageGb: number | null;
+  cpu: string | null;
+}): number {
+  const missingSpecs = (product.ramMb ?? 0) <= 0
+    || (product.storageGb ?? 0) <= 0
+    || !product.cpu
+    || product.cpu === 'Unknown';
+  const zeroPrice = (product.priceCents ?? 0) <= 0;
+  if (zeroPrice || missingSpecs) return 1;
+  return 0;
 }
 
 function StockBadge({
@@ -682,7 +715,7 @@ export default async function ProvidersPage({
                     defaultValue={sort}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="price_asc">Price ↑</option>
+                    <option value="price_asc">Price ↑ (regular first)</option>
                     <option value="price_desc">Price ↓</option>
                     <option value="name">Plan name</option>
                   </select>

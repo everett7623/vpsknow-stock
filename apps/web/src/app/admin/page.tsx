@@ -10,12 +10,43 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+function formatCount(value: number): string {
+  return value.toLocaleString('en-US');
+}
+
 export default async function AdminPage() {
   await assertAdmin();
-  const providers = await prisma.provider.findMany({
-    orderBy: { name: 'asc' },
-    include: { products: { orderBy: { planName: 'asc' } } },
-  });
+  const [providers, affiliateLinks] = await Promise.all([
+    prisma.provider.findMany({
+      orderBy: { name: 'asc' },
+      include: { products: { orderBy: { planName: 'asc' } } },
+    }),
+    prisma.affiliateLink.findMany({
+      orderBy: [{ clicks: 'desc' }, { slug: 'asc' }],
+      include: { provider: { select: { name: true, slug: true } } },
+    }),
+  ]);
+
+  const totalClicks = affiliateLinks.reduce((sum, link) => sum + link.clicks, 0);
+  const linksWithClicks = affiliateLinks.filter((link) => link.clicks > 0).length;
+  const topLinks = affiliateLinks.filter((link) => link.clicks > 0).slice(0, 25);
+
+  const clicksByProvider = new Map<string, { name: string; slug: string; clicks: number; links: number }>();
+  for (const link of affiliateLinks) {
+    const key = link.providerId;
+    const existing = clicksByProvider.get(key) ?? {
+      name: link.provider.name,
+      slug: link.provider.slug,
+      clicks: 0,
+      links: 0,
+    };
+    existing.clicks += link.clicks;
+    existing.links += 1;
+    clicksByProvider.set(key, existing);
+  }
+  const providerClickRows = [...clicksByProvider.values()]
+    .filter((row) => row.clicks > 0)
+    .sort((a, b) => b.clicks - a.clicks || a.name.localeCompare(b.name));
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
@@ -23,10 +54,12 @@ export default async function AdminPage() {
         <header>
           <p className="text-sm font-medium text-danger">RESTRICTED</p>
           <h1 className="mt-1 text-3xl font-bold text-foreground">Stock Administration</h1>
-          <p className="mt-2 text-muted-foreground">Provider health, monitoring state, and manual stock overrides.</p>
+          <p className="mt-2 text-muted-foreground">
+            Provider health, monitoring state, short-link clicks, and manual stock overrides.
+          </p>
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-xs uppercase text-muted-foreground/80">Providers</p>
             <p className="mt-1 font-mono text-2xl text-foreground">{providers.length}</p>
@@ -43,6 +76,86 @@ export default async function AdminPage() {
               {providers.reduce((total, provider) => total + provider.products.length, 0)}
             </p>
           </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs uppercase text-muted-foreground/80">Short-link clicks</p>
+            <p className="mt-1 font-mono text-2xl text-foreground">{formatCount(totalClicks)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatCount(linksWithClicks)} / {formatCount(affiliateLinks.length)} links with traffic
+            </p>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="border-b border-border p-4">
+            <h2 className="text-lg font-semibold text-foreground">Short-link stats</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cumulative clicks from <code className="font-mono text-xs">/go/{'{slug}'}</code> redirects.
+              Counts may under-report when intermediaries cache the 302.
+            </p>
+          </div>
+
+          {totalClicks === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No short-link clicks recorded yet.</p>
+          ) : (
+            <div className="grid gap-0 lg:grid-cols-2">
+              <div className="overflow-x-auto border-b border-border lg:border-b-0 lg:border-r">
+                <table className="min-w-[420px] w-full text-sm">
+                  <thead className="text-left text-xs uppercase text-muted-foreground/80">
+                    <tr>
+                      <th className="px-4 py-3">Provider</th>
+                      <th className="px-4 py-3">Links</th>
+                      <th className="px-4 py-3 text-right">Clicks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {providerClickRows.map((row) => (
+                      <tr key={row.slug} className="border-t border-border/70">
+                        <td className="px-4 py-3 text-foreground">{row.name}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                          {formatCount(row.links)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-stock">
+                          {formatCount(row.clicks)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-[520px] w-full text-sm">
+                  <thead className="text-left text-xs uppercase text-muted-foreground/80">
+                    <tr>
+                      <th className="px-4 py-3">Slug</th>
+                      <th className="px-4 py-3">Provider</th>
+                      <th className="px-4 py-3 text-right">Clicks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topLinks.map((link) => (
+                      <tr key={link.id} className="border-t border-border/70">
+                        <td className="px-4 py-3 font-mono text-xs text-foreground">
+                          <a
+                            href={`/go/${link.slug}`}
+                            className="hover:text-stock"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            /go/{link.slug}
+                          </a>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{link.provider.name}</td>
+                        <td className="px-4 py-3 text-right font-mono text-stock">
+                          {formatCount(link.clicks)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
 
         {providers.map((provider) => {

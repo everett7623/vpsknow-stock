@@ -135,6 +135,18 @@ describe('provider adapters', () => {
       inStock: false,
       orderUrl: 'https://bandwagonhost.com/cart.php?a=add&pid=149',
     });
+    expect(outOfStock?.ramMb).toBe(0);
+    expect(outOfStock?.raw).toMatchObject({ source: 'pid-watch-stub', pid: 149 });
+  });
+
+  it('filters BandwagonHost OS-name rows and $0 sold-out stubs from dirty carts', () => {
+    const results = new BandwagonHostAdapter().parse(fixture('bandwagonhost-dirty.html'));
+
+    expect(results.map((item) => item.planName)).toEqual([
+      'SPECIAL 40G KVM PROMO V5 - HONG KONG CN2 GIA VPS',
+      'CN2 GIA-E 20',
+    ]);
+    expect(results.every((item) => item.price > 0 && item.ramMb > 0)).toBe(true);
   });
 
   it('parses DMIT plan availability and resolves deployment links', () => {
@@ -484,7 +496,7 @@ describe('provider adapters', () => {
   });
 
   it('falls back to the published PID catalog when VMISS live scrape is blocked', async () => {
-    const fetchHtml = vi.fn(async (): Promise<string> => {
+    const fetchHtml = vi.fn(async (_provider: string, _url: string): Promise<string> => {
       throw new Error('native fetch HTTP 403');
     });
     const fetchBrowserPages = vi.fn(
@@ -504,7 +516,72 @@ describe('provider adapters', () => {
     expect(results.some((item) => item.productId === 'vmiss-32' && item.orderUrl.includes('pid=32'))).toBe(
       true,
     );
+    expect(results.some((item) => item.productId === 'vmiss-57')).toBe(true);
     expect(adapter.warnings.some((warning) => /published PID catalog/i.test(warning))).toBe(true);
+    expect(adapter.warnings.some((warning) => /PID watch/i.test(warning))).toBe(true);
+    // Watched cart.php PIDs were attempted before catalog fill.
+    expect(
+      fetchHtml.mock.calls.some((call) => String(call[1]).includes('cart.php?a=add&pid=57')),
+    ).toBe(true);
+  });
+
+  it('watches high-signal VMISS PIDs for live stock when categories are blocked', async () => {
+    expect(VmissAdapter.watchedPids().some((item) => item.pid === '57')).toBe(true);
+    expect(VmissAdapter.watchedPids().some((item) => item.planName === 'US.LA.9929.Basic')).toBe(true);
+
+    const fetchHtml = vi.fn(async (_provider: string, url: string): Promise<string> => {
+      if (url.includes('cart.php?a=add&pid=57')) return fixture('vmiss-pid.html');
+      if (url.includes('cart.php?a=add&pid=')) return fixture('vmiss-pid-oos.html');
+      throw new Error('native fetch HTTP 403');
+    });
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[]) =>
+        urls.map((pageUrl) => ({
+          url: pageUrl,
+          ok: false as const,
+          error: 'HTTP 403',
+        })),
+    );
+    const adapter = new VmissAdapter(fetchHtml, fetchBrowserPages);
+    const results = await adapter.check();
+
+    const live9929 = results.find((item) => item.productId === 'vmiss-57');
+    expect(live9929).toMatchObject({
+      planName: 'US.LA.9929.Basic',
+      inStock: true,
+      price: 500,
+      currency: 'CAD',
+      orderUrl: 'https://app.vmiss.com/cart.php?a=add&pid=57',
+      raw: { source: 'pid-watch', pid: '57' },
+    });
+    // Remaining catalog rows stay unpublished stock claims.
+    const catalogRow = results.find((item) => item.productId === 'vmiss-36');
+    expect(catalogRow).toMatchObject({
+      inStock: false,
+      raw: { source: 'published-catalog', pid: '36' },
+    });
+  });
+
+  it('parses VMISS watched PID pages without inventing stock on challenge HTML', () => {
+    const adapter = new VmissAdapter();
+    const inStock = adapter.parseProductPage(fixture('vmiss-pid.html'), {
+      pid: '57',
+      planName: 'US.LA.9929.Basic',
+      location: 'Los Angeles',
+    });
+    const outOfStock = adapter.parseProductPage(fixture('vmiss-pid-oos.html'), {
+      pid: '57',
+      planName: 'US.LA.9929.Basic',
+      location: 'Los Angeles',
+    });
+    const challenge = adapter.parseProductPage(
+      '<html><head><title>Just a moment...</title></head><body id="challenge-form"></body></html>',
+      { pid: '57', planName: 'US.LA.9929.Basic', location: 'Los Angeles' },
+    );
+
+    expect(inStock).toMatchObject({ inStock: true, productId: 'vmiss-57', raw: { source: 'pid-watch' } });
+    expect(outOfStock).toMatchObject({ inStock: false, productId: 'vmiss-57', raw: { source: 'pid-watch' } });
+    expect(challenge).toBeNull();
   });
 
   it('parses V.PS HostBill products and out-of-stock class', () => {

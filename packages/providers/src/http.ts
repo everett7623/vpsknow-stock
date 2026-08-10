@@ -14,6 +14,11 @@ const BROWSER_HEADERS = {
   'User-Agent': 'VPSKnow-Stock/1.0',
 } as const;
 
+export interface FetchProviderHtmlOptions {
+  /** Optional HTTP(S) proxy URL. Secrets in userinfo are never logged. */
+  proxyUrl?: string;
+}
+
 function isChallengePage(html: string): boolean {
   return /<title>\s*(?:just a moment|attention required)|id=["']challenge-form["']|cf-browser-verification/i.test(html);
 }
@@ -22,12 +27,38 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Redact credentials from proxy URLs before including them in errors. */
+export function redactProxyUrl(proxyUrl: string): string {
+  try {
+    const parsed = new URL(proxyUrl);
+    if (parsed.username) parsed.username = '***';
+    if (parsed.password) parsed.password = '***';
+    return parsed.toString();
+  } catch {
+    return '[invalid-proxy-url]';
+  }
+}
+
+/**
+ * Resolve an optional provider proxy from env.
+ * Prefers provider-specific vars (e.g. VMISS_PROXY_URL), then PROVIDER_PROXY_URL.
+ */
+export function resolveProviderProxyUrl(provider: string): string | undefined {
+  const slug = provider.trim().toLowerCase().replace(/\s+/g, '');
+  const specific =
+    slug === 'vmiss'
+      ? process.env.VMISS_PROXY_URL
+      : undefined;
+  const value = specific?.trim() || process.env.PROVIDER_PROXY_URL?.trim();
+  return value || undefined;
+}
+
 interface CurlResult {
   html: string;
   status: number;
 }
 
-function fetchWithCurl(url: string): Promise<CurlResult> {
+function fetchWithCurl(url: string, proxyUrl?: string): Promise<CurlResult> {
   const binary = process.platform === 'win32' ? 'curl.exe' : 'curl';
   const args = [
     '--ipv4',
@@ -41,10 +72,17 @@ function fetchWithCurl(url: string): Promise<CurlResult> {
     CURL_USER_AGENT,
     '--header',
     'X-VPSKnow-Agent: VPSKnow-Stock/1.0',
+  ];
+
+  if (proxyUrl) {
+    args.push('--proxy', proxyUrl);
+  }
+
+  args.push(
     '--write-out',
     `\n${CURL_STATUS_MARKER}%{http_code}`,
     url,
-  ];
+  );
 
   return new Promise((resolve, reject) => {
     execFile(
@@ -53,7 +91,9 @@ function fetchWithCurl(url: string): Promise<CurlResult> {
       { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, timeout: REQUEST_TIMEOUT_MS + 2_000 },
       (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(`${error.message}${stderr ? `: ${stderr.trim()}` : ''}`));
+          const detail = stderr ? `: ${stderr.trim()}` : '';
+          const proxyHint = proxyUrl ? ` via ${redactProxyUrl(proxyUrl)}` : '';
+          reject(new Error(`${error.message}${detail}${proxyHint}`));
           return;
         }
 
@@ -71,7 +111,36 @@ function fetchWithCurl(url: string): Promise<CurlResult> {
   });
 }
 
-export async function fetchProviderHtml(provider: string, url: string): Promise<string> {
+export async function fetchProviderHtml(
+  provider: string,
+  url: string,
+  options: FetchProviderHtmlOptions = {},
+): Promise<string> {
+  const proxyUrl = options.proxyUrl ?? resolveProviderProxyUrl(provider);
+
+  // Node fetch has no built-in proxy support here — route proxied requests through curl.
+  if (proxyUrl) {
+    let fallback: CurlResult;
+    try {
+      fallback = await fetchWithCurl(url, proxyUrl);
+    } catch (error) {
+      throw new Error(
+        `${provider} proxied request failed for ${url} via ${redactProxyUrl(proxyUrl)}: ${errorMessage(error)}`,
+      );
+    }
+
+    if (fallback.status >= 200 && fallback.status < 300 && !isChallengePage(fallback.html)) {
+      return fallback.html;
+    }
+
+    const fallbackFailure = isChallengePage(fallback.html)
+      ? 'curl returned a challenge page'
+      : `curl HTTP ${fallback.status}`;
+    throw new Error(
+      `${provider} proxied request failed for ${url} via ${redactProxyUrl(proxyUrl)}: ${fallbackFailure}`,
+    );
+  }
+
   let nativeFailure = 'unknown fetch failure';
 
   try {

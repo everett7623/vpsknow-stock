@@ -1,31 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { ACTIVE_PROVIDER_SLUGS } from '@vpsknow/shared';
 
 const prisma = new PrismaClient();
-
-// User-approved monitoring allowlist with adapters already present in the registry.
-const ACTIVE_PROVIDER_SLUGS = [
-  'bandwagonhost',
-  'dmit',
-  'buyvm',
-  'greencloudvps',
-  'spartanhost',
-  'vmiss',
-  'vps',
-  'saltyfish',
-  'racknerd',
-  'dedirock',
-  'bagevm',
-  'vmrack',
-  'gomami',
-  'colocrossing',
-  'chicagovps',
-  'lightlayer',
-  'speedypage',
-  'bestvm',
-  'neburst',
-  'hncloud',
-  'zgocloud',
-];
 
 async function main() {
   console.log('Seeding database...');

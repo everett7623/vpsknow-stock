@@ -1,4 +1,9 @@
-import { listRegions, resolveRegion } from '@vpsknow/shared';
+import {
+  isActiveProviderSlug,
+  listRegions,
+  MONITORED_PROVIDER_ENTRIES,
+  resolveRegion,
+} from '@vpsknow/shared';
 
 interface SubscriptionStatus {
   providers: string[];
@@ -10,30 +15,8 @@ interface SubscriptionStatus {
   mutedUntil: Date | null;
 }
 
-/** Must stay aligned with seed ACTIVE_PROVIDER_SLUGS / worker PROVIDER_INTERVALS. */
-export const PROVIDERS = [
-  ['bandwagonhost', 'BandwagonHost'],
-  ['dmit', 'DMIT'],
-  ['buyvm', 'BuyVM'],
-  ['greencloudvps', 'GreenCloudVPS'],
-  ['spartanhost', 'SpartanHost'],
-  ['vmiss', 'VMISS'],
-  ['vps', 'V.PS'],
-  ['saltyfish', 'SaltyFish'],
-  ['racknerd', 'RackNerd'],
-  ['dedirock', 'DediRock'],
-  ['bagevm', 'BageVM'],
-  ['vmrack', 'VMRack'],
-  ['gomami', 'GoMami'],
-  ['colocrossing', 'ColoCrossing'],
-  ['chicagovps', 'ChicagoVPS'],
-  ['lightlayer', 'LightLayer'],
-  ['speedypage', 'SpeedyPage'],
-  ['bestvm', 'BestVM'],
-  ['neburst', 'Neburst'],
-  ['hncloud', 'HNCloud'],
-  ['zgocloud', 'ZgoCloud'],
-] as const;
+/** Derived from shared MONITORED_PROVIDERS (seed + worker use the same source). */
+export const PROVIDERS = MONITORED_PROVIDER_ENTRIES;
 
 /** Coarse regions shared with the stock website filters. */
 export const REGIONS = listRegions();
@@ -124,7 +107,7 @@ export function parseSubscribeStartPayload(payload: string): {
   if (normalized === 'subscribe') return { mode: 'subscribe', providerSlug: null };
   if (normalized.startsWith('subscribe_')) {
     const slug = normalized.slice('subscribe_'.length);
-    if (!slug || !PROVIDERS.some(([providerSlug]) => providerSlug === slug)) {
+    if (!slug || !isActiveProviderSlug(slug)) {
       return { mode: 'subscribe', providerSlug: null };
     }
     return { mode: 'subscribe', providerSlug: slug };

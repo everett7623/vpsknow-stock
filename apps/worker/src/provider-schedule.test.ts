@@ -1,34 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { ACTIVE_PROVIDER_SLUGS } from '@vpsknow/shared';
 import { registry } from '@vpsknow/providers';
 import { PROVIDER_INTERVALS, isMonitoredProvider } from './provider-schedule.js';
 
-const IMPLEMENTED_ALLOWLIST = [
-  'bandwagonhost',
-  'dmit',
-  'buyvm',
-  'greencloudvps',
-  'spartanhost',
-  'vmiss',
-  'vps',
-  'saltyfish',
-  'racknerd',
-  'dedirock',
-  'bagevm',
-  'vmrack',
-  'gomami',
-  'colocrossing',
-  'chicagovps',
-  'lightlayer',
-  'speedypage',
-  'bestvm',
-  'neburst',
-  'hncloud',
-  'zgocloud',
-] as const;
-
 describe('provider scheduling allowlist', () => {
   it('schedules approved providers that have implemented adapters', () => {
-    expect(Object.keys(PROVIDER_INTERVALS).sort()).toEqual([...IMPLEMENTED_ALLOWLIST].sort());
+    expect(Object.keys(PROVIDER_INTERVALS).sort()).toEqual([...ACTIVE_PROVIDER_SLUGS].sort());
     expect(Object.keys(PROVIDER_INTERVALS).every((slug) => registry.has(slug))).toBe(true);
   });
 
