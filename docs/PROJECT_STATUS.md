@@ -2,7 +2,7 @@
 
 > 更新时间：2026-08-10 22:50 (UTC+8)
 > 代码基线：`main` @ `59c4d32`
-> 生产环境：`stock.vpsknow.com`；监控白名单 **21 家 active**
+> 生产环境：`stock.vpsknow.com`；监控白名单 **20 家 active**
 > 验收：T0 基线已采集（见 `docs/ACCEPTANCE_BASELINE_2026-08-10.md`），24h/48h 窗口进行中
 
 ---
@@ -14,7 +14,7 @@
 | Phase 1 - MVP | **验收中** | T0 健康；待 24h 稳定 + 48h 误报抽检 |
 | Phase 2 - Offer + 首批 Provider | 已完成 | Offer 三来源上线；LET 详情常 403 |
 | Phase 3 - Bot + 订阅 | 已完成 | 粗粒度地区 + `subscribe_{slug}` |
-| Phase 4 - 扩展 | 进行中 | 21 家监控；短链分时段统计已上线；CF 硬盾召回未配代理 |
+| Phase 4 - 扩展 | 进行中 | 20 家监控（已去掉 ZgoCloud）；短链分时段统计已上线；CF 硬盾召回未配代理 |
 
 ## 验收 T0（2026-08-10 14:46 UTC）
 

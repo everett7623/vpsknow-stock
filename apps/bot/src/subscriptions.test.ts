@@ -14,8 +14,9 @@ import {
 describe('subscription helpers', () => {
   it('exposes the full active monitoring provider set', () => {
     const slugs = PROVIDERS.map(([slug]) => slug);
-    expect(slugs).toHaveLength(21);
-    expect(slugs).toEqual(expect.arrayContaining(['zgocloud', 'hncloud', 'buyvm', 'dmit']));
+    expect(slugs).toHaveLength(20);
+    expect(slugs).toEqual(expect.arrayContaining(['hncloud', 'buyvm', 'dmit']));
+    expect(slugs).not.toContain('zgocloud');
     expect(slugs).not.toEqual(
       expect.arrayContaining(['onidel', 'tierhive', 'clouvider', 'liteserver', 'evoxt']),
     );

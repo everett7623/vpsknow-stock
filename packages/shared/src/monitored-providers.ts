@@ -24,7 +24,7 @@ export const MONITORED_PROVIDERS = [
   { slug: 'bestvm', name: 'BestVM', intervalMs: 300_000 },
   { slug: 'neburst', name: 'Neburst', intervalMs: 300_000 },
   { slug: 'hncloud', name: 'HNCloud', intervalMs: 300_000 },
-  { slug: 'zgocloud', name: 'ZgoCloud', intervalMs: 300_000 },
+  // zgocloud: removed from monitoring (poor reputation); adapter/seed record kept inactive.
 ] as const;
 
 export type MonitoredProviderSlug = (typeof MONITORED_PROVIDERS)[number]['slug'];

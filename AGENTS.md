@@ -119,7 +119,7 @@ docker compose down             # Stop all services
 
 **Phase 1 — MVP (acceptance) + Phase 4 polish (in progress)**
 
-Monitoring allowlist: **21 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
+Monitoring allowlist: **20 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
 Recent polish on `main`: provider spec filters, offers region/limited, bot coarse regions + `subscribe_{slug}`, product `ipv4` / `bandwidthLabel` / catalog `Unknown` status.
 
 ### Remaining
