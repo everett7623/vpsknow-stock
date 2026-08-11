@@ -8,8 +8,7 @@ export const MONITORED_PROVIDERS = [
   { slug: 'buyvm', name: 'BuyVM', intervalMs: 90_000 },
   { slug: 'greencloudvps', name: 'GreenCloudVPS', intervalMs: 180_000 },
   { slug: 'spartanhost', name: 'SpartanHost', intervalMs: 150_000 },
-  // Live app.vmiss.com is often CF-blocked; catalog/PID-watch refresh without false stock claims.
-  { slug: 'vmiss', name: 'VMISS', intervalMs: 180_000 },
+  // vmiss: hidden from site/CF scrape; restocks ingested from public TG preview into our channel.
   { slug: 'vps', name: 'V.PS', intervalMs: 300_000 },
   { slug: 'saltyfish', name: 'SaltyFish', intervalMs: 300_000 },
   { slug: 'racknerd', name: 'RackNerd', intervalMs: 180_000 },

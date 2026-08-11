@@ -640,18 +640,46 @@ describe('provider adapters', () => {
   it('accepts V.PS order pages that embed checkout Turnstile', async () => {
     const html = `${fixture('vps.html')}
       <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?compat=recaptcha"></script>`;
-    const fetchMock = vi.fn(async () => new Response(html, { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchHtml = vi.fn(async () => html);
+    const fetchBrowserPages = vi.fn(async () => []);
 
-    try {
-      const results = await new VpsAdapter().check();
+    const results = await new VpsAdapter(fetchHtml, fetchBrowserPages).check();
 
-      expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
-      expect(results).toHaveLength(2);
-      expect(results.map((result) => result.inStock)).toEqual([true, false]);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    expect(fetchHtml.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(fetchBrowserPages).not.toHaveBeenCalled();
+    expect(results).toHaveLength(2);
+    expect(results.map((result) => result.inStock)).toEqual([true, false]);
+  });
+
+  it('falls back to Playwright for V.PS pages blocked by HTTP/CF', async () => {
+    const html = fixture('vps.html');
+    const fetchHtml = vi.fn(async (_provider: string, url: string) => {
+      if (url.includes('singapore-performance')) {
+        throw new Error('curl returned a challenge page');
+      }
+      return html;
+    });
+    const blockedUrl = 'https://vps.hosting/cart/singapore-performance-kvm-vps/';
+    const fetchBrowserPages = vi.fn(
+      async (_provider: string, urls: readonly string[], _ready: string) =>
+        urls.map((url) => (
+          url === blockedUrl
+            ? { url, ok: true as const, html }
+            : { url, ok: false as const, error: 'unexpected url' }
+        )),
+    );
+
+    const adapter = new VpsAdapter(fetchHtml, fetchBrowserPages);
+    const results = await adapter.check();
+
+    expect(fetchBrowserPages).toHaveBeenCalledOnce();
+    expect(fetchBrowserPages).toHaveBeenCalledWith(
+      'V.PS',
+      [blockedUrl],
+      '.cart-product',
+    );
+    expect(results.some((item) => item.productId === 'vps-235')).toBe(true);
+    expect(adapter.warnings.every((warning) => !warning.startsWith('singapore-performance:'))).toBe(true);
   });
 
   it('parses SaltyFish WHMCS quantity and network plans', () => {

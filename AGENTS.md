@@ -119,13 +119,14 @@ docker compose down             # Stop all services
 
 **Phase 1 — MVP (acceptance) + Phase 4 polish (in progress)**
 
-Monitoring allowlist: **20 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
+Monitoring allowlist: **19 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
+VMISS is website-inactive; restocks are ingested from a public TG preview into `@vpsknow_offers` with our aff links.
 Recent polish on `main`: provider spec filters, offers region/limited, bot coarse regions + `subscribe_{slug}`, product `ipv4` / `bandwidthLabel` / catalog `Unknown` status.
 
 ### Remaining
 - [ ] 24h stability test run
 - [ ] Live end-to-end integration / false-positive rate check
-- [ ] VMISS PID-watch + optional residential proxy validation (Playwright alone often blocked)
+- [x] VMISS TG-preview restock ingest (site hidden; push via our restock template + aff)
 - [ ] HighEndNetwork adapter (blocked on CF challenge)
 
 ---

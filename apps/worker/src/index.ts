@@ -1,4 +1,4 @@
-import { Queue, Worker } from 'bullmq';
+﻿import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import pino from 'pino';
 import { registry } from '@vpsknow/providers';
@@ -16,6 +16,7 @@ import {
   recordProviderSuccess,
 } from './provider-health.js';
 import { discoverOffers } from './offers-engine.js';
+import { discoverVmissTgSignals } from './vmiss-tg-engine.js';
 import { processStockResults } from './stock-engine.js';
 import { runDataRetention } from './maintenance.js';
 import { startHealthServer, type HealthCheckResult } from './health.js';
@@ -49,6 +50,16 @@ async function bootstrap(): Promise<void> {
   );
 
   await offerQueue.removeJobScheduler('discover-lowendtalk-offers');
+  await offerQueue.upsertJobScheduler(
+    'discover-vmiss-tg',
+    { every: Math.round(withJitter(90_000)) },
+    {
+      name: 'discover-vmiss-tg',
+      data: {},
+      opts: { attempts: 3, backoff: { type: 'exponential', delay: 5_000 } },
+    },
+  );
+
   await offerQueue.upsertJobScheduler(
     'discover-new-offers',
     { every: Math.round(withJitter(150_000)) },
@@ -130,7 +141,7 @@ async function bootstrap(): Promise<void> {
         }
         const previousFailures = await recordProviderSuccess(connection, provider);
 
-        // Adapter recovery/pause alerts stay in logs only — not Telegram.
+        // Adapter recovery/pause alerts stay in logs only 鈥?not Telegram.
         if (previousFailures >= ADAPTER_DEGRADED_THRESHOLD) {
           logger.info(
             { provider, previousFailures, alert: formatProviderRecoveryAlert(provider, previousFailures) },
@@ -186,7 +197,12 @@ async function bootstrap(): Promise<void> {
 
   const offerWorker = new Worker(
     OFFER_QUEUE_NAME,
-    async () => {
+    async (job) => {
+      if (job.name === 'discover-vmiss-tg') {
+        const summary = await discoverVmissTgSignals(connection, logger);
+        logger.info(summary, 'VMISS TG signal discovery complete');
+        return;
+      }
       const summary = await discoverOffers(connection);
       logger.info(summary, 'Multi-source offer discovery complete');
     },
@@ -266,3 +282,4 @@ bootstrap().catch((err: unknown) => {
   logger.fatal({ err }, 'Worker failed to start');
   process.exit(1);
 });
+

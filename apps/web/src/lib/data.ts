@@ -49,8 +49,8 @@ export async function getProviderBySlug(
   slug: string,
 ): Promise<ProviderWithProducts | null> {
   if (!hasDatabase) return null;
-  return prisma.provider.findUnique({
-    where: { slug },
+  return prisma.provider.findFirst({
+    where: { slug, isActive: true },
     include: providerInclude,
   });
 }
@@ -74,7 +74,10 @@ export async function getLatestRestocks(
 ): Promise<StockEventWithProduct[]> {
   if (!hasDatabase) return [];
   return prisma.stockEvent.findMany({
-    where: { eventType: 'restock' },
+    where: {
+      eventType: 'restock',
+      product: { provider: { isActive: true } },
+    },
     orderBy: { detectedAt: 'desc' },
     take: limit,
     include: stockEventInclude,
@@ -86,7 +89,10 @@ export async function getRecentlySoldOut(
 ): Promise<StockEventWithProduct[]> {
   if (!hasDatabase) return [];
   return prisma.stockEvent.findMany({
-    where: { eventType: 'sold_out' },
+    where: {
+      eventType: 'sold_out',
+      product: { provider: { isActive: true } },
+    },
     orderBy: { detectedAt: 'desc' },
     take: limit,
     include: stockEventInclude,
@@ -98,6 +104,7 @@ export async function getRecentStockEvents(
 ): Promise<StockEventWithProduct[]> {
   if (!hasDatabase) return [];
   return prisma.stockEvent.findMany({
+    where: { product: { provider: { isActive: true } } },
     take: limit,
     orderBy: { detectedAt: 'desc' },
     include: stockEventInclude,

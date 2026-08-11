@@ -1,5 +1,9 @@
 import * as cheerio from 'cheerio';
-import { fetchProviderHtml } from '../http.js';
+import {
+  fetchProviderPagesWithBrowser,
+  type BrowserPageResult,
+} from '../browser.js';
+import { fetchProviderHtml, resolveProviderProxyUrl } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 interface CatalogPage {
@@ -7,6 +11,13 @@ interface CatalogPage {
   location: string;
   url: string;
 }
+
+type FetchHtml = (provider: string, url: string) => Promise<string>;
+type FetchBrowserPages = (
+  provider: string,
+  urls: readonly string[],
+  readySelector: string,
+) => Promise<BrowserPageResult[]>;
 
 const ORDER_BASE = 'https://vps.hosting/';
 
@@ -132,16 +143,23 @@ export class VpsAdapter implements ProviderAdapter {
   readonly name = 'V.PS';
   warnings: readonly string[] = [];
 
+  constructor(
+    private readonly fetchHtml: FetchHtml = (provider, url) =>
+      fetchProviderHtml(provider, url, { proxyUrl: resolveProviderProxyUrl(provider) }),
+    private readonly fetchBrowserPages: FetchBrowserPages = fetchProviderPagesWithBrowser,
+  ) {}
+
   async check(): Promise<StockResult[]> {
     const results: StockResult[] = [];
     const seen = new Set<string>();
     const failures: string[] = [];
+    const failedPages: CatalogPage[] = [];
     let successfulPages = 0;
     this.warnings = [];
 
     for (const page of CATALOG_PAGES) {
       try {
-        const html = await fetchProviderHtml(this.name, page.url);
+        const html = await this.fetchHtml(this.name, page.url);
         const parsed = this.parse(html, page.location);
         if (parsed.length === 0) throw new Error('no parseable products');
         successfulPages++;
@@ -155,6 +173,45 @@ export class VpsAdapter implements ProviderAdapter {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         failures.push(`${page.slug}: ${message}`);
+        failedPages.push(page);
+      }
+    }
+
+    if (failedPages.length > 0) {
+      const pages = await this.fetchBrowserPages(
+        this.name,
+        failedPages.map((page) => page.url),
+        '.cart-product',
+      );
+
+      for (const [index, page] of pages.entries()) {
+        const catalog = failedPages[index];
+        if (!catalog) continue;
+
+        if (!page.ok) {
+          failures.push(`${catalog.slug}: browser ${page.error}`);
+          continue;
+        }
+
+        const parsed = this.parse(page.html, catalog.location);
+        if (parsed.length === 0) {
+          failures.push(`${catalog.slug}: browser returned no parseable products`);
+          continue;
+        }
+
+        // Drop the matching HTTP failure once browser recovers the page.
+        const httpFailurePrefix = `${catalog.slug}: `;
+        const httpFailureIndex = failures.findIndex((item) => item.startsWith(httpFailurePrefix)
+          && !item.includes(': browser '));
+        if (httpFailureIndex >= 0) failures.splice(httpFailureIndex, 1);
+
+        successfulPages++;
+        for (const result of parsed) {
+          if (!seen.has(result.productId)) {
+            seen.add(result.productId);
+            results.push(result);
+          }
+        }
       }
     }
 
