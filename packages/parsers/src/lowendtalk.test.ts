@@ -10,6 +10,7 @@ describe('LowEndTalk parsers', () => {
           <link>https://lowendtalk.com/discussion/12345/provider-flash-sale</link>
           <dc:creator>ExampleHost</dc:creator>
           <pubDate>Mon, 21 Jul 2026 12:00:00 GMT</pubDate>
+          <description><![CDATA[<p>KVM VPS from $12/year.</p>]]></description>
         </item>
         <item>
           <title>Missing identifier</title>
@@ -26,6 +27,7 @@ describe('LowEndTalk parsers', () => {
         author: 'ExampleHost',
         postedAt: new Date('2026-07-21T12:00:00.000Z'),
         url: 'https://lowendtalk.com/discussion/12345/provider-flash-sale',
+        contentHtml: '<p>KVM VPS from $12/year.</p>',
       },
     ]);
   });
@@ -90,6 +92,21 @@ describe('LowEndTalk parsers', () => {
       isPreorder: false,
     });
     expect(offer.confidence).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('extracts order links from an RSS HTML fragment without a post wrapper', () => {
+    const offer = parseLetOffer(
+      'ExampleHost VPS from $3.99/mo',
+      '<p>KVM VPS in Chicago.</p><a href="https://example.com/cart.php?a=add&pid=2">Order now</a>',
+      'ExampleHost',
+    );
+
+    expect(offer).toMatchObject({
+      category: 'vps',
+      priceCents: 399,
+      billingCycle: 'monthly',
+      orderUrl: 'https://example.com/cart.php?a=add&pid=2',
+    });
   });
 
   it('supports euro prices and keeps the category and locations tied to the first offer', () => {

@@ -67,6 +67,7 @@ type Fetcher = (url: string, init: RequestInit) => Promise<FetchResponse>;
 export interface OfferDiscoveryDependencies {
   offersChannelId: string | null;
   sendMessage: typeof sendChannelMessage;
+  now?: () => Date;
 }
 
 export interface OfferDiscoverySummary {
@@ -135,11 +136,15 @@ const OFFER_TITLE_PATTERN =
   /\b(limited|flash|restock|stock|sale|special|deals?|offers?|promo(?:tion)?|discount|off)\b/i;
 const EXCLUDED_OFFER_PATTERN =
   /\b(shared hosting|domain|email|ssl|service transfer|wtb|free proxy|vpn)\b/i;
+const SERVER_OFFER_PATTERN =
+  /\b(vps|vds|kvm|virtual (?:private )?server|dedicated server|storage (?:vps|server)|cloud server)\b/i;
+const OFFER_MAX_AGE_MS = 6 * 60 * 60 * 1_000;
 
 function defaultDependencies(): OfferDiscoveryDependencies {
   return {
     offersChannelId: process.env.TELEGRAM_OFFERS_CHANNEL_ID || null,
     sendMessage: sendChannelMessage,
+    now: () => new Date(),
   };
 }
 
@@ -169,7 +174,7 @@ function isEligible(
     return false;
   }
 
-  if (EXCLUDED_OFFER_PATTERN.test(title)) return false;
+  if (EXCLUDED_OFFER_PATTERN.test(title) && !SERVER_OFFER_PATTERN.test(title)) return false;
   if (source !== 'lowendtalk') return true;
 
   return TRUSTED_PROVIDERS.has(provider?.toLowerCase() || '') || OFFER_TITLE_PATTERN.test(title);
@@ -353,7 +358,7 @@ async function discoverSourceOffers(
   fetcher: Fetcher,
   dependencies: OfferDiscoveryDependencies,
 ): Promise<OfferDiscoverySummary> {
-  const now = new Date();
+  const now = dependencies.now?.() ?? new Date();
   const firstRun = await connection.get(source.baselineKey);
   if (!firstRun) {
     await connection.set(source.baselineKey, now.toISOString(), 'NX');
@@ -366,7 +371,10 @@ async function discoverSourceOffers(
   }
 
   const discussions = await readSourceDiscussions(source, fetcher, now);
-  const recentDiscussions = discussions.filter((item) => item.postedAt >= baseline);
+  const freshnessCutoff = new Date(now.getTime() - OFFER_MAX_AGE_MS);
+  const recentDiscussions = discussions.filter(
+    (item) => item.postedAt >= baseline && item.postedAt >= freshnessCutoff,
+  );
   const summary: OfferDiscoverySummary = {
     ...emptySummary(false),
     discovered: recentDiscussions.length,
@@ -382,14 +390,37 @@ async function discoverSourceOffers(
       continue;
     }
 
-    const detailResponse = await fetcher(discussion.url, requestInit());
-    if (!detailResponse.ok) {
-      throw new Error(`${source.label} offer detail HTTP ${detailResponse.status}`);
+    let detailHtml = discussion.contentHtml ?? null;
+    if (source.id === 'lowendbox' || !detailHtml) {
+      const detailResponse = await fetcher(discussion.url, requestInit());
+      if (detailResponse.ok) {
+        detailHtml = await detailResponse.text();
+      } else if (!detailHtml) {
+        logger.warn(
+          {
+            source: source.id,
+            sourceId: discussion.discussionId,
+            status: detailResponse.status,
+          },
+          'Skipping offer whose detail and feed content are unavailable',
+        );
+        summary.skipped++;
+        continue;
+      } else {
+        logger.warn(
+          {
+            source: source.id,
+            sourceId: discussion.discussionId,
+            status: detailResponse.status,
+          },
+          'Using offer feed content after detail request failed',
+        );
+      }
     }
 
     const offer = source.parseDetail(
       discussion.title,
-      await detailResponse.text(),
+      detailHtml,
       discussion.author,
     );
     if (

@@ -7,6 +7,7 @@ export interface LetDiscussion {
   author: string;
   postedAt: Date;
   url: string;
+  contentHtml?: string;
 }
 
 export interface ParsedLetOffer {
@@ -160,10 +161,18 @@ export function parseLetRss(xml: string): LetDiscussion[] {
     const author = normalizeText($(item).find('dc\\:creator, creator, author').first().text());
     const postedAt = new Date(normalizeText($(item).find('pubDate, date').first().text()));
     const discussionId = discussionIdFromUrl(url);
+    const contentHtml = $(item).find('description').first().text().trim();
 
     if (!discussionId || !title || !url || Number.isNaN(postedAt.getTime())) return;
 
-    discussions.push({ discussionId, title, author, postedAt, url });
+    discussions.push({
+      discussionId,
+      title,
+      author,
+      postedAt,
+      url,
+      ...(contentHtml ? { contentHtml } : {}),
+    });
   });
 
   return discussions;
@@ -197,11 +206,12 @@ export function parseLetListing(html: string, discoveredAt: Date): LetDiscussion
 export function parseLetOffer(title: string, html: string, author: string): ParsedLetOffer {
   const $ = cheerio.load(html);
   const firstPost = $('article, .Message, .message, .Item-Body').first();
-  const body = normalizeText(firstPost.text() || $.text());
+  const contentRoot = firstPost.length > 0 ? firstPost : $('body');
+  const body = normalizeText(contentRoot.text() || $.text());
   const combined = `${title} ${body}`;
   const parsedPrice = parsePrice(title) ?? parsePrice(body);
   const orderHref =
-    firstPost
+    contentRoot
       .find('a[href]')
       .filter((_, link) => {
         const linkText = normalizeText($(link).text());
@@ -217,7 +227,7 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
   );
   const category = parseCategory(combined);
   const detectedAuthor = normalizeText(
-    firstPost.closest('.Item, article, li').find('.Username').first().text(),
+    contentRoot.closest('.Item, article, li').find('.Username').first().text(),
   );
   const provider = normalizeText(author) || detectedAuthor || null;
   const confidence =

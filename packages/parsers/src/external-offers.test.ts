@@ -20,6 +20,7 @@ describe('external offer parsers', () => {
         author: 'raindog308',
         postedAt: new Date('2026-07-31T11:00:25.000Z'),
         url: 'https://lowendbox.com/blog/serverhost-cheap-ryzen-vps-deals/',
+        contentHtml: '<p>ServerHost KVM VPS from $22.99/year.</p>',
       },
     ]);
   });
@@ -32,6 +33,7 @@ describe('external offer parsers', () => {
         author: 'ExampleHost',
         postedAt: new Date('2026-08-03T15:00:43.000Z'),
         url: 'https://lowendspirit.com/discussion/11151/new-uk-kvm-vps-annual-promo',
+        contentHtml: '<p>UK KVM VPS from £18/year.</p>',
       },
     ]);
   });

@@ -38,6 +38,10 @@ function parseRss(
     const guid = normalizeText($(item).find('guid').first().text());
     const author = normalizeText($(item).find('dc\\:creator, creator, author').first().text());
     const postedAt = new Date(normalizeText($(item).find('pubDate, date').first().text()));
+    const contentHtml = (
+      $(item).find('content\\:encoded').first().text()
+      || $(item).find('description').first().text()
+    ).trim();
     const url = validSourceUrl(link, source);
     if (!title || !url || Number.isNaN(postedAt.getTime())) return;
 
@@ -50,6 +54,7 @@ function parseRss(
       author,
       postedAt,
       url: url.href,
+      ...(contentHtml ? { contentHtml } : {}),
     });
   });
 
@@ -99,7 +104,7 @@ export function parseLowEndBoxOffer(title: string, html: string): ParsedLetOffer
   const provider = candidates
     .map((candidate) => titleBrand(title, candidate))
     .find((candidate): candidate is string => candidate !== null) ?? '';
-  const content = $('.post_content').first().html() ?? '';
+  const content = $('.post_content').first().html() ?? $('article').first().html() ?? html;
 
   return parseLetOffer(title, `<article>${content}</article>`, provider);
 }

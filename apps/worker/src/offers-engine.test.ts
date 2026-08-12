@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   discoverLetOffers,
   discoverLowEndBoxOffers,
@@ -78,6 +78,7 @@ const sendMessage = vi.fn<OfferDiscoveryDependencies['sendMessage']>();
 const disabledNotifications: OfferDiscoveryDependencies = {
   offersChannelId: null,
   sendMessage,
+  now: () => new Date('2026-07-21T12:30:00.000Z'),
 };
 
 function connection(firstRun: string | null) {
@@ -89,6 +90,8 @@ function response(text: string, status = 200) {
 
 describe('discoverLetOffers', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-21T12:30:00.000Z'));
     vi.clearAllMocks();
     vi.stubEnv('TELEGRAM_OFFERS_CHANNEL_ID', '');
     databaseMocks.findUnique.mockResolvedValue(null);
@@ -106,6 +109,10 @@ describe('discoverLetOffers', () => {
     parserMocks.parseLowEndBoxRss.mockReturnValue([]);
     parserMocks.parseLowEndBoxOffer.mockReturnValue(parsedOffer);
     parserMocks.parseLowEndSpiritRss.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('establishes a first-run baseline without fetching historical offers', async () => {
@@ -162,6 +169,28 @@ describe('discoverLetOffers', () => {
       }),
     });
     expect(subscriberMocks.notifyOfferSubscribers).toHaveBeenCalledOnce();
+  });
+
+  it('parses LowEndTalk feed content without requesting the blocked detail page', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi.fn().mockResolvedValueOnce(response('<rss />'));
+    parserMocks.parseLetRss.mockReturnValue([
+      { ...discussion, contentHtml: '<p>KVM VPS from $12/year.</p>' },
+    ]);
+
+    await expect(discoverLetOffers(redis, fetcher, disabledNotifications)).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(parserMocks.parseLetOffer).toHaveBeenCalledWith(
+      discussion.title,
+      '<p>KVM VPS from $12/year.</p>',
+      discussion.author,
+    );
   });
 
   it('skips offers without a category or price', async () => {
@@ -504,6 +533,38 @@ describe('discoverLetOffers', () => {
     });
   });
 
+  it('falls back to LowEndBox feed content when the detail page is unavailable', async () => {
+    const lowEndBoxDiscussion = {
+      ...discussion,
+      discussionId: 'lowendbox:53296',
+      url: 'https://lowendbox.com/blog/affordable-vps-plan/',
+      contentHtml: '<p>ExampleHost KVM VPS from $12/year.</p>',
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('', 503));
+    parserMocks.parseLowEndBoxRss
+      .mockReturnValueOnce([lowEndBoxDiscussion])
+      .mockReturnValueOnce([]);
+
+    await expect(
+      discoverLowEndBoxOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(parserMocks.parseLowEndBoxOffer).toHaveBeenCalledWith(
+      lowEndBoxDiscussion.title,
+      lowEndBoxDiscussion.contentHtml,
+    );
+  });
+
   it('stores a new LowEndSpirit discussion from the curated VPS feed', async () => {
     const lowEndSpiritDiscussion = {
       discussionId: 'lowendspirit:11151',
@@ -545,6 +606,82 @@ describe('discoverLetOffers', () => {
         threadUrl: lowEndSpiritDiscussion.url,
       }),
     });
+  });
+
+  it('keeps a VPS offer when the title also mentions VPN', async () => {
+    const lowEndSpiritDiscussion = {
+      ...discussion,
+      discussionId: 'lowendspirit:11186',
+      title: 'HostAddon VPS from $3.99/mo | Storage | Streaming | VPN',
+      url: 'https://lowendspirit.com/discussion/11186/hostaddon-vps',
+      contentHtml: '<p>KVM VPS from $3.99/mo.</p>',
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<rss />'));
+    parserMocks.parseLowEndSpiritRss
+      .mockReturnValueOnce([lowEndSpiritDiscussion])
+      .mockReturnValueOnce([]);
+
+    await expect(
+      discoverLowEndSpiritOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+  });
+
+  it('does not replay offers older than the recovery window', async () => {
+    const redis = connection('2026-07-20T00:00:00.000Z');
+    const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
+    parserMocks.parseLetRss.mockReturnValue([
+      {
+        ...discussion,
+        postedAt: new Date('2026-07-21T06:29:59.000Z'),
+        contentHtml: '<p>KVM VPS from $12/year.</p>',
+      },
+    ]);
+
+    await expect(discoverLetOffers(redis, fetcher, disabledNotifications)).resolves.toEqual({
+      discovered: 0,
+      stored: 0,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('skips one unavailable detail without aborting the remaining source entries', async () => {
+    const secondDiscussion = {
+      ...discussion,
+      discussionId: '67890',
+      url: 'https://lowendtalk.com/discussion/67890/second-offer',
+      contentHtml: '<p>KVM VPS from $12/year.</p>',
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('', 403));
+    parserMocks.parseLetRss.mockReturnValue([
+      { ...discussion, contentHtml: undefined },
+      secondDiscussion,
+    ]);
+
+    await expect(discoverLetOffers(redis, fetcher, disabledNotifications)).resolves.toEqual({
+      discovered: 2,
+      stored: 1,
+      pushed: 0,
+      skipped: 1,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledOnce();
   });
 
   it('does not fetch an external feed entry whose URL is outside its source domain', async () => {
