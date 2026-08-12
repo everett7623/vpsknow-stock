@@ -1,8 +1,8 @@
 # VPSKnow Stock 项目状态报告
 
-> 更新时间：2026-08-10 22:50 (UTC+8)
-> 代码基线：`main` @ `59c4d32`
-> 生产环境：`stock.vpsknow.com`；监控白名单 **19 家 active**
+> 更新时间：2026-08-12 (UTC+8)
+> 代码基线：`main`（2026-08-12 发布）
+> 生产环境：`stock.vpsknow.com`；监控白名单 **20 家 active**
 > 验收：T0 基线已采集（见 `docs/ACCEPTANCE_BASELINE_2026-08-10.md`），24h/48h 窗口进行中
 
 ---
@@ -14,7 +14,7 @@
 | Phase 1 - MVP | **验收中** | T0 健康；待 24h 稳定 + 48h 误报抽检 |
 | Phase 2 - Offer + 首批 Provider | 已完成 | Offer 三来源上线；LET 详情常 403 |
 | Phase 3 - Bot + 订阅 | 已完成 | 粗粒度地区 + `subscribe_{slug}` |
-| Phase 4 - 扩展 | 进行中 | 19 家监控（去 ZgoCloud；VMISS 站内隐藏，TG 旁路补货）；短链分时段统计已上线 |
+| Phase 4 - 扩展 | 进行中 | 20 家监控（新增 Evoxt；去 ZgoCloud；VMISS 站内隐藏，TG 旁路补货）；短链分时段统计已上线 |
 
 ## 验收 T0（2026-08-10 14:46 UTC）
 

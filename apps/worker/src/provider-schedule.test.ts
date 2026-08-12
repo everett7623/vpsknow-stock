@@ -10,6 +10,7 @@ describe('provider scheduling allowlist', () => {
   });
 
   it('rejects providers with PLACEHOLDER affiliates or missing adapters', () => {
+    expect(isMonitoredProvider('evoxt')).toBe(true);
     expect(isMonitoredProvider('servarica')).toBe(false);
     expect(isMonitoredProvider('webhorizon')).toBe(false);
     expect(isMonitoredProvider('crunchbits')).toBe(false);
@@ -19,7 +20,6 @@ describe('provider scheduling allowlist', () => {
     expect(isMonitoredProvider('tierhive')).toBe(false);
     expect(isMonitoredProvider('clouvider')).toBe(false);
     expect(isMonitoredProvider('liteserver')).toBe(false);
-    expect(isMonitoredProvider('evoxt')).toBe(false);
     expect(isMonitoredProvider('highendnetwork')).toBe(false);
   });
 });

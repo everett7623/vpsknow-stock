@@ -1,35 +1,91 @@
 import * as cheerio from 'cheerio';
-import type { BillingCycle } from '@vpsknow/shared';
+import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
-interface Category {
-  slug: string;
-  location: string;
-  url: string;
+const PRICING_URL = 'https://evoxt.com/pricing/';
+const DEPLOY_URL = 'https://console.evoxt.com/deploy.php';
+
+interface NetworkGroup {
+  readonly id: string;
+  readonly lineType: string;
+  readonly location: string;
 }
 
-const PORTAL = 'https://evoxt.com';
-const CATEGORIES: readonly Category[] = [
-  { slug: 'us-california', location: 'Los Angeles', url: `${PORTAL}/products/vps-usa` },
-  { slug: 'de-frankfurt', location: 'Frankfurt', url: `${PORTAL}/products/vps-germany` },
-  { slug: 'uk-london', location: 'London', url: `${PORTAL}/products/vps-uk` },
-  { slug: 'my-kuala-lumpur', location: 'Kuala Lumpur', url: `${PORTAL}/products/vps-malaysia` },
-  { slug: 'jp-tokyo', location: 'Tokyo', url: `${PORTAL}/products/vps-japan` },
-  { slug: 'hk-hongkong', location: 'Hong Kong', url: `${PORTAL}/products/vps-hongkong` },
+const NETWORK_GROUPS: Readonly<Record<string, NetworkGroup>> = {
+  'global-regions': {
+    id: 'standard',
+    lineType: 'Standard',
+    location: 'Global Standard Regions',
+  },
+  'hk-osaka-regions': {
+    id: 'premium',
+    lineType: 'Premium',
+    location: 'Hong Kong / Osaka',
+  },
+  'my-premium-region': {
+    id: 'premium-plus',
+    lineType: 'Premium Plus',
+    location: 'Malaysia',
+  },
+};
+
+const EXPECTED_PLANS = [
+  'VM-0.5',
+  'VM-0.75',
+  'VM-1',
+  'VM-1.5',
+  'VM-2',
+  'VM-3',
+  'VM-4',
+  'VM-6',
+  'VM-8',
+  'VM-12',
+  'VM-16',
 ] as const;
 
-function numberFrom(text: string, pattern: RegExp): number {
-  const match = text.match(pattern);
-  return match ? Number.parseFloat(match[1]!) : 0;
+const MAX_MISSING_PLANS_PER_CHECK = 3;
+
+function amount(text: string): number {
+  const match = text.replace(/,/g, '').match(/\d+(?:\.\d+)?/);
+  return match ? Number.parseFloat(match[0]) : 0;
 }
 
-function parseBillingCycle(text: string): BillingCycle {
-  if (/quarterly/i.test(text)) return 'quarterly';
-  if (/semi-annually/i.test(text)) return 'semi-annually';
-  if (/annually|yearly/i.test(text)) return 'annually';
-  if (/biennially/i.test(text)) return 'biennially';
-  if (/triennially/i.test(text)) return 'triennially';
-  return 'monthly';
+function ramInMb(text: string): number {
+  const value = amount(text);
+  return /\bGB\b/i.test(text) ? Math.round(value * 1024) : Math.round(value);
+}
+
+function bandwidthInTb(text: string): number {
+  const value = amount(text);
+  return /\bTB\b/i.test(text) ? value : value / 1000;
+}
+
+function slugify(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function missingPlanResult(planName: string, group: NetworkGroup): StockResult {
+  return {
+    provider: 'evoxt',
+    productId: `evoxt-${group.id}-${slugify(planName)}`,
+    planName: `${planName} (${group.lineType})`,
+    location: group.location,
+    category: 'vps',
+    cpu: 'Unknown',
+    ramMb: 0,
+    storageGb: 0,
+    storageType: 'NVMe',
+    bandwidthTb: 0,
+    lineType: group.lineType,
+    ipv4: true,
+    ipv6: true,
+    price: 0,
+    currency: 'USD',
+    billingCycle: 'monthly',
+    inStock: false,
+    orderUrl: DEPLOY_URL,
+    raw: { source: 'official-pricing', networkGroup: group.id, missingFromPricing: true },
+  };
 }
 
 export class EvoxtAdapter implements ProviderAdapter {
@@ -37,77 +93,92 @@ export class EvoxtAdapter implements ProviderAdapter {
   readonly name = 'Evoxt';
 
   async check(): Promise<StockResult[]> {
-    const results: StockResult[] = [];
-    const seen = new Set<string>();
+    const html = await fetchProviderHtml(this.name, PRICING_URL);
+    const results = this.parse(html);
+    const parsedGroups = new Set(results.map((result) => result.lineType));
 
-    for (const category of CATEGORIES) {
-      const response = await fetch(category.url, {
-        headers: { 'User-Agent': 'VPSKnow-Stock/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`Evoxt HTTP ${response.status} for ${category.slug}`);
-
-      const html = await response.text();
-      if (/cf-chl-|captcha|just a moment/i.test(html)) {
-        throw new Error(`Evoxt returned a challenge page for ${category.slug}`);
-      }
-
-      for (const result of this.parse(html, category)) {
-        if (!seen.has(result.productId)) {
-          seen.add(result.productId);
-          results.push(result);
-        }
-      }
+    if (results.length === 0) {
+      throw new Error('Evoxt pricing page returned no parseable products');
+    }
+    if (parsedGroups.size !== Object.keys(NETWORK_GROUPS).length) {
+      throw new Error(
+        `Evoxt pricing page returned ${parsedGroups.size}/${Object.keys(NETWORK_GROUPS).length} network groups`,
+      );
     }
 
-    if (results.length === 0) throw new Error('Evoxt returned no parseable products');
-    return results;
+    const returnedIds = new Set(results.map((result) => result.productId));
+    const missing = Object.values(NETWORK_GROUPS).flatMap((group) =>
+      EXPECTED_PLANS
+        .filter((planName) => !returnedIds.has(`evoxt-${group.id}-${slugify(planName)}`))
+        .map((planName) => missingPlanResult(planName, group)),
+    );
+    if (missing.length > MAX_MISSING_PLANS_PER_CHECK) {
+      throw new Error(
+        `Evoxt pricing page omitted ${missing.length} known plans; refusing mass sold-out update`,
+      );
+    }
+
+    return [...results, ...missing];
   }
 
-  parse(html: string, category: Category): StockResult[] {
+  parse(html: string): StockResult[] {
     const $ = cheerio.load(html);
     const results: StockResult[] = [];
 
-    // Evoxt uses a custom product card layout
-    $('.pricing-card, .plan-card, .product-card, [class*="pricing"]').each((_, element) => {
-      const card = $(element);
-      const planName = card.find('h3, h4, .plan-name, .plan-title').first().text().trim();
-      if (!planName) return;
+    for (const [sectionId, group] of Object.entries(NETWORK_GROUPS)) {
+      const section = $(`section#${sectionId}`);
+      if (section.length === 0) continue;
 
-      const text = card.text().replace(/\s+/g, ' ');
-      const orderHref = card.find('a[href*="order"], a[href*="cart"], .btn-order').attr('href')?.trim() ?? '';
-      const inStock = orderHref.length > 0
-        && !/out\s*of\s*stock|sold\s*out|unavailable/i.test(text);
+      section.find('table.pricing-table tbody tr').each((_, element) => {
+        const row = $(element);
+        const cells = row.find('td');
+        if (cells.length < 8) return;
 
-      const ramGb = numberFrom(text, /(\d+(?:\.\d+)?)\s*GB\s+RAM/i);
-      const storageGb = numberFrom(text, /(\d+(?:\.\d+)?)\s*GB\s+(?:NVMe|SSD|HDD)/i);
-      const cores = Math.round(numberFrom(text, /(\d+(?:\.\d+)?)x?\s*(?:vCPU|vCores?|Cores?)/i));
-      const bwTb = numberFrom(text, /(\d+(?:\.\d+)?)\s*TB\s+(?:BW|Bandwidth|Transfer)/i);
-      const priceMatch = text.match(/\$\s*(\d+(?:\.\d+)?)\s*(?:\/\s*mo|per\s*month)/i)
-        ?? text.match(/(\d+(?:\.\d+)?)\s*USD\s*(?:\/\s*mo|per\s*month)/i);
+        const planName = row.find('.plan-name').first().text().trim() || cells.eq(0).text().trim();
+        const cpuText = cells.eq(1).text().replace(/\s+/g, ' ').trim();
+        const ramText = cells.eq(2).text().trim();
+        const storageText = cells.eq(3).text().trim();
+        const bandwidthText = cells.eq(4).text().trim();
+        const priceText = cells.eq(6).text().trim();
+        const action = cells.eq(7);
+        const actionText = action.text().replace(/\s+/g, ' ').trim();
+        const deployLink = action.find('a[href*="deploy.php"]').first();
+        const unavailable = /out\s*of\s*stock|sold\s*out|unavailable/i.test(actionText)
+          || action.find('[disabled], .disabled, [aria-disabled="true"]').length > 0;
+        const inStock = deployLink.length > 0 && !unavailable;
 
-      const slug = planName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        if (!planName || amount(cpuText) <= 0 || ramInMb(ramText) <= 0 || amount(priceText) <= 0) {
+          return;
+        }
 
-      results.push({
-        provider: this.slug,
-        productId: `evoxt-${category.slug}-${slug}`,
-        planName,
-        location: category.location,
-        category: 'vps',
-        cpu: cores > 0 ? `${cores} vCPU${cores === 1 ? '' : 's'}` : 'Unknown',
-        ramMb: Math.round(ramGb * 1024),
-        storageGb: Math.round(storageGb),
-        storageType: /\bNVMe\b/i.test(text) ? 'NVMe' : 'SSD',
-        bandwidthTb: bwTb,
-        ipv4: true,
-        ipv6: /ipv6/i.test(text),
-        price: priceMatch ? Math.round(Number.parseFloat(priceMatch[1]!) * 100) : 0,
-        currency: 'USD',
-        billingCycle: parseBillingCycle(text),
-        inStock,
-        orderUrl: inStock ? new URL(orderHref, PORTAL).href : category.url,
+        results.push({
+          provider: this.slug,
+          productId: `evoxt-${group.id}-${slugify(planName)}`,
+          planName: `${planName} (${group.lineType})`,
+          location: group.location,
+          category: 'vps',
+          cpu: `${Math.round(amount(cpuText))} vCPU`,
+          ramMb: ramInMb(ramText),
+          storageGb: Math.round(amount(storageText)),
+          storageType: 'NVMe',
+          bandwidthTb: bandwidthInTb(bandwidthText),
+          lineType: group.lineType,
+          ipv4: true,
+          ipv6: true,
+          price: Math.round(amount(priceText) * 100),
+          currency: 'USD',
+          billingCycle: 'monthly',
+          inStock,
+          orderUrl: deployLink.attr('href')?.trim() || DEPLOY_URL,
+          displaySpecs: {
+            bandwidth: bandwidthText,
+            port: '1 Gbps',
+            remark: 'Weekly automatic backup',
+          },
+          raw: { source: 'official-pricing', networkGroup: group.id },
+        });
       });
-    });
+    }
 
     return results;
   }

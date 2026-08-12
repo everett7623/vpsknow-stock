@@ -8,6 +8,27 @@ export function formatPrice(product: Product): string {
   return `${symbol}${amount}/${suffix}`;
 }
 
+const BILLING_MONTHS: Readonly<Record<string, number>> = {
+  monthly: 1,
+  quarterly: 3,
+  'semi-annually': 6,
+  annually: 12,
+  biennially: 24,
+  triennially: 36,
+};
+
+/** Normalize mixed billing cycles before comparing plan prices. */
+export function monthlyEquivalentCents(product: Pick<Product, 'priceCents' | 'billingCycle'>): number {
+  return product.priceCents / (BILLING_MONTHS[product.billingCycle] ?? 1);
+}
+
+export function formatMonthlyEquivalent(
+  product: Pick<Product, 'priceCents' | 'billingCycle' | 'currency'>,
+): string {
+  const symbol = product.currency === 'EUR' ? '€' : product.currency === 'CNY' ? '¥' : '$';
+  return `${symbol}${(monthlyEquivalentCents(product) / 100).toFixed(2)} ${product.currency}/mo`;
+}
+
 export function formatDate(date: Date | string | null): string {
   if (!date) return 'never';
   return new Date(date).toISOString().slice(0, 19).replace('T', ' ');

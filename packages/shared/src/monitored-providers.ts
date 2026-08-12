@@ -13,6 +13,7 @@ export const MONITORED_PROVIDERS = [
   { slug: 'saltyfish', name: 'SaltyFish', intervalMs: 300_000 },
   { slug: 'racknerd', name: 'RackNerd', intervalMs: 180_000 },
   { slug: 'dedirock', name: 'DediRock', intervalMs: 180_000 },
+  { slug: 'evoxt', name: 'Evoxt', intervalMs: 300_000 },
   { slug: 'bagevm', name: 'BageVM', intervalMs: 180_000 },
   { slug: 'vmrack', name: 'VMRack', intervalMs: 300_000 },
   { slug: 'gomami', name: 'GoMami', intervalMs: 300_000 },

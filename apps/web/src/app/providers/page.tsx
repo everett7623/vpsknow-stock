@@ -15,7 +15,17 @@ import {
   offerTagLabel,
   type PlanOfferTag,
 } from '@/lib/plan-tags';
-import { formatDate, formatPrice, formatRelativeTime, botSubscribeUrl, formatBandwidth, formatIpv4, resolveStockAvailability } from '@/lib/utils';
+import {
+  botSubscribeUrl,
+  formatBandwidth,
+  formatDate,
+  formatIpv4,
+  formatMonthlyEquivalent,
+  formatPrice,
+  formatRelativeTime,
+  monthlyEquivalentCents,
+  resolveStockAvailability,
+} from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +37,7 @@ export const metadata: Metadata = {
 type StockFilter = 'all' | 'in' | 'out' | 'unknown';
 type OfferFilter = 'all' | 'special' | 'promo' | 'limited' | 'regular';
 type SortKey = 'price_asc' | 'price_desc' | 'name';
+type SpecsMode = 'minimum' | 'exact';
 
 const RAM_PRESETS = [
   { value: 'all', label: 'Any RAM' },
@@ -87,11 +98,13 @@ interface SearchParams {
   bw?: string;
   cpu?: string;
   billing?: string;
+  currency?: string;
   ipv4?: string;
   minPrice?: string;
   maxPrice?: string;
   q?: string;
   sort?: string;
+  mode?: string;
 }
 
 function parseStock(value: string | undefined): StockFilter {
@@ -109,6 +122,10 @@ function parseOffer(value: string | undefined): OfferFilter {
 function parseSort(value: string | undefined): SortKey {
   if (value === 'price_desc' || value === 'name') return value;
   return 'price_asc';
+}
+
+function parseSpecsMode(value: string | undefined): SpecsMode {
+  return value === 'exact' ? 'exact' : 'minimum';
 }
 
 function parsePositiveNumber(value: string | undefined): number | null {
@@ -162,8 +179,18 @@ function matchesBandwidthMin(
   return (bandwidthTb ?? 0) >= bandwidthMinTb;
 }
 
-function filterProducts(
-  provider: ProviderWithProducts,
+
+function matchesNumeric(value: number, target: number | null, mode: SpecsMode): boolean {
+  if (target === null) return true;
+  return mode === 'exact' ? value === target : value >= target;
+}
+
+function specsPresetLabel(label: string, mode: SpecsMode): string {
+  return mode === 'exact' ? label.replace('≥', '=') : label;
+}
+
+function filterProducts<T extends ProviderWithProducts['products'][number]>(
+  sourceProducts: T[],
   stock: StockFilter,
   location: string,
   region: string,
@@ -177,13 +204,15 @@ function filterProducts(
   cpuMinCores: number | null,
   ipv4Filter: string,
   billing: string,
+  currency: string,
   minPriceCents: number | undefined,
   maxPriceCents: number | undefined,
   query: string,
   sort: SortKey,
-) {
+  specsMode: SpecsMode,
+): T[] {
   const needle = query.trim().toLowerCase();
-  let products = provider.products.filter((product) => {
+  let products = sourceProducts.filter((product) => {
     const availability = resolveStockAvailability(product.inStock, product.availabilitySource);
     if (stock === 'in' && availability !== 'in') return false;
     if (stock === 'out' && availability !== 'out') return false;
@@ -195,15 +224,23 @@ function filterProducts(
       return false;
     }
     if (billing !== 'all' && product.billingCycle !== billing) return false;
+    if (currency !== 'all' && product.currency !== currency) return false;
     if (ipv4Filter === 'yes' && product.ipv4 !== true) return false;
     if (ipv4Filter === 'no' && product.ipv4 !== false) return false;
-    if (ramMinMb !== null && (product.ramMb ?? 0) < ramMinMb) return false;
-    if (storageMinGb !== null && (product.storageGb ?? 0) < storageMinGb) return false;
+    if (!matchesNumeric(product.ramMb ?? 0, ramMinMb, specsMode)) return false;
+    if (!matchesNumeric(product.storageGb ?? 0, storageMinGb, specsMode)) return false;
     if (!matchesDiskType(product.storageType, diskType)) return false;
-    if (!matchesBandwidthMin(product.bandwidthTb, product.bandwidthLabel, bandwidthMinTb)) return false;
-    if (cpuMinCores !== null && parseCpuCores(product.cpu) < cpuMinCores) return false;
-    if (minPriceCents !== undefined && product.priceCents < minPriceCents) return false;
-    if (maxPriceCents !== undefined && product.priceCents > maxPriceCents) return false;
+    if (specsMode === 'exact') {
+      if (!matchesNumeric(product.bandwidthTb ?? 0, bandwidthMinTb, specsMode)) return false;
+    } else if (!matchesBandwidthMin(product.bandwidthTb, product.bandwidthLabel, bandwidthMinTb)) {
+      return false;
+    }
+    if (!matchesNumeric(parseCpuCores(product.cpu), cpuMinCores, specsMode)) return false;
+    if (currency !== 'all') {
+      const monthlyPrice = monthlyEquivalentCents(product);
+      if (minPriceCents !== undefined && monthlyPrice < minPriceCents) return false;
+      if (maxPriceCents !== undefined && monthlyPrice > maxPriceCents) return false;
+    }
 
     const tag = detectPlanOfferTag(product.planName, product.productId);
     if (offer === 'regular' && tag !== null) return false;
@@ -223,17 +260,24 @@ function filterProducts(
   });
 
   products = [...products].sort((a, b) => {
+    if (sort !== 'name') {
+      // Monetary values are only comparable within the same currency.
+      const currencyDelta = a.currency.localeCompare(b.currency);
+      if (currencyDelta !== 0) return currencyDelta;
+    }
+
     // Default browsing: Promo / Limited / Special first, then price.
     // Sink $0 / missing-spec / Unknown-heavy junk so deal-relevant plans surface.
     const junkDelta = planJunkRank(a) - planJunkRank(b);
     if (junkDelta !== 0) return junkDelta;
 
+    if (sort === 'name') return a.planName.localeCompare(b.planName);
+
     const offerDelta = planOfferRank(a.planName, a.productId) - planOfferRank(b.planName, b.productId);
     if (offerDelta !== 0) return offerDelta;
 
-    if (sort === 'name') return a.planName.localeCompare(b.planName);
-    const left = a.priceCents ?? Number.POSITIVE_INFINITY;
-    const right = b.priceCents ?? Number.POSITIVE_INFINITY;
+    const left = monthlyEquivalentCents(a);
+    const right = monthlyEquivalentCents(b);
     return sort === 'price_desc' ? right - left : left - right;
   });
 
@@ -288,11 +332,21 @@ export default async function ProvidersPage({
 }) {
   const params = await searchParams;
   const providers = await getProviders();
-  const selectedSlug = params.p || providers[0]?.slug || '';
-  const selected =
-    providers.find((provider) => provider.slug === selectedSlug) ?? providers[0] ?? null;
+  const requestedSlug = params.p?.trim() || 'all';
+  const selected = requestedSlug === 'all'
+    ? null
+    : providers.find((provider) => provider.slug === requestedSlug) ?? null;
+  const allProvidersSelected = selected === null;
+  const scopedProviders = selected ? [selected] : providers;
+  const sourceProducts = scopedProviders.flatMap((provider) => provider.products);
+  const productProviders = new Map(
+    scopedProviders.flatMap((provider) =>
+      provider.products.map((product) => [product.id, provider] as const),
+    ),
+  );
   const stock = parseStock(params.stock);
   const sort = parseSort(params.sort);
+  const specsMode = parseSpecsMode(params.mode);
   const location = params.location?.trim() || 'all';
   const region = params.region?.trim() || 'all';
   const category = params.category?.trim() || 'all';
@@ -309,27 +363,28 @@ export default async function ProvidersPage({
   const cpuMinCores = parsePositiveNumber(cpu);
   const ipv4Filter = params.ipv4?.trim() || 'all';
   const billing = params.billing?.trim() || 'all';
+  const currencies = [...new Set(sourceProducts.map((product) => product.currency))].sort();
+  const requestedCurrency = params.currency?.trim().toUpperCase();
+  const currency = requestedCurrency && currencies.includes(requestedCurrency)
+    ? requestedCurrency
+    : currencies.length === 1
+      ? currencies[0]!
+      : 'all';
   const minPrice = params.minPrice?.trim() || '';
   const maxPrice = params.maxPrice?.trim() || '';
   const minPriceCents = parsePriceCents(minPrice || undefined);
   const maxPriceCents = parsePriceCents(maxPrice || undefined);
   const query = params.q?.trim() || '';
 
-  const locations = selected
-    ? [...new Set(selected.products.map((product) => product.location))].sort()
-    : [];
-  const categories = selected
-    ? [...new Set(selected.products.map((product) => product.category))].sort()
-    : [];
-  const lineTypes = selected
-    ? [...new Set(selected.products.flatMap((product) => product.lineType ? [product.lineType] : []))].sort()
-    : [];
-  const billingCycles = selected
-    ? [...new Set(selected.products.map((product) => product.billingCycle))].sort()
-    : [];
-  const products = selected
+  const locations = [...new Set(sourceProducts.map((product) => product.location))].sort();
+  const categories = [...new Set(sourceProducts.map((product) => product.category))].sort();
+  const lineTypes = [
+    ...new Set(sourceProducts.flatMap((product) => product.lineType ? [product.lineType] : [])),
+  ].sort();
+  const billingCycles = [...new Set(sourceProducts.map((product) => product.billingCycle))].sort();
+  const products = providers.length > 0
     ? filterProducts(
-        selected,
+        sourceProducts,
         stock,
         location,
         region,
@@ -343,23 +398,24 @@ export default async function ProvidersPage({
         cpuMinCores,
         ipv4Filter,
         billing,
+        currency,
         minPriceCents,
         maxPriceCents,
         query,
         sort,
+        specsMode,
       )
     : [];
-  const inStockCount = selected?.products.filter(
+  const inStockCount = sourceProducts.filter(
     (product) => resolveStockAvailability(product.inStock, product.availabilitySource) === 'in',
-  ).length ?? 0;
-  const lastCheckedAt =
-    selected?.products.reduce<Date | null>((latest, product) => {
+  ).length;
+  const lastCheckedAt = sourceProducts.reduce<Date | null>((latest, product) => {
       if (!product.lastCheckedAt) return latest;
       return !latest || product.lastCheckedAt > latest ? product.lastCheckedAt : latest;
-    }, null) ?? null;
+    }, null);
 
   const sharedParams = {
-    p: selected?.slug,
+    p: selected?.slug ?? 'all',
     stock: stock === 'all' ? undefined : stock,
     location: location === 'all' ? undefined : location,
     region: region === 'all' ? undefined : region,
@@ -373,10 +429,12 @@ export default async function ProvidersPage({
     cpu: cpu === 'all' ? undefined : cpu,
     ipv4: ipv4Filter === 'all' ? undefined : ipv4Filter,
     billing: billing === 'all' ? undefined : billing,
+    currency: currency === 'all' ? undefined : currency,
     minPrice: minPrice || undefined,
     maxPrice: maxPrice || undefined,
     q: query || undefined,
     sort: sort === 'price_asc' ? undefined : sort,
+    mode: specsMode === 'minimum' ? undefined : specsMode,
   };
 
   return (
@@ -390,6 +448,27 @@ export default async function ProvidersPage({
             </div>
 
             <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:gap-1 lg:px-0 lg:pb-0">
+              <Link
+                href={`/providers${buildQuery({ ...sharedParams, p: 'all' })}`}
+                className={`shrink-0 rounded-md px-3 py-2 transition-colors lg:block lg:w-full ${
+                  allProvidersSelected
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                    : 'bg-muted/60 text-foreground/80 hover:bg-muted hover:text-foreground lg:bg-transparent'
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="whitespace-nowrap text-sm font-medium">All Providers</span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground/80">
+                    {providers.reduce((count, provider) => count + provider.products.filter(
+                      (product) => resolveStockAvailability(
+                        product.inStock,
+                        product.availabilitySource,
+                      ) === 'in',
+                    ).length, 0)}
+                    /{providers.reduce((count, provider) => count + provider.products.length, 0)}
+                  </span>
+                </div>
+              </Link>
               {providers.map((provider) => {
                 const active = provider.slug === selected?.slug;
                 return (
@@ -409,6 +488,9 @@ export default async function ProvidersPage({
                       bw: undefined,
                       cpu: undefined,
                       ipv4: undefined,
+                      currency: undefined,
+                      minPrice: undefined,
+                      maxPrice: undefined,
                     })}`}
                     className={`shrink-0 rounded-md px-3 py-2 transition-colors lg:block lg:w-full ${
                       active
@@ -436,30 +518,36 @@ export default async function ProvidersPage({
         </aside>
 
         <section className="min-w-0 flex-1 space-y-5 p-3 sm:p-5 lg:p-6">
-          {!selected ? (
+          {providers.length === 0 ? (
             <p className="text-muted-foreground/80">No active providers.</p>
           ) : (
             <>
               <header className="space-y-2">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <h2 className="text-xl font-bold text-foreground sm:text-2xl">{selected.name}</h2>
-                  <a
-                    href={getProviderSiteUrl(selected.slug, selected.website)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-stock hover:opacity-90"
-                  >
-                    Official site
-                  </a>
-                  <Link
-                    href={`/provider/${selected.slug}`}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    Full page
-                  </Link>
+                  <h2 className="text-xl font-bold text-foreground sm:text-2xl">
+                    {selected?.name ?? 'All Providers'}
+                  </h2>
+                  {selected && (
+                    <>
+                      <a
+                        href={getProviderSiteUrl(selected.slug, selected.website)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-stock hover:opacity-90"
+                      >
+                        Official site
+                      </a>
+                      <Link
+                        href={`/provider/${selected.slug}`}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        Full page
+                      </Link>
+                    </>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground/80">
-                  {inStockCount} in stock · {selected.products.length} plans · Last checked:{' '}
+                  {inStockCount} in stock · {sourceProducts.length} plans · Last checked:{' '}
                   {lastCheckedAt
                     ? `${formatRelativeTime(lastCheckedAt)} (${formatDate(lastCheckedAt)})`
                     : 'Unknown'}
@@ -470,7 +558,18 @@ export default async function ProvidersPage({
                 method="get"
                 className="grid gap-3 rounded-lg border border-border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
               >
-                <input type="hidden" name="p" value={selected.slug} />
+                <input type="hidden" name="p" value={selected?.slug ?? 'all'} />
+                <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Specs mode
+                  <select
+                    name="mode"
+                    defaultValue={specsMode}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="minimum">Minimum (≥)</option>
+                    <option value="exact">Exact (=)</option>
+                  </select>
+                </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
                   Stock
                   <select
@@ -554,7 +653,7 @@ export default async function ProvidersPage({
                   >
                     {RAM_PRESETS.map((preset) => (
                       <option key={preset.value} value={preset.value}>
-                        {preset.label}
+                        {specsPresetLabel(preset.label, specsMode)}
                       </option>
                     ))}
                   </select>
@@ -568,7 +667,7 @@ export default async function ProvidersPage({
                   >
                     {STORAGE_PRESETS.map((preset) => (
                       <option key={preset.value} value={preset.value}>
-                        {preset.label}
+                        {specsPresetLabel(preset.label, specsMode)}
                       </option>
                     ))}
                   </select>
@@ -596,7 +695,7 @@ export default async function ProvidersPage({
                   >
                     {BANDWIDTH_PRESETS.map((preset) => (
                       <option key={preset.value} value={preset.value}>
-                        {preset.label}
+                        {specsPresetLabel(preset.label, specsMode)}
                       </option>
                     ))}
                   </select>
@@ -610,7 +709,7 @@ export default async function ProvidersPage({
                   >
                     {CPU_PRESETS.map((preset) => (
                       <option key={preset.value} value={preset.value}>
-                        {preset.label}
+                        {specsPresetLabel(preset.label, specsMode)}
                       </option>
                     ))}
                   </select>
@@ -643,6 +742,21 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
+                  Currency
+                  <select
+                    name="currency"
+                    defaultValue={currency}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">All currencies</option>
+                    {currencies.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground/80">
                   Offer
                   <select
                     name="offer"
@@ -657,26 +771,26 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Min price
+                  Min monthly price
                   <input
                     name="minPrice"
                     type="number"
                     min="0"
                     step="0.01"
                     defaultValue={minPrice}
-                    placeholder="Any"
+                    placeholder={currency === 'all' ? 'Choose currency' : `Any ${currency}`}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Max price
+                  Max monthly price
                   <input
                     name="maxPrice"
                     type="number"
                     min="0"
                     step="0.01"
                     defaultValue={maxPrice}
-                    placeholder="Any"
+                    placeholder={currency === 'all' ? 'Choose currency' : `Any ${currency}`}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </label>
@@ -687,8 +801,8 @@ export default async function ProvidersPage({
                     defaultValue={sort}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="price_asc">Price ↑ (promo first)</option>
-                    <option value="price_desc">Price ↓</option>
+                    <option value="price_asc">Monthly price ↑ (promo first)</option>
+                    <option value="price_desc">Monthly price ↓</option>
                     <option value="name">Plan name</option>
                   </select>
                 </label>
@@ -709,7 +823,7 @@ export default async function ProvidersPage({
                     Apply filters
                   </button>
                   <Link
-                    href={`/providers?p=${selected.slug}`}
+                    href={`/providers?p=${selected?.slug ?? 'all'}`}
                     className="rounded px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                   >
                     Reset
@@ -725,6 +839,8 @@ export default async function ProvidersPage({
                   </p>
                 ) : (
                   products.map((product) => {
+                    const productProvider = productProviders.get(product.id);
+                    if (!productProvider) return null;
                     const tag = detectPlanOfferTag(product.planName, product.productId);
                     const availability = resolveStockAvailability(
                       product.inStock,
@@ -747,12 +863,13 @@ export default async function ProvidersPage({
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 space-y-1">
                             <Link
-                              href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
+                              href={`/provider/${productProvider.slug}/${encodeURIComponent(product.productId)}`}
                               className="font-medium text-foreground hover:text-stock"
                             >
                               {product.planName}
                             </Link>
                             <p className="text-sm text-muted-foreground">
+                              {allProvidersSelected ? `${productProvider.name} · ` : ''}
                               {product.location} · {categoryLabel(product.category)}
                               {product.lineType ? ` · ${lineTypeLabel(product.lineType)}` : ''}
                             </p>
@@ -791,13 +908,20 @@ export default async function ProvidersPage({
                           </div>
                           <div className="flex items-center gap-2">
                             <OfferBadge tag={tag} />
-                            <span className="font-mono text-stock">{formatPrice(product)}</span>
+                            <span className="font-mono text-stock">
+                              {formatMonthlyEquivalent(product)}
+                              {product.billingCycle !== 'monthly' && (
+                                <span className="ml-1 text-muted-foreground/70">
+                                  ({formatPrice(product)} {product.currency} billed)
+                                </span>
+                              )}
+                            </span>
                           </div>
                         </dl>
                         <div className="mt-3 flex flex-wrap gap-3 text-sm">
                           {product.orderUrl && availability === 'in' ? (
                             <a
-                              href={getProductOrderUrl(selected.slug, product.productId)}
+                              href={getProductOrderUrl(productProvider.slug, product.productId)}
                               target="_blank"
                               rel="noreferrer"
                               className="font-medium text-stock hover:text-stock-strong"
@@ -806,7 +930,7 @@ export default async function ProvidersPage({
                             </a>
                           ) : availability !== 'in' ? (
                             <a
-                              href={botSubscribeUrl(selected.slug)}
+                              href={botSubscribeUrl(productProvider.slug)}
                               target="_blank"
                               rel="noreferrer"
                               className="text-sky-600 hover:text-sky-500 dark:text-sky-300"
@@ -815,7 +939,7 @@ export default async function ProvidersPage({
                             </a>
                           ) : null}
                           <Link
-                            href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
+                            href={`/provider/${productProvider.slug}/${encodeURIComponent(product.productId)}`}
                             className="text-muted-foreground hover:text-foreground"
                           >
                             Details
@@ -841,7 +965,7 @@ export default async function ProvidersPage({
                       <th className="px-4 py-3">Bandwidth</th>
                       <th className="px-4 py-3">IPv4</th>
                       <th className="px-4 py-3">Offer</th>
-                      <th className="px-4 py-3">Price</th>
+                      <th className="px-4 py-3">Price / Monthly</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Action</th>
                     </tr>
@@ -855,6 +979,8 @@ export default async function ProvidersPage({
                       </tr>
                     ) : (
                       products.map((product) => {
+                        const productProvider = productProviders.get(product.id);
+                        if (!productProvider) return null;
                         const tag = detectPlanOfferTag(product.planName, product.productId);
                         const availability = resolveStockAvailability(
                           product.inStock,
@@ -864,11 +990,16 @@ export default async function ProvidersPage({
                           <tr key={product.id} className="border-b border-border/60">
                             <td className="px-4 py-3 font-medium text-foreground">
                               <Link
-                                href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
+                                href={`/provider/${productProvider.slug}/${encodeURIComponent(product.productId)}`}
                                 className="hover:text-stock"
                               >
                                 {product.planName}
                               </Link>
+                              {allProvidersSelected && (
+                                <div className="mt-1 text-xs font-normal text-muted-foreground">
+                                  {productProvider.name}
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">
                               {categoryLabel(product.category)}
@@ -904,7 +1035,12 @@ export default async function ProvidersPage({
                               <OfferBadge tag={tag} />
                             </td>
                             <td className="px-4 py-3 font-mono text-stock">
-                              {formatPrice(product)}
+                              <div>{formatMonthlyEquivalent(product)}</div>
+                              {product.billingCycle !== 'monthly' && (
+                                <div className="text-xs text-muted-foreground/70">
+                                  {formatPrice(product)} {product.currency} billed
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <StockBadge
@@ -915,7 +1051,7 @@ export default async function ProvidersPage({
                             <td className="px-4 py-3">
                               {product.orderUrl && availability === 'in' ? (
                                 <a
-                                  href={getProductOrderUrl(selected.slug, product.productId)}
+                                  href={getProductOrderUrl(productProvider.slug, product.productId)}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-stock hover:text-stock"
@@ -924,7 +1060,7 @@ export default async function ProvidersPage({
                                 </a>
                               ) : availability !== 'in' ? (
                                 <a
-                                  href={botSubscribeUrl(selected.slug)}
+                                  href={botSubscribeUrl(productProvider.slug)}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-sky-600 hover:text-sky-500 dark:text-sky-300"

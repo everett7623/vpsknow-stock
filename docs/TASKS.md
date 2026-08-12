@@ -1420,7 +1420,7 @@ Discovery pipeline (4 layers):
 
 ### Approved Phase 4 Additions — Restock Monitoring
 
-Existing adapters enabled by seed: RackNerd, DediRock, BageVM, VMRack, GoMami, ColoCrossing, ChicagoVPS, LightLayer, SpeedyPage, BestVM, Neburst, HNCloud.
+Existing adapters enabled by seed: RackNerd, DediRock, Evoxt, BageVM, VMRack, GoMami, ColoCrossing, ChicagoVPS, LightLayer, SpeedyPage, BestVM, Neburst, HNCloud.
 
 The worker scheduler and production data migration enforce the same 20-provider implemented subset. Existing jobs for providers outside the allowlist are removed at worker startup and rejected before adapter execution.
 
@@ -1430,11 +1430,11 @@ LightLayer was validated separately after that baseline. Its adapter now discove
 
 Adapter pending: HighEndNetwork. All four public store categories currently return a Cloudflare managed challenge to direct HTTP, and an interactive browser remained on the verification page after waiting. The provider and affiliate records are present but inactive. Do not use the indexed origin alias: its TLS chain is untrusted and using it would bypass the site's security layer. Activation requires a stable official API/allowlisted endpoint or a supported browser check that can complete the challenge, followed by a 24-hour dry-run.
 
-Together with the 8 S-Tier providers above, these form the user-approved 21-provider monitoring allowlist. Providers outside this list must remain inactive even if an adapter exists.
+VMISS remains website-inactive and uses the TG-preview restock ingest path. Together with the remaining S-Tier providers, these form the user-approved 20-provider active monitoring allowlist. Providers outside this list must remain inactive even if an adapter exists.
 
 ### Inactive Adapter Candidates
 
-Clouvider, LiteServer, Crunchbits, ServaRICA, Evoxt, Alwyzon, Onidel, TierHive, Gullo's Hosting, WebHorizon, ZgoCloud.
+Clouvider, LiteServer, Crunchbits, ServaRICA, Alwyzon, Onidel, TierHive, Gullo's Hosting, WebHorizon, ZgoCloud.
 
 ### Directory Only (No Monitoring)
 

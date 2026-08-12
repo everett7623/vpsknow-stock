@@ -871,13 +871,47 @@ describe('provider adapters', () => {
   });
 
   it('parses Evoxt VPS plans and stock state', () => {
-    const category = { slug: 'vps-us', location: 'United States', url: 'https://evoxt.com/vps/' };
-    const results = new EvoxtAdapter().parse(fixture('evoxt.html'), category);
+    const results = new EvoxtAdapter().parse(fixture('evoxt.html'));
 
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]).toHaveProperty('provider', 'evoxt');
-    expect(results[0]).toHaveProperty('planName');
-    expect(results[0]).toHaveProperty('inStock');
+    expect(results).toHaveLength(4);
+    expect(results[0]).toMatchObject({
+      provider: 'evoxt',
+      productId: 'evoxt-standard-vm-0-5',
+      planName: 'VM-0.5 (Standard)',
+      location: 'Global Standard Regions',
+      lineType: 'Standard',
+      cpu: '1 vCPU',
+      ramMb: 512,
+      storageGb: 5,
+      storageType: 'NVMe',
+      bandwidthTb: 0.5,
+      price: 299,
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl: 'https://console.evoxt.com/deploy.php',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'evoxt-standard-vm-1',
+      inStock: false,
+    });
+    expect(results[2]).toMatchObject({
+      productId: 'evoxt-premium-vm-0-5',
+      location: 'Hong Kong / Osaka',
+      lineType: 'Premium',
+    });
+    expect(results[3]).toMatchObject({
+      productId: 'evoxt-premium-plus-vm-0-5',
+      location: 'Malaysia',
+      lineType: 'Premium Plus',
+    });
+  });
+
+  it('fails closed when the Evoxt pricing page loses all expected sections', async () => {
+    const adapter = new EvoxtAdapter();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html></html>')));
+
+    await expect(adapter.check()).rejects.toThrow('no parseable products');
+    vi.unstubAllGlobals();
   });
 
   it('parses Alwyzon product catalog', () => {
