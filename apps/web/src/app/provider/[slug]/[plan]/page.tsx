@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { StockBadge } from '@/components/stock-badge';
 import { getProductDetail, getProductOrderUrl } from '@/lib/data';
 import { formatDate, formatPrice, formatBandwidth, formatIpv4, resolveStockAvailability, botSubscribeUrl } from '@/lib/utils';
 import { PriceHistory } from './price-history';
@@ -102,31 +103,12 @@ export default async function ProductDetailPage({
         <header className="rounded-xl border border-border bg-card p-6">
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
             <div>
-              <div className="mb-3 flex items-center gap-3">
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    availability === 'in'
-                      ? 'bg-stock'
-                      : availability === 'unknown'
-                        ? 'bg-warning'
-                        : 'bg-danger'
-                  }`}
+              <div className="mb-3">
+                <StockBadge
+                  inStock={product.inStock}
+                  availabilitySource={product.availabilitySource}
+                  pulse={availability === 'in'}
                 />
-                <span
-                  className={
-                    availability === 'in'
-                      ? 'text-stock'
-                      : availability === 'unknown'
-                        ? 'text-warning'
-                        : 'text-danger'
-                  }
-                >
-                  {availability === 'in'
-                    ? 'In Stock'
-                    : availability === 'unknown'
-                      ? 'Stock Unknown'
-                      : 'Out of Stock'}
-                </span>
               </div>
               <h1 className="break-words text-2xl font-bold text-foreground sm:text-3xl">{product.planName}</h1>
               <p className="mt-2 text-muted-foreground">{product.location} · {product.provider.name}</p>

@@ -252,41 +252,61 @@ export async function getStockSummary(): Promise<
     website: string;
     tier: string;
     totalProducts: number;
+    /** Live-confirmed in stock (excludes catalog/unknown). */
     inStockCount: number;
+    unknownCount: number;
+    lastCheckedAt: Date | null;
   }>
 > {
   if (!hasDatabase) return [];
-  const [providers, inStockGroups] = await Promise.all([
-    prisma.provider.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        website: true,
-        tier: true,
-        _count: { select: { products: true } },
+  const providers = await prisma.provider.findMany({
+    where: { isActive: true },
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      website: true,
+      tier: true,
+      products: {
+        select: {
+          inStock: true,
+          availabilitySource: true,
+          lastCheckedAt: true,
+        },
       },
-    }),
-    prisma.product.groupBy({
-      by: ['providerId'],
-      where: { inStock: true, provider: { isActive: true } },
-      _count: { _all: true },
-    }),
-  ]);
-  const inStockByProvider = new Map(
-    inStockGroups.map((group) => [group.providerId, group._count._all]),
-  );
-  return providers.map((provider) => ({
-    id: provider.id,
-    slug: provider.slug,
-    name: provider.name,
-    website: provider.website,
-    tier: provider.tier,
-    totalProducts: provider._count.products,
-    inStockCount: inStockByProvider.get(provider.id) ?? 0,
-  }));
+    },
+  });
+
+  return providers.map((provider) => {
+    let inStockCount = 0;
+    let unknownCount = 0;
+    let lastCheckedAt: Date | null = null;
+
+    for (const product of provider.products) {
+      if (product.availabilitySource === 'catalog') {
+        unknownCount += 1;
+      } else if (product.inStock) {
+        inStockCount += 1;
+      }
+
+      if (product.lastCheckedAt && (!lastCheckedAt || product.lastCheckedAt > lastCheckedAt)) {
+        lastCheckedAt = product.lastCheckedAt;
+      }
+    }
+
+    return {
+      id: provider.id,
+      slug: provider.slug,
+      name: provider.name,
+      website: provider.website,
+      tier: provider.tier,
+      totalProducts: provider.products.length,
+      inStockCount,
+      unknownCount,
+      lastCheckedAt,
+    };
+  });
 }
 
 /**

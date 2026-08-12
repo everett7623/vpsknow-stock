@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { listRegions, resolveRegion } from '@vpsknow/shared';
+import { StockBadge } from '@/components/stock-badge';
 import {
   getProductOrderUrl,
   getProviderSiteUrl,
@@ -262,35 +263,6 @@ function planJunkRank(product: {
   const zeroPrice = (product.priceCents ?? 0) <= 0;
   if (zeroPrice || missingSpecs) return 1;
   return 0;
-}
-
-function StockBadge({
-  inStock,
-  availabilitySource,
-}: {
-  inStock: boolean;
-  availabilitySource?: string | null;
-}) {
-  const availability = resolveStockAvailability(inStock, availabilitySource);
-  if (availability === 'in') {
-    return (
-      <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-        In Stock
-      </span>
-    );
-  }
-  if (availability === 'unknown') {
-    return (
-      <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-        Unknown
-      </span>
-    );
-  }
-  return (
-    <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/60 dark:text-red-300">
-      Sold Out
-    </span>
-  );
 }
 
 function OfferBadge({ tag }: { tag: PlanOfferTag }) {
@@ -746,7 +718,116 @@ export default async function ProvidersPage({
                 </div>
               </form>
 
-              <div className="overflow-x-auto rounded-lg border border-border [-webkit-overflow-scrolling:touch]">
+              <div className="space-y-3 md:hidden">
+                {products.length === 0 ? (
+                  <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground/80">
+                    No plans match the current filters.
+                  </p>
+                ) : (
+                  products.map((product) => {
+                    const tag = detectPlanOfferTag(product.planName, product.productId);
+                    const availability = resolveStockAvailability(
+                      product.inStock,
+                      product.availabilitySource,
+                    );
+                    const ramLabel = product.ramMb
+                      ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${
+                          product.ramMb >= 1024 ? 'GB' : 'MB'
+                        }`
+                      : 'N/A';
+                    const storageLabel = product.storageGb
+                      ? `${product.storageGb} GB ${product.storageType || ''}`.trim()
+                      : 'N/A';
+
+                    return (
+                      <article
+                        key={product.id}
+                        className="rounded-lg border border-border bg-card p-4"
+                      >
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 space-y-1">
+                            <Link
+                              href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
+                              className="font-medium text-foreground hover:text-stock"
+                            >
+                              {product.planName}
+                            </Link>
+                            <p className="text-sm text-muted-foreground">
+                              {product.location} · {categoryLabel(product.category)}
+                              {product.lineType ? ` · ${lineTypeLabel(product.lineType)}` : ''}
+                            </p>
+                          </div>
+                          <StockBadge
+                            inStock={product.inStock}
+                            availabilitySource={product.availabilitySource}
+                          />
+                        </div>
+                        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <div>
+                            <dt className="inline text-muted-foreground/70">CPU </dt>
+                            <dd className="inline font-mono text-foreground/80">
+                              {product.cpu || 'N/A'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="inline text-muted-foreground/70">RAM </dt>
+                            <dd className="inline font-mono text-foreground/80">{ramLabel}</dd>
+                          </div>
+                          <div>
+                            <dt className="inline text-muted-foreground/70">Disk </dt>
+                            <dd className="inline font-mono text-foreground/80">{storageLabel}</dd>
+                          </div>
+                          <div>
+                            <dt className="inline text-muted-foreground/70">BW </dt>
+                            <dd className="inline font-mono text-foreground/80">
+                              {formatBandwidth(product.bandwidthTb, product.bandwidthLabel)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="inline text-muted-foreground/70">IPv4 </dt>
+                            <dd className="inline font-mono text-foreground/80">
+                              {formatIpv4(product.ipv4)}
+                            </dd>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <OfferBadge tag={tag} />
+                            <span className="font-mono text-stock">{formatPrice(product)}</span>
+                          </div>
+                        </dl>
+                        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                          {product.orderUrl && availability === 'in' ? (
+                            <a
+                              href={getProductOrderUrl(selected.slug, product.productId)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-medium text-stock hover:text-stock-strong"
+                            >
+                              Order
+                            </a>
+                          ) : availability !== 'in' ? (
+                            <a
+                              href={botSubscribeUrl(selected.slug)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sky-600 hover:text-sky-500 dark:text-sky-300"
+                            >
+                              Notify Me
+                            </a>
+                          ) : null}
+                          <Link
+                            href={`/provider/${selected.slug}/${encodeURIComponent(product.productId)}`}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Details
+                          </Link>
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto rounded-lg border border-border [-webkit-overflow-scrolling:touch] md:block">
                 <table className="min-w-[1180px] w-full text-sm">
                   <thead className="bg-card text-left text-muted-foreground">
                     <tr className="border-b border-border">

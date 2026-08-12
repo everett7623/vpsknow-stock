@@ -4,12 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { botSubscribeUrl } from '@/lib/utils';
 
 const links = [
   { href: '/', label: 'Home' },
   { href: '/providers', label: 'Stock' },
   { href: '/offers', label: 'Offers' },
 ] as const;
+
+function isActivePath(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function SiteHeader(): React.JSX.Element {
   const pathname = usePathname();
@@ -27,23 +33,38 @@ export function SiteHeader(): React.JSX.Element {
         <Link href="/" className="min-w-0 shrink transition-opacity hover:opacity-90">
           <BrandLogo size="sm" />
         </Link>
-        <nav className="flex min-w-0 items-center gap-2 overflow-x-auto text-sm text-muted-foreground [-webkit-overflow-scrolling:touch] sm:gap-4">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="shrink-0 rounded-md px-1.5 py-1 hover:text-foreground sm:px-0 sm:py-0"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="flex min-w-0 items-center gap-1.5 overflow-x-auto text-sm text-muted-foreground [-webkit-overflow-scrolling:touch] sm:gap-3">
+          {links.map((link) => {
+            const active = isActivePath(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={
+                  active
+                    ? 'shrink-0 rounded-md px-1.5 py-1 font-medium text-foreground sm:px-0 sm:py-0'
+                    : 'shrink-0 rounded-md px-1.5 py-1 hover:text-foreground sm:px-0 sm:py-0'
+                }
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+          <a
+            href={botSubscribeUrl()}
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground transition-colors hover:bg-stock-strong sm:text-sm"
+          >
+            Alerts
+          </a>
           <a
             href="https://t.me/vpsknow_offers"
             target="_blank"
             rel="noreferrer"
-            className="hidden shrink-0 text-stock hover:opacity-90 sm:inline"
+            className="hidden shrink-0 hover:text-foreground sm:inline"
           >
-            Telegram
+            Channel
           </a>
           <ThemeToggle />
         </nav>
