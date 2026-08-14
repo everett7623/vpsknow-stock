@@ -115,7 +115,7 @@ describe('discoverLetOffers', () => {
     vi.useRealTimers();
   });
 
-  it('establishes a first-run baseline without fetching historical offers', async () => {
+  it('establishes a first-run watermark without fetching historical offers', async () => {
     const redis = connection(null);
     const fetcher = vi.fn();
 
@@ -126,7 +126,13 @@ describe('discoverLetOffers', () => {
       skipped: 0,
       initialized: true,
     });
-    expect(redis.set).toHaveBeenCalledWith('let:first-run-at', expect.any(String), 'NX');
+    expect(redis.set).toHaveBeenCalledWith(
+      'offers:lowendtalk:watermark:v1',
+      expect.any(String),
+      'EX',
+      2_592_000,
+      'NX',
+    );
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -211,7 +217,25 @@ describe('discoverLetOffers', () => {
     expect(databaseMocks.create).not.toHaveBeenCalled();
   });
 
-  it('skips an untrusted offer without an offer-trigger title', async () => {
+  it('skips sub-cent hourly prices that round to zero cents', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLetOffer.mockReturnValue({ ...parsedOffer, priceCents: 0 });
+
+    await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
+      discovered: 1,
+      stored: 0,
+      pushed: 0,
+      skipped: 1,
+      initialized: false,
+    });
+    expect(databaseMocks.create).not.toHaveBeenCalled();
+  });
+
+  it('stores a priced server offer without a provider whitelist or title trigger', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi
       .fn()
@@ -226,15 +250,15 @@ describe('discoverLetOffers', () => {
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
       discovered: 1,
-      stored: 0,
+      stored: 1,
       pushed: 0,
-      skipped: 1,
+      skipped: 0,
       initialized: false,
     });
-    expect(databaseMocks.create).not.toHaveBeenCalled();
+    expect(databaseMocks.create).toHaveBeenCalledOnce();
   });
 
-  it('stores a trusted provider offer without an offer-trigger title', async () => {
+  it('stores another valid provider offer without an offer-trigger title', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi
       .fn()
@@ -439,7 +463,7 @@ describe('discoverLetOffers', () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
-  it('establishes independent baselines for all three sources without replaying history', async () => {
+  it('establishes independent watermarks for all three sources without replaying history', async () => {
     const redis = connection(null);
     const fetcher = vi.fn();
 
@@ -474,15 +498,25 @@ describe('discoverLetOffers', () => {
       },
       failedSources: [],
     });
-    expect(redis.set).toHaveBeenCalledWith('let:first-run-at', expect.any(String), 'NX');
     expect(redis.set).toHaveBeenCalledWith(
-      'offers:lowendbox:first-run-at',
+      'offers:lowendtalk:watermark:v1',
       expect.any(String),
+      'EX',
+      2_592_000,
       'NX',
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'offers:lowendspirit:first-run-at',
+      'offers:lowendbox:watermark:v1',
       expect.any(String),
+      'EX',
+      2_592_000,
+      'NX',
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      'offers:lowendspirit:watermark:v1',
+      expect.any(String),
+      'EX',
+      2_592_000,
       'NX',
     );
     expect(fetcher).not.toHaveBeenCalled();
@@ -636,13 +670,40 @@ describe('discoverLetOffers', () => {
     });
   });
 
-  it('does not replay offers older than the recovery window', async () => {
+  it('processes offers older than six hours when the source watermark has not advanced', async () => {
     const redis = connection('2026-07-20T00:00:00.000Z');
     const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
     parserMocks.parseLetRss.mockReturnValue([
       {
         ...discussion,
         postedAt: new Date('2026-07-21T06:29:59.000Z'),
+        contentHtml: '<p>KVM VPS from $12/year.</p>',
+      },
+    ]);
+
+    await expect(discoverLetOffers(redis, fetcher, disabledNotifications)).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledOnce();
+    expect(redis.set).toHaveBeenCalledWith(
+      'offers:lowendtalk:watermark:v1',
+      '2026-07-21T12:30:00.000Z',
+      'EX',
+      2_592_000,
+    );
+  });
+
+  it('does not replay offers older than the watermark overlap', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
+    parserMocks.parseLetRss.mockReturnValue([
+      {
+        ...discussion,
+        postedAt: new Date('2026-07-21T10:44:59.000Z'),
         contentHtml: '<p>KVM VPS from $12/year.</p>',
       },
     ]);
@@ -655,6 +716,12 @@ describe('discoverLetOffers', () => {
       initialized: false,
     });
     expect(databaseMocks.findUnique).not.toHaveBeenCalled();
+    expect(redis.set).toHaveBeenCalledWith(
+      'offers:lowendtalk:watermark:v1',
+      '2026-07-21T12:30:00.000Z',
+      'EX',
+      2_592_000,
+    );
   });
 
   it('skips one unavailable detail without aborting the remaining source entries', async () => {
@@ -682,6 +749,7 @@ describe('discoverLetOffers', () => {
       initialized: false,
     });
     expect(databaseMocks.create).toHaveBeenCalledOnce();
+    expect(redis.set).not.toHaveBeenCalled();
   });
 
   it('does not fetch an external feed entry whose URL is outside its source domain', async () => {
@@ -715,6 +783,26 @@ describe('discoverLetOffers', () => {
     expect(databaseMocks.findUnique).not.toHaveBeenCalled();
   });
 
+  it('retains the watermark when one of multiple source feeds fails', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('', 503));
+    parserMocks.parseLowEndBoxRss.mockReturnValueOnce([]);
+
+    await expect(
+      discoverLowEndBoxOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 0,
+      stored: 0,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+
   it('leaves a newly stored offer eligible for retry when Telegram delivery fails', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi
@@ -732,5 +820,6 @@ describe('discoverLetOffers', () => {
     );
     expect(databaseMocks.create).toHaveBeenCalledOnce();
     expect(databaseMocks.update).not.toHaveBeenCalled();
+    expect(redis.set).not.toHaveBeenCalled();
   });
 });

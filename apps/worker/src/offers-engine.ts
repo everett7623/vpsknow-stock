@@ -20,7 +20,13 @@ type DiscoveredOfferSource = Extract<OfferSource, 'lowendtalk' | 'lowendbox' | '
 
 interface RedisConnection {
   get(key: string): Promise<string | null>;
-  set(key: string, value: string, mode: 'NX'): Promise<string | null>;
+  set(
+    key: string,
+    value: string,
+    expirationMode: 'EX',
+    ttlSeconds: number,
+    mode?: 'NX',
+  ): Promise<string | null>;
 }
 
 interface FetchResponse {
@@ -50,7 +56,7 @@ interface PushableOffer {
 interface OfferSourceConfig {
   id: DiscoveredOfferSource;
   label: string;
-  baselineKey: string;
+  watermarkKey: string;
   feedUrls: readonly string[];
   parseFeed: (body: string) => LetDiscussion[];
   parseDetail: (title: string, body: string, author: string) => ParsedLetOffer;
@@ -86,7 +92,7 @@ export interface MultiSourceOfferDiscoverySummary extends OfferDiscoverySummary 
 const LOWENDTALK_SOURCE: OfferSourceConfig = {
   id: 'lowendtalk',
   label: 'LowEndTalk',
-  baselineKey: 'let:first-run-at',
+  watermarkKey: 'offers:lowendtalk:watermark:v1',
   feedUrls: ['https://lowendtalk.com/categories/offers/feeds.rss'],
   parseFeed: parseLetRss,
   parseDetail: parseLetOffer,
@@ -101,7 +107,7 @@ const LOWENDTALK_SOURCE: OfferSourceConfig = {
 const LOWENDBOX_SOURCE: OfferSourceConfig = {
   id: 'lowendbox',
   label: 'LowEndBox',
-  baselineKey: 'offers:lowendbox:first-run-at',
+  watermarkKey: 'offers:lowendbox:watermark:v1',
   feedUrls: [
     'https://lowendbox.com/category/virtual-servers/feed/',
     'https://lowendbox.com/category/dedicated-servers/feed/',
@@ -115,7 +121,7 @@ const LOWENDBOX_SOURCE: OfferSourceConfig = {
 const LOWENDSPIRIT_SOURCE: OfferSourceConfig = {
   id: 'lowendspirit',
   label: 'LowEndSpirit',
-  baselineKey: 'offers:lowendspirit:first-run-at',
+  watermarkKey: 'offers:lowendspirit:watermark:v1',
   feedUrls: [
     'https://lowendspirit.com/categories/vps/feed.rss',
     'https://lowendspirit.com/categories/dedicated-server/feed.rss',
@@ -131,14 +137,20 @@ const SOURCE_BY_ID = new Map<DiscoveredOfferSource, OfferSourceConfig>(
   OFFER_SOURCES.map((source) => [source.id, source]),
 );
 
-const TRUSTED_PROVIDERS = new Set(['bandwagonhost', 'buyvm', 'dmit', 'greencloudvps']);
-const OFFER_TITLE_PATTERN =
-  /\b(limited|flash|restock|stock|sale|special|deals?|offers?|promo(?:tion)?|discount|off)\b/i;
 const EXCLUDED_OFFER_PATTERN =
   /\b(shared hosting|domain|email|ssl|service transfer|wtb|free proxy|vpn)\b/i;
 const SERVER_OFFER_PATTERN =
   /\b(vps|vds|kvm|virtual (?:private )?server|dedicated server|storage (?:vps|server)|cloud server)\b/i;
-const OFFER_MAX_AGE_MS = 6 * 60 * 60 * 1_000;
+const OFFER_CATEGORIES = new Set(['vps', 'vds', 'nat_vps', 'dedicated', 'storage']);
+const OFFER_SCAN_OVERLAP_MS = 15 * 60 * 1_000;
+const OFFER_WATERMARK_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+type OfferEligibilityFailure =
+  | 'missing_category'
+  | 'unsupported_category'
+  | 'missing_price'
+  | 'invalid_price'
+  | 'excluded_title';
 
 function defaultDependencies(): OfferDiscoveryDependencies {
   return {
@@ -159,25 +171,19 @@ function emptySummary(initialized: boolean): OfferDiscoverySummary {
   return { discovered: 0, stored: 0, pushed: 0, skipped: 0, initialized };
 }
 
-function isEligible(
-  source: DiscoveredOfferSource,
+function eligibilityFailure(
   title: string,
-  provider: string | null,
   category: string | null,
   priceCents: number | null,
-): boolean {
-  if (
-    !category ||
-    !['vps', 'vds', 'nat_vps', 'dedicated', 'storage'].includes(category) ||
-    priceCents === null
-  ) {
-    return false;
+): OfferEligibilityFailure | null {
+  if (!category) return 'missing_category';
+  if (!OFFER_CATEGORIES.has(category)) return 'unsupported_category';
+  if (priceCents === null) return 'missing_price';
+  if (priceCents <= 0) return 'invalid_price';
+  if (EXCLUDED_OFFER_PATTERN.test(title) && !SERVER_OFFER_PATTERN.test(title)) {
+    return 'excluded_title';
   }
-
-  if (EXCLUDED_OFFER_PATTERN.test(title) && !SERVER_OFFER_PATTERN.test(title)) return false;
-  if (source !== 'lowendtalk') return true;
-
-  return TRUSTED_PROVIDERS.has(provider?.toLowerCase() || '') || OFFER_TITLE_PATTERN.test(title);
+  return null;
 }
 
 function priceSummary(offer: PushableOffer): string {
@@ -301,7 +307,7 @@ async function readSourceDiscussions(
   source: OfferSourceConfig,
   fetcher: Fetcher,
   discoveredAt: Date,
-): Promise<LetDiscussion[]> {
+): Promise<{ discussions: LetDiscussion[]; complete: boolean }> {
   const discussions = new Map<string, LetDiscussion>();
   const failures: string[] = [];
   let successfulFeeds = 0;
@@ -338,7 +344,10 @@ async function readSourceDiscussions(
         `${source.label} RSS HTTP ${rssStatus}; listing HTTP ${listingResponse.status}`,
       );
     }
-    return source.listingFallback.parse(await listingResponse.text(), discoveredAt);
+    return {
+      discussions: source.listingFallback.parse(await listingResponse.text(), discoveredAt),
+      complete: true,
+    };
   }
 
   if (successfulFeeds === 0) {
@@ -349,7 +358,10 @@ async function readSourceDiscussions(
     logger.warn({ source: source.id, failures }, 'Offer source completed with partial feed failures');
   }
 
-  return [...discussions.values()];
+  return {
+    discussions: [...discussions.values()],
+    complete: failures.length === 0,
+  };
 }
 
 async function discoverSourceOffers(
@@ -359,26 +371,31 @@ async function discoverSourceOffers(
   dependencies: OfferDiscoveryDependencies,
 ): Promise<OfferDiscoverySummary> {
   const now = dependencies.now?.() ?? new Date();
-  const firstRun = await connection.get(source.baselineKey);
-  if (!firstRun) {
-    await connection.set(source.baselineKey, now.toISOString(), 'NX');
+  const watermarkValue = await connection.get(source.watermarkKey);
+  if (!watermarkValue) {
+    await connection.set(
+      source.watermarkKey,
+      now.toISOString(),
+      'EX',
+      OFFER_WATERMARK_TTL_SECONDS,
+      'NX',
+    );
     return emptySummary(true);
   }
 
-  const baseline = new Date(firstRun);
-  if (Number.isNaN(baseline.getTime())) {
-    throw new Error(`${source.label} first-run baseline is invalid`);
+  const watermark = new Date(watermarkValue);
+  if (Number.isNaN(watermark.getTime())) {
+    throw new Error(`${source.label} discovery watermark is invalid`);
   }
 
-  const discussions = await readSourceDiscussions(source, fetcher, now);
-  const freshnessCutoff = new Date(now.getTime() - OFFER_MAX_AGE_MS);
-  const recentDiscussions = discussions.filter(
-    (item) => item.postedAt >= baseline && item.postedAt >= freshnessCutoff,
-  );
+  const sourceRead = await readSourceDiscussions(source, fetcher, now);
+  const scanCutoff = new Date(watermark.getTime() - OFFER_SCAN_OVERLAP_MS);
+  const recentDiscussions = sourceRead.discussions.filter((item) => item.postedAt >= scanCutoff);
   const summary: OfferDiscoverySummary = {
     ...emptySummary(false),
     discovered: recentDiscussions.length,
   };
+  let shouldAdvanceWatermark = sourceRead.complete;
 
   for (const discussion of recentDiscussions) {
     const existing = await prisma.offer.findUnique({
@@ -396,6 +413,7 @@ async function discoverSourceOffers(
       if (detailResponse.ok) {
         detailHtml = await detailResponse.text();
       } else if (!detailHtml) {
+        shouldAdvanceWatermark = false;
         logger.warn(
           {
             source: source.id,
@@ -423,9 +441,21 @@ async function discoverSourceOffers(
       detailHtml,
       discussion.author,
     );
-    if (
-      !isEligible(source.id, discussion.title, offer.provider, offer.category, offer.priceCents)
-    ) {
+    const failure = eligibilityFailure(discussion.title, offer.category, offer.priceCents);
+    if (failure) {
+      if (discussion.postedAt >= watermark) {
+        logger.info(
+          {
+            source: source.id,
+            sourceId: discussion.discussionId,
+            reason: failure,
+            category: offer.category,
+            priceCents: offer.priceCents,
+            title: discussion.title,
+          },
+          'Offer skipped by eligibility filter',
+        );
+      }
       summary.skipped++;
       continue;
     }
@@ -456,6 +486,20 @@ async function discoverSourceOffers(
     summary.stored++;
 
     if (await pushOffer(storedOffer, dependencies, true)) summary.pushed++;
+  }
+
+  if (shouldAdvanceWatermark) {
+    await connection.set(
+      source.watermarkKey,
+      now.toISOString(),
+      'EX',
+      OFFER_WATERMARK_TTL_SECONDS,
+    );
+  } else {
+    logger.warn(
+      { source: source.id, watermark: watermark.toISOString() },
+      'Offer discovery watermark retained for retry',
+    );
   }
 
   return summary;
