@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { parseLetOffer, type LetDiscussion, type ParsedLetOffer } from './lowendtalk.js';
+import { assertRssParseResult, loadRssDocument } from './rss.js';
 
 type ExternalSource = 'lowendbox' | 'lowendspirit';
 
@@ -29,8 +30,9 @@ function parseRss(
   source: ExternalSource,
   idFrom: (url: URL, guid: string) => string | null,
 ): LetDiscussion[] {
-  const $ = cheerio.load(xml, { xmlMode: true });
+  const $ = loadRssDocument(xml, source);
   const entries = new Map<string, LetDiscussion>();
+  const itemCount = $('item').length;
 
   $('item').each((_, item) => {
     const title = normalizeText($(item).find('title').first().text());
@@ -58,6 +60,7 @@ function parseRss(
     });
   });
 
+  assertRssParseResult(source, itemCount, entries.size);
   return [...entries.values()];
 }
 

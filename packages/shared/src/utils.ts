@@ -41,6 +41,7 @@ export function withJitter(intervalMs: number): number {
  */
 export function toMonthlyCents(amountCents: number, cycle: BillingCycle): number {
   const divisors: Record<BillingCycle, number> = {
+    hourly: 1 / 730,
     monthly: 1,
     quarterly: 3,
     'semi-annually': 6,

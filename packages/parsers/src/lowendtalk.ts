@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { BillingCycle, ProductCategory } from '@vpsknow/shared';
+import { assertRssParseResult, loadRssDocument } from './rss.js';
 
 export interface LetDiscussion {
   discussionId: string;
@@ -17,6 +18,8 @@ export interface ParsedLetOffer {
   category: ProductCategory | null;
   locations: string[];
   priceCents: number | null;
+  priceAmount: number | null;
+  priceText: string | null;
   currency: string | null;
   billingCycle: BillingCycle | null;
   couponCode: string | null;
@@ -30,12 +33,14 @@ export interface ParsedLetOffer {
 
 interface ParsedPrice {
   priceCents: number;
+  priceAmount: number;
+  priceText: string;
   currency: string;
   billingCycle: BillingCycle | null;
 }
 
 const PRICE_PATTERN =
-  /(?:(US\s*\$|USD|\$|EUR|€|GBP|£)\s*(\d+(?:[.,]\d{1,2})?)|(\d+(?:[.,]\d{1,2})?)\s*(US\s*\$|USD|\$|EUR|€|GBP|£))(?![A-Za-z])(?:\s*(?:\/|per\s+)?\s*(monthly|month|mo|quarterly|quarter|semi-annually|semiannually|annually|annual|yearly|year|yr|biennially|biennial|triennially|triennial))?/gi;
+  /(?:(US\s*\$|USD|\$|EUR|€|GBP|£)\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(US\s*\$|USD|\$|EUR|€|GBP|£))(?![A-Za-z0-9])(?:\s*(?:\/|per\s+)?\s*(hourly|hour|hr|monthly|month|mo|quarterly|quarter|semi-annually|semiannually|annually|annual|yearly|year|yr|biennially|biennial|triennially|triennial))?/gi;
 
 const LOCATION_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
   ['Los Angeles', /\b(?:Los Angeles|LAX)\b/i],
@@ -70,6 +75,7 @@ function normalizeText(value: string): string {
 
 function parseBillingCycle(value: string): BillingCycle | null {
   const normalized = value.toLowerCase();
+  if (/\b(hour|hourly|hr)\b/.test(normalized)) return 'hourly';
   if (/\b(month|monthly|mo)\b/.test(normalized)) return 'monthly';
   if (/\b(quarter|quarterly)\b/.test(normalized)) return 'quarterly';
   if (/\b(semi-annually|semiannually)\b/.test(normalized)) return 'semi-annually';
@@ -102,6 +108,11 @@ function currencyFromToken(token: string): string {
   return 'USD';
 }
 
+function formatPriceText(currency: string, amount: string): string {
+  const symbols: Record<string, string> = { USD: '$', EUR: '€', GBP: '£' };
+  return `${symbols[currency] || `${currency} `}${amount.replace(',', '.')}`;
+}
+
 function parsePrice(value: string): ParsedPrice | null {
   PRICE_PATTERN.lastIndex = 0;
 
@@ -122,10 +133,15 @@ function parsePrice(value: string): ParsedPrice | null {
     const numericPrice = Number.parseFloat(amount.replace(',', '.'));
     if (!Number.isFinite(numericPrice)) continue;
 
+    const currency = currencyFromToken(currencyToken);
     return {
       priceCents: Math.round(numericPrice * 100),
-      currency: currencyFromToken(currencyToken),
-      billingCycle: parseBillingCycle(match[5] || `${before} ${match[0]} ${after}`),
+      priceAmount: numericPrice,
+      priceText: formatPriceText(currency, amount),
+      currency,
+      billingCycle: match[5]
+        ? parseBillingCycle(match[5])
+        : parseBillingCycle(after) ?? parseBillingCycle(before),
     };
   }
 
@@ -150,8 +166,9 @@ function normalizeExternalUrl(href: string | null): string | null {
 }
 
 export function parseLetRss(xml: string): LetDiscussion[] {
-  const $ = cheerio.load(xml, { xmlMode: true });
+  const $ = loadRssDocument(xml, 'LowEndTalk');
   const discussions: LetDiscussion[] = [];
+  const itemCount = $('item').length;
 
   $('item').each((_, item) => {
     const title = normalizeText($(item).find('title').first().text());
@@ -175,6 +192,7 @@ export function parseLetRss(xml: string): LetDiscussion[] {
     });
   });
 
+  assertRssParseResult('LowEndTalk', itemCount, discussions.length);
   return discussions;
 }
 
@@ -249,6 +267,8 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
     category,
     locations,
     priceCents: parsedPrice?.priceCents ?? null,
+    priceAmount: parsedPrice?.priceAmount ?? null,
+    priceText: parsedPrice?.priceText ?? null,
     currency: parsedPrice?.currency ?? null,
     billingCycle: parsedPrice?.billingCycle ?? null,
     couponCode: couponMatch?.[1] ?? null,

@@ -158,6 +158,8 @@ model Offer {
   category       String?  // vps, dedicated, nat_vps, storage
   locations      String[] // array of location names
   priceCents     Int?
+  priceAmount    Float?
+  priceText      String?
   currency       String?
   billingCycle   String?
   couponCode     String?
@@ -169,9 +171,12 @@ model Offer {
   isPreorder     Boolean  @default(false)
   confidence     Float    @default(0)
   pushed         Boolean  @default(false)
+  subscriberDeliveriesQueued Boolean @default(false)
   postedAt       DateTime?
   discoveredAt   DateTime @default(now())
   createdAt      DateTime @default(now())
+
+  subscriberDeliveries OfferSubscriberDelivery[]
 
   @@index([source, discoveredAt])
   @@index([pushed, confidence])
@@ -199,7 +204,33 @@ model Subscription {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  offerDeliveries OfferSubscriberDelivery[]
+
   @@index([isActive, mutedUntil])
   @@index([lastNotifiedAt])
   @@map("subscriptions")
+}
+
+model OfferSubscriberDelivery {
+  id             String    @id @default(cuid())
+  offerId        String
+  subscriptionId String
+  content        String
+  status         String    @default("pending") // pending, sending, sent, failed, cancelled
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime  @default(now())
+  lastAttemptAt  DateTime?
+  sentAt         DateTime?
+  messageId      Int?
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  offer        Offer        @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, subscriptionId])
+  @@index([status, nextAttemptAt])
+  @@index([subscriptionId, status])
+  @@map("offer_subscriber_deliveries")
 }

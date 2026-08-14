@@ -24,6 +24,7 @@ const parserMocks = vi.hoisted(() => ({
 }));
 const subscriberMocks = vi.hoisted(() => ({
   notifyOfferSubscribers: vi.fn(),
+  retryPendingOfferNotifications: vi.fn(),
 }));
 
 vi.mock('@vpsknow/database', () => ({
@@ -38,7 +39,7 @@ vi.mock('@vpsknow/database', () => ({
   },
 }));
 vi.mock('@vpsknow/parsers', () => parserMocks);
-vi.mock('./subscriber-notifications.js', () => subscriberMocks);
+vi.mock('./offer-subscriber-deliveries.js', () => subscriberMocks);
 
 const discussion = {
   discussionId: '12345',
@@ -54,6 +55,8 @@ const parsedOffer = {
   category: 'vps',
   locations: ['Los Angeles'],
   priceCents: 1200,
+  priceAmount: 12,
+  priceText: '$12',
   currency: 'USD',
   billingCycle: 'annually',
   couponCode: 'FLASH26',
@@ -72,6 +75,7 @@ const storedOffer = {
   threadUrl: discussion.url,
   postedAt: discussion.postedAt,
   pushed: false,
+  subscriberDeliveriesQueued: false,
 };
 
 const sendMessage = vi.fn<OfferDiscoveryDependencies['sendMessage']>();
@@ -103,6 +107,7 @@ describe('discoverLetOffers', () => {
     );
     sendMessage.mockResolvedValue(1001);
     subscriberMocks.notifyOfferSubscribers.mockResolvedValue(undefined);
+    subscriberMocks.retryPendingOfferNotifications.mockResolvedValue(undefined);
     parserMocks.parseLetListing.mockReturnValue([discussion]);
     parserMocks.parseLetRss.mockReturnValue([discussion]);
     parserMocks.parseLetOffer.mockReturnValue(parsedOffer);
@@ -139,7 +144,11 @@ describe('discoverLetOffers', () => {
   it('skips an existing discussion ID without fetching its detail page', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
-    databaseMocks.findUnique.mockResolvedValue({ ...storedOffer, pushed: true });
+    databaseMocks.findUnique.mockResolvedValue({
+      ...storedOffer,
+      pushed: true,
+      subscriberDeliveriesQueued: true,
+    });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
       discovered: 1,
@@ -150,6 +159,7 @@ describe('discoverLetOffers', () => {
     });
     expect(fetcher).toHaveBeenCalledOnce();
     expect(databaseMocks.create).not.toHaveBeenCalled();
+    expect(subscriberMocks.notifyOfferSubscribers).not.toHaveBeenCalled();
   });
 
   it('stores a valid newly discovered offer using its discussion ID', async () => {
@@ -217,13 +227,44 @@ describe('discoverLetOffers', () => {
     expect(databaseMocks.create).not.toHaveBeenCalled();
   });
 
-  it('skips sub-cent hourly prices that round to zero cents', async () => {
+  it('stores sub-cent hourly prices using their positive parsed amount', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(response('<rss />'))
       .mockResolvedValueOnce(response('<article />'));
-    parserMocks.parseLetOffer.mockReturnValue({ ...parsedOffer, priceCents: 0 });
+    parserMocks.parseLetOffer.mockReturnValue({
+      ...parsedOffer,
+      priceCents: 0,
+      priceAmount: 0.000135,
+      priceText: '$0.000135',
+      billingCycle: 'hourly',
+    });
+
+    await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ priceAmount: 0.000135, priceText: '$0.000135' }),
+    });
+  });
+
+  it('still rejects an actual zero-price parser result', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLetOffer.mockReturnValue({
+      ...parsedOffer,
+      priceCents: 0,
+      priceAmount: 0,
+      priceText: '$0',
+    });
 
     await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
       discovered: 1,
@@ -355,35 +396,28 @@ describe('discoverLetOffers', () => {
     expect(databaseMocks.create).toHaveBeenCalledOnce();
   });
 
-  it('falls back to the HTML listing when RSS is unavailable', async () => {
+  it('retains the watermark when RSS is unavailable instead of using an un-timestamped listing', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(response('', 503))
-      .mockResolvedValueOnce(response('<html />'))
-      .mockResolvedValueOnce(response('<article />'));
-
-    await expect(discoverLetOffers(redis, fetcher)).resolves.toEqual({
-      discovered: 1,
-      stored: 1,
-      pushed: 0,
-      skipped: 0,
-      initialized: false,
-    });
-    expect(parserMocks.parseLetListing).toHaveBeenCalledOnce();
-    expect(fetcher).toHaveBeenCalledTimes(3);
-  });
-
-  it('propagates failures when RSS and the HTML listing are unavailable', async () => {
-    const redis = connection('2026-07-21T11:00:00.000Z');
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(response('', 503))
-      .mockResolvedValueOnce(response('', 502));
+    const fetcher = vi.fn().mockResolvedValueOnce(response('', 503));
 
     await expect(discoverLetOffers(redis, fetcher)).rejects.toThrow(
-      'LowEndTalk RSS HTTP 503; listing HTTP 502',
+      'LowEndTalk feeds unavailable: https://lowendtalk.com/categories/offers/feeds.rss HTTP 503',
     );
+    expect(parserMocks.parseLetListing).not.toHaveBeenCalled();
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+
+  it('does not advance the watermark when an RSS parser rejects a challenge page', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi.fn().mockResolvedValueOnce(response('<html>challenge</html>'));
+    parserMocks.parseLetRss.mockImplementationOnce(() => {
+      throw new Error('LowEndTalk response is not an RSS document');
+    });
+
+    await expect(discoverLetOffers(redis, fetcher)).rejects.toThrow(
+      'LowEndTalk feeds unavailable: https://lowendtalk.com/categories/offers/feeds.rss parse failed: LowEndTalk response is not an RSS document',
+    );
+    expect(redis.set).not.toHaveBeenCalled();
   });
 
   it('sends a new offer to the offers channel and records the delivery', async () => {
@@ -567,6 +601,34 @@ describe('discoverLetOffers', () => {
     });
   });
 
+  it('continues with another feed after one LowEndBox feed request fails', async () => {
+    const lowEndBoxDiscussion = {
+      ...discussion,
+      discussionId: 'lowendbox:53296',
+      url: 'https://lowendbox.com/blog/affordable-vps-plan/',
+      contentHtml: '<p>ExampleHost KVM VPS from $12/year.</p>',
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('request timed out'))
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    parserMocks.parseLowEndBoxRss.mockReturnValueOnce([lowEndBoxDiscussion]);
+
+    await expect(
+      discoverLowEndBoxOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(databaseMocks.create).toHaveBeenCalledOnce();
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+
   it('falls back to LowEndBox feed content when the detail page is unavailable', async () => {
     const lowEndBoxDiscussion = {
       ...discussion,
@@ -580,6 +642,38 @@ describe('discoverLetOffers', () => {
       .mockResolvedValueOnce(response('<rss />'))
       .mockResolvedValueOnce(response('<rss />'))
       .mockResolvedValueOnce(response('', 503));
+    parserMocks.parseLowEndBoxRss
+      .mockReturnValueOnce([lowEndBoxDiscussion])
+      .mockReturnValueOnce([]);
+
+    await expect(
+      discoverLowEndBoxOffers(redis, fetcher, disabledNotifications),
+    ).resolves.toEqual({
+      discovered: 1,
+      stored: 1,
+      pushed: 0,
+      skipped: 0,
+      initialized: false,
+    });
+    expect(parserMocks.parseLowEndBoxOffer).toHaveBeenCalledWith(
+      lowEndBoxDiscussion.title,
+      lowEndBoxDiscussion.contentHtml,
+    );
+  });
+
+  it('uses LowEndBox feed content when the detail request throws', async () => {
+    const lowEndBoxDiscussion = {
+      ...discussion,
+      discussionId: 'lowendbox:53296',
+      url: 'https://lowendbox.com/blog/affordable-vps-plan/',
+      contentHtml: '<p>ExampleHost KVM VPS from $12/year.</p>',
+    };
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockRejectedValueOnce(new Error('request timed out'));
     parserMocks.parseLowEndBoxRss
       .mockReturnValueOnce([lowEndBoxDiscussion])
       .mockReturnValueOnce([]);
@@ -819,7 +913,32 @@ describe('discoverLetOffers', () => {
       'Telegram unavailable',
     );
     expect(databaseMocks.create).toHaveBeenCalledOnce();
-    expect(databaseMocks.update).not.toHaveBeenCalled();
+    expect(databaseMocks.update).toHaveBeenCalledWith({
+      where: { id: 'offer-1' },
+      data: { subscriberDeliveriesQueued: true },
+    });
+    expect(databaseMocks.update).not.toHaveBeenCalledWith({
+      where: { id: 'offer-1' },
+      data: { pushed: true },
+    });
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+
+  it('does not mark subscriber deliveries queued when outbox creation fails', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response('<rss />'))
+      .mockResolvedValueOnce(response('<article />'));
+    subscriberMocks.notifyOfferSubscribers.mockRejectedValueOnce(new Error('outbox unavailable'));
+
+    await expect(
+      discoverLetOffers(redis, fetcher, disabledNotifications),
+    ).rejects.toThrow('outbox unavailable');
+    expect(databaseMocks.update).not.toHaveBeenCalledWith({
+      where: { id: 'offer-1' },
+      data: { subscriberDeliveriesQueued: true },
+    });
     expect(redis.set).not.toHaveBeenCalled();
   });
 });

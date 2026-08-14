@@ -169,6 +169,43 @@ describe('LowEndTalk parsers', () => {
     });
   });
 
+  it('preserves sub-cent hourly prices instead of truncating them to zero', () => {
+    const offer = parseLetOffer(
+      'TierHive hourly VPS from $0.000135/hour',
+      '<article>KVM VPS billed hourly.</article>',
+      'TierHive',
+    );
+
+    expect(offer).toMatchObject({
+      priceCents: 0,
+      priceAmount: 0.000135,
+      priceText: '$0.000135',
+      currency: 'USD',
+      billingCycle: 'hourly',
+    });
+  });
+
+  it('prefers a billing cycle after the price over unrelated timing text before it', () => {
+    const offer = parseLetOffer(
+      '[UK] VPS offer',
+      '<article>24 Hour Activation. £7.40 GBP / $9.98 per month.</article>',
+      'xHosts',
+    );
+
+    expect(offer).toMatchObject({
+      priceAmount: 7.4,
+      priceText: '£7.40',
+      currency: 'GBP',
+      billingCycle: 'monthly',
+    });
+  });
+
+  it('rejects non-RSS challenge responses before parsing items', () => {
+    expect(() => parseLetRss('<html><title>Just a moment...</title></html>')).toThrow(
+      'LowEndTalk response is not an RSS document',
+    );
+  });
+
   it('keeps unavailable structured fields null instead of fabricating data', () => {
     const offer = parseLetOffer(
       'General announcement',

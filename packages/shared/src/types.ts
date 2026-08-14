@@ -1,4 +1,5 @@
 export type BillingCycle =
+  | 'hourly'
   | 'monthly'
   | 'quarterly'
   | 'semi-annually'

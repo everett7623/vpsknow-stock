@@ -40,7 +40,15 @@ function offerFilters(searchParams: SearchParams): OfferFilters {
   };
 }
 
-function formatPrice(priceCents: number | null, currency: string | null, billingCycle: string | null): string {
+function formatPrice(
+  priceCents: number | null,
+  priceText: string | null,
+  currency: string | null,
+  billingCycle: string | null,
+): string {
+  if (priceText?.trim()) {
+    return `${priceText.trim()}${billingCycle ? ` / ${billingCycle}` : ''}`;
+  }
   if (priceCents === null || !currency) return 'Price unavailable';
   return `${currency} ${(priceCents / 100).toFixed(2)}${billingCycle ? ` / ${billingCycle}` : ''}`;
 }
@@ -172,7 +180,7 @@ export default async function OffersPage({
                 <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-muted-foreground/80">Price</p>
-                    <p className="font-mono text-stock">{formatPrice(offer.priceCents, offer.currency, offer.billingCycle)}</p>
+                    <p className="font-mono text-stock">{formatPrice(offer.priceCents, offer.priceText, offer.currency, offer.billingCycle)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground/80">Locations</p>

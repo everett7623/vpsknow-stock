@@ -1,6 +1,5 @@
 import { prisma } from '@vpsknow/database';
 import {
-  parseLetListing,
   parseLetOffer,
   parseLetRss,
   parseLowEndBoxOffer,
@@ -12,7 +11,10 @@ import {
 import type { OfferSource } from '@vpsknow/shared';
 import { formatOfferMessage, sendChannelMessage } from '@vpsknow/telegram';
 import pino from 'pino';
-import { notifyOfferSubscribers } from './subscriber-notifications.js';
+import {
+  notifyOfferSubscribers,
+  retryPendingOfferNotifications,
+} from './offer-subscriber-deliveries.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
@@ -44,6 +46,8 @@ interface PushableOffer {
   category: string | null;
   locations: string[];
   priceCents: number | null;
+  priceAmount: number | null;
+  priceText: string | null;
   currency: string | null;
   billingCycle: string | null;
   couponCode: string | null;
@@ -51,6 +55,7 @@ interface PushableOffer {
   threadUrl: string | null;
   postedAt: Date | null;
   pushed: boolean;
+  subscriberDeliveriesQueued: boolean;
 }
 
 interface OfferSourceConfig {
@@ -62,10 +67,6 @@ interface OfferSourceConfig {
   parseDetail: (title: string, body: string, author: string) => ParsedLetOffer;
   validHosts: readonly string[];
   validPath: RegExp;
-  listingFallback?: {
-    url: string;
-    parse: (body: string, discoveredAt: Date) => LetDiscussion[];
-  };
 }
 
 type Fetcher = (url: string, init: RequestInit) => Promise<FetchResponse>;
@@ -98,10 +99,6 @@ const LOWENDTALK_SOURCE: OfferSourceConfig = {
   parseDetail: parseLetOffer,
   validHosts: ['lowendtalk.com', 'www.lowendtalk.com'],
   validPath: /^\/discussion\/\d+(?:\/|$)/,
-  listingFallback: {
-    url: 'https://lowendtalk.com/categories/offers',
-    parse: parseLetListing,
-  },
 };
 
 const LOWENDBOX_SOURCE: OfferSourceConfig = {
@@ -175,11 +172,12 @@ function eligibilityFailure(
   title: string,
   category: string | null,
   priceCents: number | null,
+  priceAmount: number | null,
 ): OfferEligibilityFailure | null {
   if (!category) return 'missing_category';
   if (!OFFER_CATEGORIES.has(category)) return 'unsupported_category';
-  if (priceCents === null) return 'missing_price';
-  if (priceCents <= 0) return 'invalid_price';
+  if (priceCents === null || priceAmount === null) return 'missing_price';
+  if (priceAmount <= 0) return 'invalid_price';
   if (EXCLUDED_OFFER_PATTERN.test(title) && !SERVER_OFFER_PATTERN.test(title)) {
     return 'excluded_title';
   }
@@ -187,6 +185,7 @@ function eligibilityFailure(
 }
 
 function priceSummary(offer: PushableOffer): string {
+  if (offer.priceText?.trim()) return offer.priceText.trim();
   if (offer.priceCents === null) return 'Price unavailable';
   const symbols: Record<string, string> = { USD: '$', EUR: '€', GBP: '£' };
   const currency = offer.currency || 'USD';
@@ -206,6 +205,7 @@ function categorySummary(category: string | null): string {
 
 function billingSummary(billingCycle: string | null): string {
   const labels: Record<string, string> = {
+    hourly: 'hour',
     monthly: 'month',
     quarterly: 'quarter',
     'semi-annually': '6 months',
@@ -253,7 +253,6 @@ async function pushOffer(
   dependencies: OfferDiscoveryDependencies,
   notifySubscribers = false,
 ): Promise<boolean> {
-  if (offer.pushed) return false;
   const originalUrl = originalOfferUrl(offer);
 
   const message = formatOfferMessage({
@@ -270,7 +269,7 @@ async function pushOffer(
   });
   let channelPushed = false;
   let channelError: unknown;
-  if (dependencies.offersChannelId) {
+  if (dependencies.offersChannelId && !offer.pushed) {
     try {
       const messageId = await dependencies.sendMessage(dependencies.offersChannelId, message, {
         disableWebPagePreview: true,
@@ -296,8 +295,12 @@ async function pushOffer(
     }
   }
 
-  if (notifySubscribers) {
+  if (notifySubscribers && !offer.subscriberDeliveriesQueued) {
     await notifyOfferSubscribers(offer, message, logger);
+    await prisma.offer.update({
+      where: { id: offer.id },
+      data: { subscriberDeliveriesQueued: true },
+    });
   }
   if (channelError) throw channelError;
   return channelPushed;
@@ -306,21 +309,38 @@ async function pushOffer(
 async function readSourceDiscussions(
   source: OfferSourceConfig,
   fetcher: Fetcher,
-  discoveredAt: Date,
 ): Promise<{ discussions: LetDiscussion[]; complete: boolean }> {
   const discussions = new Map<string, LetDiscussion>();
   const failures: string[] = [];
   let successfulFeeds = 0;
 
   for (const feedUrl of source.feedUrls) {
-    const response = await fetcher(feedUrl, requestInit());
+    let response: FetchResponse;
+    try {
+      response = await fetcher(feedUrl, requestInit());
+    } catch (error) {
+      failures.push(
+        `${feedUrl} request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      continue;
+    }
     if (!response.ok) {
       failures.push(`${feedUrl} HTTP ${response.status}`);
       continue;
     }
 
+    let parsedDiscussions: LetDiscussion[];
+    try {
+      parsedDiscussions = source.parseFeed(await response.text());
+    } catch (error) {
+      failures.push(
+        `${feedUrl} parse failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      continue;
+    }
+
     successfulFeeds++;
-    for (const discussion of source.parseFeed(await response.text())) {
+    for (const discussion of parsedDiscussions) {
       const expectedPrefix = source.id === 'lowendtalk' ? null : `${source.id}:`;
       if (
         !isValidSourceUrl(source, discussion.url) ||
@@ -334,20 +354,6 @@ async function readSourceDiscussions(
       }
       discussions.set(discussion.discussionId, discussion);
     }
-  }
-
-  if (successfulFeeds === 0 && source.listingFallback) {
-    const listingResponse = await fetcher(source.listingFallback.url, requestInit());
-    if (!listingResponse.ok) {
-      const rssStatus = failures[0]?.match(/HTTP (\d+)$/)?.[1] ?? 'unknown';
-      throw new Error(
-        `${source.label} RSS HTTP ${rssStatus}; listing HTTP ${listingResponse.status}`,
-      );
-    }
-    return {
-      discussions: source.listingFallback.parse(await listingResponse.text(), discoveredAt),
-      complete: true,
-    };
   }
 
   if (successfulFeeds === 0) {
@@ -388,7 +394,7 @@ async function discoverSourceOffers(
     throw new Error(`${source.label} discovery watermark is invalid`);
   }
 
-  const sourceRead = await readSourceDiscussions(source, fetcher, now);
+  const sourceRead = await readSourceDiscussions(source, fetcher);
   const scanCutoff = new Date(watermark.getTime() - OFFER_SCAN_OVERLAP_MS);
   const recentDiscussions = sourceRead.discussions.filter((item) => item.postedAt >= scanCutoff);
   const summary: OfferDiscoverySummary = {
@@ -402,17 +408,43 @@ async function discoverSourceOffers(
       where: { sourceId: discussion.discussionId },
     });
     if (existing) {
-      if (await pushOffer(existing, dependencies)) summary.pushed++;
+      if (await pushOffer(existing, dependencies, true)) summary.pushed++;
       else summary.skipped++;
       continue;
     }
 
     let detailHtml = discussion.contentHtml ?? null;
     if (source.id === 'lowendbox' || !detailHtml) {
-      const detailResponse = await fetcher(discussion.url, requestInit());
-      if (detailResponse.ok) {
+      let detailResponse: FetchResponse | null = null;
+      try {
+        detailResponse = await fetcher(discussion.url, requestInit());
+      } catch (error) {
+        if (!detailHtml) {
+          shouldAdvanceWatermark = false;
+          logger.warn(
+            {
+              source: source.id,
+              sourceId: discussion.discussionId,
+              err: error,
+            },
+            'Skipping offer whose detail request failed and feed content is unavailable',
+          );
+          summary.skipped++;
+          continue;
+        }
+        logger.warn(
+          {
+            source: source.id,
+            sourceId: discussion.discussionId,
+            err: error,
+          },
+          'Using offer feed content after detail request failed',
+        );
+      }
+
+      if (detailResponse?.ok) {
         detailHtml = await detailResponse.text();
-      } else if (!detailHtml) {
+      } else if (detailResponse && !detailHtml) {
         shouldAdvanceWatermark = false;
         logger.warn(
           {
@@ -424,7 +456,7 @@ async function discoverSourceOffers(
         );
         summary.skipped++;
         continue;
-      } else {
+      } else if (detailResponse) {
         logger.warn(
           {
             source: source.id,
@@ -436,12 +468,27 @@ async function discoverSourceOffers(
       }
     }
 
+    if (!detailHtml) {
+      shouldAdvanceWatermark = false;
+      logger.warn(
+        { source: source.id, sourceId: discussion.discussionId },
+        'Skipping offer with unavailable detail content',
+      );
+      summary.skipped++;
+      continue;
+    }
+
     const offer = source.parseDetail(
       discussion.title,
       detailHtml,
       discussion.author,
     );
-    const failure = eligibilityFailure(discussion.title, offer.category, offer.priceCents);
+    const failure = eligibilityFailure(
+      discussion.title,
+      offer.category,
+      offer.priceCents,
+      offer.priceAmount,
+    );
     if (failure) {
       if (discussion.postedAt >= watermark) {
         logger.info(
@@ -470,6 +517,8 @@ async function discoverSourceOffers(
         category: offer.category,
         locations: offer.locations,
         priceCents: offer.priceCents,
+        priceAmount: offer.priceAmount,
+        priceText: offer.priceText,
         currency: offer.currency,
         billingCycle: offer.billingCycle,
         couponCode: offer.couponCode,
@@ -554,6 +603,8 @@ export async function discoverOffers(
       logger.error({ source: source.id, err: error }, 'Offer source discovery failed');
     }
   }
+
+  await retryPendingOfferNotifications(logger);
 
   if (summary.failedSources.length === OFFER_SOURCES.length) {
     throw new Error(`All offer sources failed: ${summary.failedSources.join(', ')}`);
