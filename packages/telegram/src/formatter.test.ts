@@ -4,7 +4,8 @@ import { formatOfferMessage, formatRestockMessage } from './formatter.js';
 
 const footer = [
   '🌐 stock.vpsknow.com',
-  '📢 @vpsknow_offers | 🤖 @vpsknow_stock_bot',
+  '📢 @vpsknow_offers',
+  '🤖 @vpsknow_stock_bot',
 ].join('\n');
 
 const stockResult: StockResult = {

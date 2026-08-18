@@ -3,7 +3,8 @@ import { allowedOfferSourceUrl } from '@vpsknow/shared';
 
 const MESSAGE_FOOTER = [
   '🌐 stock.vpsknow.com',
-  '📢 @vpsknow_offers | 🤖 @vpsknow_stock_bot',
+  '📢 @vpsknow_offers',
+  '🤖 @vpsknow_stock_bot',
 ];
 
 function hashtag(value: string): string | null {

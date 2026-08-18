@@ -448,7 +448,7 @@ describe('discoverLetOffers', () => {
     expect(message).not.toContain('View offer');
     expect(message).not.toContain('go.uukk.de');
     expect(message).toContain('🌐 stock.vpsknow.com');
-    expect(message).toContain('📢 @vpsknow_offers | 🤖 @vpsknow_stock_bot');
+    expect(message).toContain('📢 @vpsknow_offers\n🤖 @vpsknow_stock_bot');
     expect(databaseMocks.telegramMessageCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ channelId: '@vpsknow_offers', messageId: 1001 }),
     });
