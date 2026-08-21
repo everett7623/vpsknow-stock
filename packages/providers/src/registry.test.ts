@@ -35,6 +35,8 @@ const REQUIRED_PROVIDERS = [
   'bestvm',
   'neburst',
   'hncloud',
+  '666clouds',
+  'yunyoo',
 ] as const;
 
 describe('provider registry', () => {

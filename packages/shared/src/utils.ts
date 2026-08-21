@@ -1,6 +1,19 @@
 import { JITTER_FACTOR } from './constants.js';
 import type { BillingCycle } from './types.js';
 
+const CURRENCY_PREFIXES: Readonly<Record<string, string>> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  CAD: 'CA$',
+  CNY: 'CN¥',
+  JPY: 'JP¥',
+  AUD: 'A$',
+  NZD: 'NZ$',
+  HKD: 'HK$',
+  SGD: 'S$',
+};
+
 const ALLOWED_OFFER_SOURCE_HOSTS = new Set([
   'lowendtalk.com',
   'www.lowendtalk.com',
@@ -25,6 +38,16 @@ export function allowedOfferSourceUrl(value: string | null | undefined): string 
   } catch {
     return null;
   }
+}
+
+/**
+ * Return an unambiguous merchant-currency prefix for price display.
+ * Unknown ISO codes remain visible instead of being mislabeled as USD.
+ */
+export function currencyPrefix(currency: string | null | undefined): string {
+  const code = currency?.trim().toUpperCase();
+  if (!code) return '';
+  return CURRENCY_PREFIXES[code] ?? `${code} `;
 }
 
 /**

@@ -1,11 +1,11 @@
 import type { Product } from '@vpsknow/database';
+import { currencyPrefix } from '@vpsknow/shared';
 
 export function formatPrice(product: Product): string {
   const amount = (product.priceCents / 100).toFixed(2);
   const cycle = product.billingCycle;
-  const symbol = product.currency === 'EUR' ? '€' : product.currency === 'CNY' ? '¥' : '$';
   const suffix = cycle === 'monthly' ? 'mo' : cycle === 'annually' ? 'yr' : cycle;
-  return `${symbol}${amount}/${suffix}`;
+  return `${currencyPrefix(product.currency)}${amount}/${suffix}`;
 }
 
 const BILLING_MONTHS: Readonly<Record<string, number>> = {
@@ -25,8 +25,7 @@ export function monthlyEquivalentCents(product: Pick<Product, 'priceCents' | 'bi
 export function formatMonthlyEquivalent(
   product: Pick<Product, 'priceCents' | 'billingCycle' | 'currency'>,
 ): string {
-  const symbol = product.currency === 'EUR' ? '€' : product.currency === 'CNY' ? '¥' : '$';
-  return `${symbol}${(monthlyEquivalentCents(product) / 100).toFixed(2)} ${product.currency}/mo`;
+  return `${currencyPrefix(product.currency)}${(monthlyEquivalentCents(product) / 100).toFixed(2)} ${product.currency}/mo`;
 }
 
 export function formatDate(date: Date | string | null): string {

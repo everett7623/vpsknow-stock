@@ -379,6 +379,36 @@ async function main() {
     },
   });
 
+  const sixsixclouds = await prisma.provider.upsert({
+    where: { slug: '666clouds' },
+    update: {
+      name: '666Clouds',
+      website: 'https://www.666clouds.com',
+      tier: 'B',
+    },
+    create: {
+      slug: '666clouds',
+      name: '666Clouds',
+      website: 'https://www.666clouds.com',
+      tier: 'B',
+    },
+  });
+
+  const yunyoo = await prisma.provider.upsert({
+    where: { slug: 'yunyoo' },
+    update: {
+      name: 'YUNYOO',
+      website: 'https://yunyoo.cc',
+      tier: 'B',
+    },
+    create: {
+      slug: 'yunyoo',
+      name: 'YUNYOO',
+      website: 'https://yunyoo.cc',
+      tier: 'B',
+    },
+  });
+
   // Keep directory records and adapters, but only monitor the approved provider set.
   await prisma.provider.updateMany({ data: { isActive: false } });
   await prisma.provider.updateMany({
@@ -1113,6 +1143,18 @@ async function main() {
       targetUrl: 'https://billing.highendnetwork.com/aff.php?aff=68',
       shortUrl: 'https://go.uukk.de/highendnetwork',
     },
+    {
+      providerId: sixsixclouds.id,
+      slug: '666clouds',
+      targetUrl: 'https://www.666clouds.com/aff.php?aff=2071',
+      shortUrl: 'https://go.uukk.de/666clouds',
+    },
+    {
+      providerId: yunyoo.id,
+      slug: 'yunyoo',
+      targetUrl: 'https://yunyoo.cc/cart?aff=HYWEANDG',
+      shortUrl: 'https://go.uukk.de/yunyoo',
+    },
   ];
 
   for (const link of affiliateLinks) {
@@ -1128,7 +1170,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 32`);
+  console.log(`  Providers: 34`);
   console.log(`  Active allowlist: ${ACTIVE_PROVIDER_SLUGS.length}`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);

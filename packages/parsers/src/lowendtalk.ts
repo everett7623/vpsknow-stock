@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import type { BillingCycle, ProductCategory } from '@vpsknow/shared';
+import { currencyPrefix, type BillingCycle, type ProductCategory } from '@vpsknow/shared';
 import { assertRssParseResult, loadRssDocument } from './rss.js';
 
 export interface LetDiscussion {
@@ -40,7 +40,7 @@ interface ParsedPrice {
 }
 
 const PRICE_PATTERN =
-  /(?:(US\s*\$|USD|\$|EUR|€|GBP|£)\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(US\s*\$|USD|\$|EUR|€|GBP|£))(?![A-Za-z0-9])(?:\s*(?:\/|per\s+)?\s*(hourly|hour|hr|monthly|month|mo|quarterly|quarter|semi-annually|semiannually|annually|annual|yearly|year|yr|biennially|biennial|triennially|triennial))?/gi;
+  /(?:(US\s*\$|USD|CA\s*\$|C\s*\$|CAD|A\s*\$|AUD|NZ\s*\$|NZD|HK\s*\$|HKD|SG\s*\$|SGD|CN\s*[¥￥]|CNY|RMB|\$|EUR|€|GBP|£|JP\s*¥|JPY|[¥￥])\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(US\s*\$|USD|CA\s*\$|C\s*\$|CAD|A\s*\$|AUD|NZ\s*\$|NZD|HK\s*\$|HKD|SG\s*\$|SGD|CN\s*[¥￥]|CNY|RMB|\$|EUR|€|GBP|£|JP\s*¥|JPY|[¥￥]))(?![A-Za-z0-9])(?:\s*(?:\/|per\s+)?\s*(hourly|hour|hr|monthly|month|mo|quarterly|quarter|semi-annually|semiannually|annually|annual|yearly|year|yr|biennially|biennial|triennially|triennial))?/gi;
 
 const LOCATION_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
   ['Los Angeles', /\b(?:Los Angeles|LAX)\b/i],
@@ -105,12 +105,25 @@ function currencyFromToken(token: string): string {
   const normalized = token.replace(/\s+/g, '').toUpperCase();
   if (normalized === 'EUR' || token === '€') return 'EUR';
   if (normalized === 'GBP' || token === '£') return 'GBP';
+  if (normalized === 'CAD' || normalized === 'CA$' || normalized === 'C$') return 'CAD';
+  if (normalized === 'AUD' || normalized === 'A$') return 'AUD';
+  if (normalized === 'NZD' || normalized === 'NZ$') return 'NZD';
+  if (normalized === 'HKD' || normalized === 'HK$') return 'HKD';
+  if (normalized === 'SGD' || normalized === 'SG$' || normalized === 'S$') return 'SGD';
+  if (normalized === 'JPY' || normalized === 'JP¥') return 'JPY';
+  if (
+    normalized === 'CNY'
+    || normalized === 'RMB'
+    || normalized === 'CN¥'
+    || normalized === 'CN￥'
+    || token === '¥'
+    || token === '￥'
+  ) return 'CNY';
   return 'USD';
 }
 
 function formatPriceText(currency: string, amount: string): string {
-  const symbols: Record<string, string> = { USD: '$', EUR: '€', GBP: '£' };
-  return `${symbols[currency] || `${currency} `}${amount.replace(',', '.')}`;
+  return `${currencyPrefix(currency)}${amount.replace(',', '.')}`;
 }
 
 function parsePrice(value: string): ParsedPrice | null {

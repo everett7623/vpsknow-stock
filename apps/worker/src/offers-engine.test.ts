@@ -479,6 +479,26 @@ describe('discoverLetOffers', () => {
     expect(sendMessage).toHaveBeenCalledOnce();
   });
 
+  it('uses the stored merchant currency when price text is unavailable', async () => {
+    const redis = connection('2026-07-21T11:00:00.000Z');
+    const fetcher = vi.fn().mockResolvedValue(response('<rss />'));
+    databaseMocks.findUnique.mockResolvedValue({
+      ...storedOffer,
+      priceCents: 1600,
+      priceAmount: 16,
+      priceText: null,
+      currency: 'CAD',
+    });
+    const dependencies: OfferDiscoveryDependencies = {
+      ...disabledNotifications,
+      offersChannelId: '@vpsknow_offers',
+    };
+
+    await discoverLetOffers(redis, fetcher, dependencies);
+
+    expect(sendMessage.mock.calls[0]?.[1]).toContain('💰 Price: From CA$16.00/year');
+  });
+
   it('rejects a stored offer whose URL is not from its original source', async () => {
     const redis = connection('2026-07-21T11:00:00.000Z');
     const fetcher = vi.fn().mockResolvedValue(response('<rss />'));

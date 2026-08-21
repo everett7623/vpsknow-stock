@@ -1,5 +1,5 @@
 import type { StockResult } from '@vpsknow/providers';
-import { allowedOfferSourceUrl } from '@vpsknow/shared';
+import { allowedOfferSourceUrl, currencyPrefix } from '@vpsknow/shared';
 
 const MESSAGE_FOOTER = [
   '🌐 stock.vpsknow.com',
@@ -72,7 +72,7 @@ export function formatRestockMessage(
   shortUrl?: string,
   detectedAt: Date = new Date(),
 ): string {
-  const price = `$${(result.price / 100).toFixed(2)}/${result.billingCycle === 'monthly' ? 'mo' : result.billingCycle === 'annually' ? 'yr' : result.billingCycle}`;
+  const price = `${currencyPrefix(result.currency)}${(result.price / 100).toFixed(2)}/${result.billingCycle === 'monthly' ? 'mo' : result.billingCycle === 'annually' ? 'yr' : result.billingCycle}`;
 
   // 优先使用短链接,fallback 到原始链接
   const orderLink = shortUrl || result.orderUrl || '#';

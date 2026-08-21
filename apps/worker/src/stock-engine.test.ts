@@ -885,6 +885,13 @@ describe('product affiliate mapping', () => {
       '374',
       'https://bestvm.cloud/aff.php?aff=225&pid=374',
     ],
+    [
+      '666clouds',
+      '666clouds-214',
+      'https://www.666clouds.com/cart.php?a=add&pid=214',
+      '214',
+      'https://www.666clouds.com/aff.php?aff=2071&pid=214',
+    ],
   ])('maps %s to its verified product PID', (provider, productId, orderUrl, pid, expected) => {
     const extracted = extractWhmcsPid(provider, orderUrl, productId);
 
@@ -994,6 +1001,8 @@ describe('product affiliate mapping', () => {
     expect(generateAffiliateUrl('highendnetwork')).toBe(
       'https://billing.highendnetwork.com/aff.php?aff=68',
     );
+    expect(generateAffiliateUrl('666clouds')).toBe('https://www.666clouds.com/aff.php?aff=2071');
+    expect(generateAffiliateUrl('yunyoo')).toBe('https://yunyoo.cc/cart?aff=HYWEANDG');
   });
 
   it('merges the HNCloud referral parameter only into its official origin', () => {
@@ -1002,6 +1011,15 @@ describe('product affiliate mapping', () => {
     ).toBe('https://www.hncloud.com/product/cloud-vps?k=7940T0');
     expect(buildProductAffiliateUrl('hncloud', 'https://example.com/product/cloud-vps', null)).toBe(
       'https://example.com/product/cloud-vps',
+    );
+  });
+
+  it('merges the YUNYOO affiliate parameter into its official product URL', () => {
+    const orderUrl = 'https://yunyoo.cc/cart?action=configureproduct&pid=82';
+
+    expect(extractWhmcsPid('yunyoo', orderUrl, 'yunyoo-82')).toBeNull();
+    expect(buildProductAffiliateUrl('yunyoo', orderUrl, null)).toBe(
+      'https://yunyoo.cc/cart?action=configureproduct&pid=82&aff=HYWEANDG',
     );
   });
 

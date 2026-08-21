@@ -830,6 +830,7 @@ describe('provider adapters', () => {
     expect(results.length).toBeGreaterThan(0);
     expect(results[0]).toHaveProperty('provider', 'clouvider');
     expect(results[0]).toHaveProperty('planName');
+    expect(results[0]).toHaveProperty('currency', 'GBP');
     expect(results[0]).toHaveProperty('inStock');
   });
 

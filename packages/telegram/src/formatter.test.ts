@@ -48,6 +48,19 @@ describe('Telegram message formatters', () => {
     expect(message.endsWith(footer)).toBe(true);
   });
 
+  it.each([
+    ['USD', '$3.50/mo'],
+    ['EUR', '€3.50/mo'],
+    ['GBP', '£3.50/mo'],
+    ['CAD', 'CA$3.50/mo'],
+    ['CNY', 'CN¥3.50/mo'],
+    ['AED', 'AED 3.50/mo'],
+  ])('formats merchant currency %s without relabeling it as USD', (currency, expected) => {
+    const message = formatRestockMessage({ ...stockResult, currency });
+
+    expect(message).toContain(`└ Price: ${expected}`);
+  });
+
   it('formats optional VPS specifications with provider source units', () => {
     const message = formatRestockMessage(
       {

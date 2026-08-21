@@ -170,6 +170,28 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     originalUrl: 'https://billing.highendnetwork.com/aff.php?aff=68',
   },
 
+  '666clouds': {
+    provider: '666clouds',
+    affId: '2071',
+    urlTemplate: 'https://www.666clouds.com/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://666clouds.com/aff.php?aff=2071',
+  },
+
+  yunyoo: {
+    provider: 'yunyoo',
+    affId: 'HYWEANDG',
+    urlTemplate: 'https://yunyoo.cc/cart?aff={affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'aff',
+      allowedOrigins: ['https://yunyoo.cc'],
+    },
+    originalUrl: 'https://yunyoo.cc/cart?aff=HYWEANDG',
+  },
+
   // ========== A-Tier Providers ==========
 
   racknerd: {

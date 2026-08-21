@@ -88,8 +88,15 @@ export class ClouviderAdapter implements ProviderAdapter {
       const cores = Math.round(numberFrom(description, /(\d+(?:\.\d+)?)x?\s*(?:vCPU|vCores?|Cores?)/i));
       const bwTb = numberFrom(description, /(\d+(?:\.\d+)?)\s*TB\s+(?:BW|Bandwidth|Transfer)/i);
 
-      // detect GBP for UK location
-      const currency = /London|UK|£|GBP/i.test(category.location + pricing) ? 'GBP' : 'USD';
+      const currency = /£|\bGBP\b/i.test(pricing)
+        ? 'GBP'
+        : /€|\bEUR\b/i.test(pricing)
+          ? 'EUR'
+          : /(?:CA|C)\$|\bCAD\b/i.test(pricing)
+            ? 'CAD'
+            : /London|UK/i.test(category.location)
+              ? 'GBP'
+              : 'USD';
 
       results.push({
         provider: this.slug,

@@ -8,7 +8,7 @@ import {
   type LetDiscussion,
   type ParsedLetOffer,
 } from '@vpsknow/parsers';
-import type { OfferSource } from '@vpsknow/shared';
+import { currencyPrefix, type OfferSource } from '@vpsknow/shared';
 import { formatOfferMessage, sendChannelMessage } from '@vpsknow/telegram';
 import pino from 'pino';
 import {
@@ -187,9 +187,8 @@ function eligibilityFailure(
 function priceSummary(offer: PushableOffer): string {
   if (offer.priceText?.trim()) return offer.priceText.trim();
   if (offer.priceCents === null) return 'Price unavailable';
-  const symbols: Record<string, string> = { USD: '$', EUR: '€', GBP: '£' };
   const currency = offer.currency || 'USD';
-  return `${symbols[currency] || `${currency} `}${(offer.priceCents / 100).toFixed(2)}`;
+  return `${currencyPrefix(currency)}${(offer.priceCents / 100).toFixed(2)}`;
 }
 
 function categorySummary(category: string | null): string {

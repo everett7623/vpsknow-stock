@@ -169,6 +169,22 @@ describe('LowEndTalk parsers', () => {
     });
   });
 
+  it('preserves Canadian-dollar prices from the source offer', () => {
+    const offer = parseLetOffer(
+      'Toronto VPS from CA$16.00/month',
+      '<article>KVM VPS in Toronto.</article>',
+      'CanadaHost',
+    );
+
+    expect(offer).toMatchObject({
+      priceCents: 1600,
+      priceAmount: 16,
+      priceText: 'CA$16.00',
+      currency: 'CAD',
+      billingCycle: 'monthly',
+    });
+  });
+
   it('preserves sub-cent hourly prices instead of truncating them to zero', () => {
     const offer = parseLetOffer(
       'TierHive hourly VPS from $0.000135/hour',

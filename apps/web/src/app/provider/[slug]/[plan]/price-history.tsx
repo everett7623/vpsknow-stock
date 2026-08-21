@@ -1,3 +1,5 @@
+import { currencyPrefix } from '@vpsknow/shared';
+
 interface PricePoint {
   id: string;
   priceCents: number | null;
@@ -5,8 +7,7 @@ interface PricePoint {
 }
 
 function money(priceCents: number, currency: string): string {
-  const symbol = currency === 'EUR' ? '€' : currency === 'CNY' ? '¥' : '$';
-  return `${symbol}${(priceCents / 100).toFixed(2)}`;
+  return `${currencyPrefix(currency)}${(priceCents / 100).toFixed(2)}`;
 }
 
 export function PriceHistory({

@@ -32,6 +32,8 @@ import { SpeedyPageAdapter } from './adapters/speedypage.js';
 import { BestVMAdapter } from './adapters/bestvm.js';
 import { NeburstAdapter } from './adapters/neburst.js';
 import { HNCloudAdapter } from './adapters/hncloud.js';
+import { SixSixCloudsAdapter } from './adapters/666clouds.js';
+import { YunyooAdapter } from './adapters/yunyoo.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -67,6 +69,8 @@ const adapters: ProviderAdapter[] = [
   new BestVMAdapter(),
   new NeburstAdapter(),
   new HNCloudAdapter(),
+  new SixSixCloudsAdapter(),
+  new YunyooAdapter(),
 ];
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(
