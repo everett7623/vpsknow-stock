@@ -37,6 +37,16 @@ const CATALOG_PAGES: readonly CatalogPage[] = [
     url: `${ORDER_BASE}cart/tokyo-performance-kvm-vps-gen-2/`,
   },
   {
+    slug: 'frankfurt-performance',
+    location: 'Frankfurt',
+    url: `${ORDER_BASE}cart/frankfurt-performance-kvm-vps/`,
+  },
+  {
+    slug: 'tokyo-mini',
+    location: 'Tokyo',
+    url: `${ORDER_BASE}cart/tokyo-mini-kvm-vps/`,
+  },
+  {
     slug: 'singapore-edge',
     location: 'Singapore',
     url: `${ORDER_BASE}cart/singapore-edge-kvm-vps/`,

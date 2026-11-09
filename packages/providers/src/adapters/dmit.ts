@@ -9,6 +9,7 @@ import { detectOptimizedLine, type BillingCycle } from '@vpsknow/shared';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
 const PRICING_URL = 'https://www.dmit.io/pages/pricing?language=english';
+const CART_URL = 'https://www.dmit.io/cart.php';
 
 type FetchHtml = (provider: string, url: string) => Promise<string>;
 type FetchBrowserPages = (
@@ -16,6 +17,35 @@ type FetchBrowserPages = (
   urls: readonly string[],
   readySelector: string,
 ) => Promise<BrowserPageResult[]>;
+
+/**
+ * Limited / place-named / retired lines tracked by stock.dmitea.com + HostMonit.
+ * Pricing-page scrape alone misses these while OOS (cards disappear).
+ */
+const WATCHED_PIDS: readonly {
+  pid: number;
+  planName: string;
+  location: string;
+}[] = [
+  { pid: 209, planName: 'HKG.AS3.EB.WEE', location: 'Hong Kong' },
+  { pid: 100, planName: 'LAX.AN5.Pro.TINY', location: 'Los Angeles' },
+  { pid: 189, planName: 'LAX.AN5.EB.TINY', location: 'Los Angeles' },
+  { pid: 237, planName: 'LAX.AN4.Pro.TINY', location: 'Los Angeles' },
+  { pid: 245, planName: 'LAX.AN4.EB.TINY', location: 'Los Angeles' },
+  { pid: 183, planName: 'LAX.Pro.Wee', location: 'Los Angeles' },
+  { pid: 186, planName: 'LAX.Pro.Malibu', location: 'Los Angeles' },
+  { pid: 182, planName: 'LAX.Pro.PalmSpring', location: 'Los Angeles' },
+  { pid: 181, planName: 'LAX.Pro.Irvine', location: 'Los Angeles' },
+  { pid: 231, planName: 'LAX.EB.Intro', location: 'Los Angeles' },
+  { pid: 188, planName: 'LAX.EB.Wee', location: 'Los Angeles' },
+  { pid: 218, planName: 'LAX.EB.Corona', location: 'Los Angeles' },
+  { pid: 219, planName: 'LAX.EB.Fontana', location: 'Los Angeles' },
+  { pid: 217, planName: 'HKG.Pro.MongKok', location: 'Hong Kong' },
+  { pid: 233, planName: 'HKG.Pro.Tsuenwan', location: 'Hong Kong' },
+  { pid: 178, planName: 'HKG.Pro.Victoria', location: 'Hong Kong' },
+  { pid: 187, planName: 'HKG.Pro.Lokmachau', location: 'Hong Kong' },
+  { pid: 179, planName: 'TYO.Pro.Shinagawa', location: 'Tokyo' },
+] as const;
 
 const LOCATIONS: Readonly<Record<string, string>> = {
   hkg: 'Hong Kong',
@@ -107,8 +137,75 @@ export class DmitAdapter implements ProviderAdapter {
     }
 
     const results = this.parse(html);
+    const seenPids = new Set<string>();
+    for (const result of results) {
+      const pid = result.orderUrl.match(/[?&]pid=(\d+)/)?.[1];
+      if (pid) seenPids.add(pid);
+    }
+
+    for (const watched of WATCHED_PIDS) {
+      if (seenPids.has(String(watched.pid))) continue;
+      const url = `${CART_URL}?a=add&pid=${watched.pid}`;
+      try {
+        const pageHtml = await this.fetchHtml(this.name, url);
+        const result = this.parseProductPage(pageHtml, watched);
+        if (!result) continue;
+        results.push(result);
+        seenPids.add(String(watched.pid));
+      } catch {
+        // PID watch is best-effort; pricing-page results remain authoritative.
+      }
+    }
+
     if (results.length === 0) throw new Error('DMIT returned no parseable products');
     return results;
+  }
+
+  parseProductPage(
+    html: string,
+    watched: { pid: number; planName: string; location: string },
+  ): StockResult | null {
+    const $ = cheerio.load(html);
+    const text = $.root().text().replace(/\s+/g, ' ').trim();
+    const unavailable = /\.errorbox[\s\S]*?Out of Stock|Out of Stock/i.test(html)
+      || /out of stock|sold out|unavailable|product is unavailable/i.test(text);
+    const canOrder = $('input[type="submit"][value*="Add to Cart" i]').length > 0
+      || $('button[type="submit"]').filter((_, el) => /add to cart/i.test($(el).text())).length > 0
+      || (/Billing Cycle/i.test(text) && /\$\s*\d+/i.test(text) && !unavailable);
+
+    const orderUrl = `${CART_URL}?a=add&pid=${watched.pid}`;
+    const price = Math.round(numberFrom(text, /\$\s*(\d+(?:\.\d+)?)/) * 100);
+    const ramGb = capacityInGb(text.match(/(\d+(?:\.\d+)?\s*(?:GB|MB)\s*(?:RAM|Memory))/i)?.[0] ?? '');
+    const storageGb = capacityInGb(
+      text.match(/(\d+(?:\.\d+)?\s*(?:GB|TB)\s*(?:SSD|NVMe|Storage))/i)?.[0] ?? '',
+    );
+    const cpuMatch = text.match(/(\d+)\s*(?:x\s*)?(?:Core|vCPU|CPU)/i);
+    const bandwidthGb = capacityInGb(
+      text.match(/(\d+(?:\.\d+)?\s*(?:TB|GB)\s*(?:BW|Bandwidth|Transfer|Traffic))/i)?.[0] ?? '',
+    );
+    const stubSpecs = ramGb === 0 || storageGb === 0 || !cpuMatch || price === 0;
+
+    return {
+      provider: this.slug,
+      productId: `dmit-pid-${watched.pid}`,
+      planName: watched.planName,
+      location: watched.location,
+      category: 'vps',
+      cpu: cpuMatch ? `${cpuMatch[1]} vCPU` : 'Unknown',
+      ramMb: Math.round(ramGb * 1_024),
+      storageGb: Math.round(storageGb),
+      storageType: /NVMe/i.test(text) ? 'NVMe' : /SSD/i.test(text) ? 'SSD' : stubSpecs ? 'Unknown' : 'SSD',
+      bandwidthTb: Math.round((bandwidthGb / 1_000) * 1_000) / 1_000,
+      lineType: detectOptimizedLine(watched.planName) ?? undefined,
+      ipv4: true,
+      ipv6: true,
+      price,
+      currency: 'USD',
+      billingCycle: billingCycleFrom(text),
+      inStock: !unavailable && canOrder,
+      orderUrl,
+      ...(stubSpecs ? { raw: { source: 'pid-watch-stub', pid: watched.pid } } : { raw: { pid: watched.pid } }),
+    };
   }
 
   parse(html: string): StockResult[] {

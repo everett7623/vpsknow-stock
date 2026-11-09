@@ -65,6 +65,32 @@ const CATEGORIES: readonly Category[] = [
   },
 ] as const;
 
+/**
+ * Promo / Black Friday PIDs tracked by stock.vpszdm.com + HostMonit.
+ * Store category pages omit these while OOS.
+ */
+const WATCHED_PIDS: readonly {
+  pid: number;
+  planName: string;
+  location: string;
+}[] = [
+  { pid: 952, planName: 'Special 1G KVM VPS', location: 'Multiple Locations' },
+  { pid: 953, planName: 'Special 2G KVM VPS', location: 'Multiple Locations' },
+  { pid: 954, planName: 'Special 4G KVM VPS', location: 'Multiple Locations' },
+  { pid: 955, planName: 'Special 6G KVM VPS', location: 'Multiple Locations' },
+  { pid: 956, planName: 'Special 8G KVM VPS', location: 'Multiple Locations' },
+  { pid: 923, planName: 'Black Friday 2025 1G', location: 'Multiple Locations' },
+  { pid: 924, planName: 'Black Friday 2025 2.5G', location: 'Multiple Locations' },
+  { pid: 925, planName: 'Black Friday 2025 4G', location: 'Multiple Locations' },
+  { pid: 926, planName: 'Black Friday 2025 6G', location: 'Multiple Locations' },
+  { pid: 927, planName: 'Black Friday 2025 8G', location: 'Multiple Locations' },
+  { pid: 918, planName: '11.11 2025 Special A', location: 'Multiple Locations' },
+  { pid: 919, planName: '11.11 2025 Special B', location: 'Multiple Locations' },
+  { pid: 920, planName: '11.11 2025 Special C', location: 'Multiple Locations' },
+  { pid: 914, planName: '3.5G Special', location: 'Multiple Locations' },
+  { pid: 874, planName: '100G Storage Special', location: 'Multiple Locations' },
+] as const;
+
 type FetchHtml = (url: string) => Promise<string>;
 type FetchBrowserPages = (
   provider: string,
@@ -160,7 +186,7 @@ export class RackNerdAdapter implements ProviderAdapter {
       }
 
       if (results.length === 0) throw new Error('no parseable products');
-      return results;
+      return this.appendWatchedPids(results, seen);
     } catch (directError) {
       const pages = await this.fetchBrowserPages(
         this.name,
@@ -207,8 +233,108 @@ export class RackNerdAdapter implements ProviderAdapter {
       }
 
       this.warnings = failures;
-      return results;
+      return this.appendWatchedPids(results, seen);
     }
+  }
+
+  private async appendWatchedPids(
+    results: StockResult[],
+    seen: Set<string>,
+  ): Promise<StockResult[]> {
+    const pidFailures: string[] = [];
+    const pending = WATCHED_PIDS.filter((watched) => !seen.has(`racknerd-${watched.pid}`));
+    const browserQueue: Array<{ watched: (typeof WATCHED_PIDS)[number]; url: string }> = [];
+
+    for (const watched of pending) {
+      const url = `${PORTAL}/cart.php?a=add&pid=${watched.pid}`;
+      try {
+        const html = await this.fetchHtml(url);
+        if (/cf-chl-|captcha|just a moment/i.test(html)) {
+          throw new Error('challenge page');
+        }
+        const result = this.parseProductPage(html, watched);
+        if (!result) {
+          pidFailures.push(`pid=${watched.pid}: unparseable`);
+          continue;
+        }
+        seen.add(result.productId);
+        results.push(result);
+      } catch {
+        browserQueue.push({ watched, url });
+      }
+    }
+
+    if (browserQueue.length > 0) {
+      const pages = await this.fetchBrowserPages(
+        this.name,
+        browserQueue.map((item) => item.url),
+        'body',
+      );
+      for (const [index, item] of browserQueue.entries()) {
+        const page = pages[index];
+        if (!page?.ok) {
+          pidFailures.push(`pid=${item.watched.pid}: ${page?.error ?? 'browser returned no result'}`);
+          continue;
+        }
+        const result = this.parseProductPage(page.html, item.watched);
+        if (!result) {
+          pidFailures.push(`pid=${item.watched.pid}: unparseable`);
+          continue;
+        }
+        if (seen.has(result.productId)) continue;
+        seen.add(result.productId);
+        results.push(result);
+      }
+    }
+
+    this.warnings = [...this.warnings, ...pidFailures];
+    return results;
+  }
+
+  parseProductPage(
+    html: string,
+    watched: { pid: number; planName: string; location: string },
+  ): StockResult | null {
+    const $ = cheerio.load(html);
+    const text = $.root().text().replace(/\s+/g, ' ').trim();
+    const unavailable = /\.errorbox[\s\S]*?Out of Stock|Out of Stock/i.test(html)
+      || /out of stock|sold out|unavailable|product is unavailable/i.test(text);
+    const canOrder = $('input[type="submit"][value*="Add to Cart" i]').length > 0
+      || $('button[type="submit"]').filter((_, el) => /add to cart/i.test($(el).text())).length > 0
+      || (/Billing Cycle/i.test(text) && /\$\s*\d+/i.test(text) && !unavailable);
+    const orderUrl = `${PORTAL}/cart.php?a=add&pid=${watched.pid}`;
+    const price = Math.round(numberFrom(text, /\$?\s*(\d+(?:\.\d+)?)/) * 100);
+    const ramMb = parseRamMb(text);
+    const storage = parseStorage(text);
+    const cores = Math.round(
+      numberFrom(text, /(\d+(?:\.\d+)?)\s*x?\s*(?:vCPUs?|vCores?|Cores?)/i),
+    );
+    const bwTb = numberFrom(
+      text,
+      /(\d+(?:\.\d+)?)\s*TB(?:\s+Monthly)?\s+(?:BW|Bandwidth|Transfer)/i,
+    );
+    const stubSpecs = ramMb === 0 || storage.sizeGb === 0 || cores === 0 || price === 0;
+
+    return {
+      provider: this.slug,
+      productId: `racknerd-${watched.pid}`,
+      planName: watched.planName,
+      location: watched.location,
+      category: 'vps',
+      cpu: cores > 0 ? `${cores} vCPU${cores === 1 ? '' : 's'}` : 'Unknown',
+      ramMb,
+      storageGb: storage.sizeGb,
+      storageType: storage.type === 'Unknown' && stubSpecs ? 'Unknown' : storage.type,
+      bandwidthTb: bwTb,
+      ipv4: true,
+      ipv6: /ipv6/i.test(text),
+      price,
+      currency: 'USD',
+      billingCycle: parseBillingCycle(text),
+      inStock: !unavailable && canOrder,
+      orderUrl,
+      ...(stubSpecs ? { raw: { source: 'pid-watch-stub', pid: watched.pid } } : { raw: { pid: watched.pid } }),
+    };
   }
 
   parse(html: string, category: Category): StockResult[] {

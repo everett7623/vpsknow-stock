@@ -1,98 +1,170 @@
-import * as cheerio from 'cheerio';
 import type { BillingCycle } from '@vpsknow/shared';
 import { fetchProviderHtml } from '../http.js';
 import type { ProviderAdapter, StockResult } from '../types.js';
 
-interface Category {
-  slug: string;
-  location: string;
-  url: string;
-}
-
 type FetchHtml = (provider: string, url: string) => Promise<string>;
 
 const PORTAL = 'https://www.666clouds.com';
-const CATEGORIES: readonly Category[] = [
-  { slug: 'philippines', location: 'Philippines', url: `${PORTAL}/cart.php?gid=26` },
-  { slug: 'south-korea', location: 'Seoul', url: `${PORTAL}/cart.php?gid=16` },
-  { slug: 'hong-kong', location: 'Hong Kong', url: `${PORTAL}/cart.php?gid=6` },
-  { slug: 'germany', location: 'Germany', url: `${PORTAL}/cart.php?gid=25` },
-  { slug: 'united-kingdom', location: 'United Kingdom', url: `${PORTAL}/cart.php?gid=22` },
-  { slug: 'united-states', location: 'United States', url: `${PORTAL}/cart.php?gid=21` },
-  { slug: 'japan', location: 'Japan', url: `${PORTAL}/cart.php?gid=19` },
-] as const;
+const SHOP_URL = `${PORTAL}/shop`;
 
-function numberFrom(text: string, pattern: RegExp): number {
-  const match = text.replace(/,/g, '').match(pattern);
-  return match ? Number.parseFloat(match[1]!) : 0;
+const REGION_LOCATIONS: Readonly<Record<string, string>> = {
+  特价专区: 'Germany',
+  美国US: 'United States',
+  菲律宾PH: 'Philippines',
+  韩国KR: 'Seoul',
+  香港HK: 'Hong Kong',
+  德国DE: 'Germany',
+  英国GB: 'United Kingdom',
+  日本JP: 'Japan',
+};
+
+interface PlanPriceMap {
+  monthly?: string;
+  quarterly?: string;
+  semiannually?: string;
+  annually?: string;
+  biennially?: string;
+  triennially?: string;
 }
 
-function capacityInMb(text: string): number {
-  const match = text.match(
-    /(?:内存\s*[：:]?\s*(\d+(?:\.\d+)?)\s*(MB|M|GB|G)|(?:^|\s)(\d+(?:\.\d+)?)\s*(MB|M|GB|G)\s*内存)/i,
-  );
-  if (!match) return 0;
-  const amount = Number.parseFloat(match[1] ?? match[3] ?? '0');
-  const unit = (match[2] ?? match[4] ?? '').toUpperCase();
-  return Math.round(unit === 'GB' || unit === 'G' ? amount * 1024 : amount);
+interface NativePlan {
+  subId: number;
+  name: string;
+  cpu?: number;
+  memMb?: number;
+  sysDiskGb?: number;
+  bwMbps?: number;
+  flowGb?: number;
+  stock?: number;
+  prices?: PlanPriceMap;
+  windows?: boolean;
 }
 
-function capacityInGb(text: string, patterns: readonly RegExp[]): number {
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (!match) continue;
-    const value = Number.parseFloat(match[1]!);
-    const unit = match[2]!.toUpperCase();
-    return Math.round(unit === 'TB' || unit === 'T' ? value * 1024 : value);
+interface CatalogProduct {
+  id: number;
+  name: string;
+  description?: string;
+  monthly?: string | null;
+  annually?: string | null;
+  stockNote?: string;
+  planOptions?: {
+    revision?: number;
+    plans?: NativePlan[];
+  };
+}
+
+interface CatalogGroup {
+  id: number;
+  name: string;
+  products?: CatalogProduct[];
+}
+
+function unescapeRsc(str: string): string {
+  let out = '';
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '\\' && i + 1 < str.length) {
+      const next = str[i + 1]!;
+      if (next === '"' || next === '\\' || next === '/') {
+        out += next;
+        i++;
+        continue;
+      }
+      // Preserve JSON escapes (\n, \uXXXX, ...) for JSON.parse.
+      out += '\\';
+      out += next;
+      i++;
+      continue;
+    }
+    out += str[i];
   }
-  return 0;
+  return out;
 }
 
-function storageInGb(text: string): number {
-  return capacityInGb(text, [
-    /(?:系统盘|硬盘)\s*[：:]?\s*(\d+(?:\.\d+)?)\s*(TB|T|GB|G)/i,
-    /(\d+(?:\.\d+)?)\s*(TB|T|GB|G)\s*(?:NVMe|SSD|HDD)/i,
-  ]);
+function extractGroupsJson(html: string): CatalogGroup[] {
+  const escapedLit = '{\\"groups\\":';
+  const start = html.indexOf(escapedLit);
+  if (start < 0) {
+    throw new Error('666Clouds shop page missing embedded groups catalog');
+  }
+
+  const valueStart = start + escapedLit.length;
+  const open = html[valueStart];
+  if (open !== '[' && open !== '{') {
+    throw new Error('666Clouds shop catalog payload is malformed');
+  }
+  const close = open === '[' ? ']' : '}';
+
+  let depth = 0;
+  let out = '';
+  let esc = false;
+  for (let i = valueStart; i < html.length; i++) {
+    const ch = html[i]!;
+    out += ch;
+    if (esc) {
+      esc = false;
+      continue;
+    }
+    if (ch === '\\') {
+      esc = true;
+      continue;
+    }
+    if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+
+  const parsed: unknown = JSON.parse(unescapeRsc(out));
+  if (!Array.isArray(parsed)) {
+    throw new Error('666Clouds shop catalog groups payload is not an array');
+  }
+  return parsed as CatalogGroup[];
 }
 
-function bandwidthInTb(text: string): number {
-  const match = text.match(
-    /(?:流量\s*[：:]?\s*|双向\s*)(\d+(?:\.\d+)?)\s*(TB|T|GB|G)(?:流量)?/i,
-  );
-  if (!match) return 0;
-  const amount = Number.parseFloat(match[1]!);
-  return match[2]!.toUpperCase().startsWith('G') ? amount / 1024 : amount;
+function positivePrice(value: string | null | undefined): number | null {
+  if (value == null) return null;
+  const amount = Number.parseFloat(value);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return amount;
 }
 
-function billingCycleFrom(text: string): BillingCycle {
-  if (/每年|年付|annually|yearly/i.test(text)) return 'annually';
-  if (/每季|季付|quarterly/i.test(text)) return 'quarterly';
-  if (/半年|semi[- ]?annually/i.test(text)) return 'semi-annually';
-  if (/两年|biennially/i.test(text)) return 'biennially';
-  if (/三年|triennially/i.test(text)) return 'triennially';
-  return 'monthly';
+function pickPrice(prices: PlanPriceMap | undefined, product: CatalogProduct): {
+  amount: number;
+  billingCycle: BillingCycle;
+} {
+  const candidates: ReadonlyArray<{ key: keyof PlanPriceMap; cycle: BillingCycle }> = [
+    { key: 'monthly', cycle: 'monthly' },
+    { key: 'quarterly', cycle: 'quarterly' },
+    { key: 'semiannually', cycle: 'semi-annually' },
+    { key: 'annually', cycle: 'annually' },
+    { key: 'biennially', cycle: 'biennially' },
+    { key: 'triennially', cycle: 'triennially' },
+  ];
+
+  for (const candidate of candidates) {
+    const amount = positivePrice(prices?.[candidate.key]);
+    if (amount != null) return { amount, billingCycle: candidate.cycle };
+  }
+
+  const monthly = positivePrice(product.monthly);
+  if (monthly != null) return { amount: monthly, billingCycle: 'monthly' };
+  const annually = positivePrice(product.annually);
+  if (annually != null) return { amount: annually, billingCycle: 'annually' };
+  return { amount: 0, billingCycle: 'monthly' };
 }
 
-function storageType(text: string): string {
-  if (/NVMe/i.test(text)) return 'NVMe';
-  if (/HDD/i.test(text)) return 'HDD';
-  if (/SSD/i.test(text)) return 'SSD';
-  return 'Unknown';
+function locationFor(groupName: string): string {
+  return REGION_LOCATIONS[groupName] ?? groupName;
 }
 
-function portLabel(text: string): string | undefined {
-  const match = text.match(/(\d+(?:\.\d+)?)\s*(Gbps|Gbits|Mbps|Mbits)\b/i);
-  return match ? `${match[1]}${match[2]}` : undefined;
-}
-
-function trafficLabel(text: string): string | undefined {
-  const match = text.match(/(?:双向\s*)?\d+(?:\.\d+)?\s*(?:TB|T|GB|G)\s*流量/i);
-  return match?.[0]?.replace(/\s+/g, '') ?? undefined;
-}
-
-function cpuCores(text: string): number {
-  const match = text.match(/(?:CPU\s*[：:]?\s*)?(\d+(?:\.\d+)?)\s*(?:vCPU|核心|核)/i);
-  return match ? Math.round(Number.parseFloat(match[1]!)) : 0;
+function isPlanInStock(stock: number | undefined, stockNote: string | undefined): boolean {
+  if (typeof stock === 'number') {
+    // -1 is used by the merchant for “unlimited / always orderable”.
+    return stock !== 0;
+  }
+  if (!stockNote) return false;
+  return !/暂时缺货|售罄|无货|缺货/.test(stockNote);
 }
 
 export class SixSixCloudsAdapter implements ProviderAdapter {
@@ -103,98 +175,104 @@ export class SixSixCloudsAdapter implements ProviderAdapter {
   constructor(private readonly fetchHtml: FetchHtml = fetchProviderHtml) {}
 
   async check(): Promise<StockResult[]> {
-    const results: StockResult[] = [];
-    const failures: string[] = [];
-    const seen = new Set<string>();
     this.warnings = [];
-
-    for (const category of CATEGORIES) {
-      try {
-        const html = await this.fetchHtml(this.name, category.url);
-        const parsed = this.parse(html, category);
-        if (parsed.length === 0) throw new Error('no parseable products');
-        for (const result of parsed) {
-          if (seen.has(result.productId)) continue;
-          seen.add(result.productId);
-          results.push(result);
-        }
-      } catch (error) {
-        failures.push(
-          `${category.slug}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
+    const html = await this.fetchHtml(this.name, SHOP_URL);
+    const results = this.parse(html);
     if (results.length === 0) {
-      throw new Error(
-        `666Clouds returned no parseable products; ${failures.length}/${CATEGORIES.length} categories failed. `
-        + failures.slice(0, 3).join('; '),
-      );
+      throw new Error('666Clouds returned no parseable products from /shop catalog');
     }
-
-    this.warnings = failures;
     return results;
   }
 
-  parse(html: string, category: Category): StockResult[] {
-    const $ = cheerio.load(html);
+  parse(html: string): StockResult[] {
+    const groups = extractGroupsJson(html);
     const results: StockResult[] = [];
+    const seen = new Set<string>();
 
-    $('.product[id^="product"]').each((_, element) => {
-      const card = $(element);
-      const planName = card.find('[id$="-name"]').first().text().replace(/\s+/g, ' ').trim();
-      const description = card
-        .find('.product-desc, [id$="-description"]')
-        .first()
-        .text()
-        .replace(/\s+/g, ' ')
-        .trim();
-      const cardText = card.text().replace(/\s+/g, ' ').trim();
-      const orderButton = card.find('.btn-order-now, [id$="-order-button"]').first();
-      const orderHref = orderButton.attr('href')?.trim() ?? '';
-      const pid = orderHref.match(/[?&]pid=(\d+)/)?.[1]
-        ?? card.attr('data-pid')?.match(/^\d+$/)?.[0];
-      if (!pid || !planName || !description) return;
+    for (const group of groups) {
+      const location = locationFor(group.name);
+      for (const product of group.products ?? []) {
+        const plans = product.planOptions?.plans ?? [];
+        if (plans.length === 0) {
+          const productId = `666clouds-${product.id}`;
+          if (seen.has(productId)) continue;
+          seen.add(productId);
+          const price = pickPrice(undefined, product);
+          results.push({
+            provider: this.slug,
+            productId,
+            planName: product.name,
+            location,
+            category: 'vps',
+            cpu: 'Unknown',
+            ramMb: 0,
+            storageGb: 0,
+            storageType: 'Unknown',
+            bandwidthTb: 0,
+            ipv4: true,
+            ipv6: false,
+            price: Math.round(price.amount * 100),
+            currency: 'CNY',
+            billingCycle: price.billingCycle,
+            inStock: isPlanInStock(undefined, product.stockNote),
+            orderUrl: `${PORTAL}/shop/${product.id}`,
+            raw: {
+              groupId: group.id,
+              productId: product.id,
+              stockNote: product.stockNote,
+            },
+          });
+          continue;
+        }
 
-      const quantityMatch = cardText.match(/(-?\d+)\s*(?:可用|Available)/i);
-      const quantity = quantityMatch ? Number.parseInt(quantityMatch[1]!, 10) : null;
-      const unavailable = /out\s*of\s*stock|sold\s*out|缺货|售罄/i.test(cardText)
-        || orderButton.hasClass('disabled')
-        || (quantity !== null && quantity <= 0);
-      const pricing = card.find('.product-pricing').first().text().replace(/\s+/g, ' ').trim();
-      const cores = cpuCores(description);
-      const port = portLabel(description);
-      const bandwidth = trafficLabel(description);
+        for (const plan of plans) {
+          const productId = `666clouds-${product.id}-${plan.subId}`;
+          if (seen.has(productId)) continue;
+          seen.add(productId);
 
-      results.push({
-        provider: this.slug,
-        productId: `666clouds-${pid}`,
-        planName,
-        location: category.location,
-        category: 'vps',
-        cpu: cores > 0 ? `${cores} vCPU${cores === 1 ? '' : 's'}` : 'Unknown',
-        ramMb: capacityInMb(description),
-        storageGb: storageInGb(description),
-        storageType: storageType(description),
-        bandwidthTb: bandwidthInTb(description),
-        ipv4: true,
-        ipv6: /IPv6/i.test(description),
-        price: Math.round(numberFrom(pricing, /[¥￥]\s*(\d+(?:\.\d+)?)/) * 100),
-        currency: /\b(?:USD|CNY|EUR|GBP|CAD)\b/i.exec(pricing)?.[0]?.toUpperCase() ?? 'CNY',
-        billingCycle: billingCycleFrom(pricing),
-        inStock: !unavailable && orderHref.length > 0,
-        orderUrl: orderHref ? new URL(orderHref, PORTAL).href : category.url,
-        displaySpecs: {
-          bandwidth,
-          port,
-        },
-        raw: {
-          available: quantity,
-          category: category.slug,
-          pid,
-        },
-      });
-    });
+          const price = pickPrice(plan.prices, product);
+          const flowGb = plan.flowGb ?? 0;
+          const bwMbps = plan.bwMbps;
+          const orderUrl = new URL(
+            `/shop/${product.id}?planSubId=${plan.subId}&cycle=${price.billingCycle === 'semi-annually' ? 'semiannually' : price.billingCycle}`,
+            PORTAL,
+          ).href;
+
+          results.push({
+            provider: this.slug,
+            productId,
+            planName: `${product.name} · ${plan.name}`,
+            location,
+            category: 'vps',
+            cpu: plan.cpu && plan.cpu > 0
+              ? `${plan.cpu} vCPU${plan.cpu === 1 ? '' : 's'}`
+              : 'Unknown',
+            ramMb: plan.memMb ?? 0,
+            storageGb: plan.sysDiskGb ?? 0,
+            storageType: 'SSD',
+            bandwidthTb: flowGb / 1024,
+            ipv4: true,
+            ipv6: false,
+            price: Math.round(price.amount * 100),
+            currency: 'CNY',
+            billingCycle: price.billingCycle,
+            inStock: isPlanInStock(plan.stock, product.stockNote),
+            orderUrl,
+            displaySpecs: {
+              bandwidth: flowGb > 0 ? `${flowGb}GB流量` : undefined,
+              port: bwMbps ? `${bwMbps}Mbps` : undefined,
+            },
+            raw: {
+              groupId: group.id,
+              productId: product.id,
+              planSubId: plan.subId,
+              stock: plan.stock,
+              stockNote: product.stockNote,
+            },
+          });
+        }
+      }
+    }
 
     return results;
   }

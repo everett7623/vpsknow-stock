@@ -149,6 +149,32 @@ describe('provider adapters', () => {
     expect(results.every((item) => item.price > 0 && item.ramMb > 0)).toBe(true);
   });
 
+  it('parses DMIT watched PID pages for limited restock detection', () => {
+    const adapter = new DmitAdapter();
+    const inStock = adapter.parseProductPage(fixture('dmit-pid.html'), {
+      pid: 209,
+      planName: 'HKG.AS3.EB.WEE',
+      location: 'Hong Kong',
+    });
+    const outOfStock = adapter.parseProductPage(fixture('dmit-pid-oos.html'), {
+      pid: 100,
+      planName: 'LAX.AN5.Pro.TINY',
+      location: 'Los Angeles',
+    });
+
+    expect(inStock).toMatchObject({
+      productId: 'dmit-pid-209',
+      inStock: true,
+      orderUrl: 'https://www.dmit.io/cart.php?a=add&pid=209',
+      price: 2490,
+    });
+    expect(outOfStock).toMatchObject({
+      productId: 'dmit-pid-100',
+      inStock: false,
+      orderUrl: 'https://www.dmit.io/cart.php?a=add&pid=100',
+    });
+  });
+
   it('parses DMIT plan availability and resolves deployment links', () => {
     const results = new DmitAdapter().parse(fixture('dmit.html'));
 
@@ -421,7 +447,7 @@ describe('provider adapters', () => {
       const adapter = new SpartanHostAdapter();
       const results = await adapter.check();
 
-      expect(fetchMock).toHaveBeenCalledTimes(7);
+      expect(fetchMock).toHaveBeenCalledTimes(10);
       expect(results).toHaveLength(2);
       expect(adapter.warnings).toHaveLength(1);
       expect(adapter.warnings[0]).toContain('cmin2-premium-kvm-vps-seattle');
@@ -761,6 +787,21 @@ describe('provider adapters', () => {
     expect(results[0]).toHaveProperty('inStock');
   });
 
+  it('parses RackNerd watched promo PID pages for limited restock detection', () => {
+    const result = new RackNerdAdapter().parseProductPage(fixture('racknerd-pid.html'), {
+      pid: 952,
+      planName: 'Special 1G KVM VPS',
+      location: 'Multiple Locations',
+    });
+
+    expect(result).toMatchObject({
+      productId: 'racknerd-952',
+      inStock: true,
+      orderUrl: 'https://my.racknerd.com/cart.php?a=add&pid=952',
+      billingCycle: 'annually',
+    });
+  });
+
   it('parses RackNerd dedicated plans and preserves the WHMCS product ID', () => {
     const category = {
       slug: 'dedicated',
@@ -802,8 +843,10 @@ describe('provider adapters', () => {
     const adapter = new RackNerdAdapter(fetchHtml, fetchBrowserPages);
     const results = await adapter.check();
 
-    expect(fetchHtml).toHaveBeenCalledTimes(1);
-    expect(fetchBrowserPages).toHaveBeenCalledTimes(1);
+    // 1 failing category probe + 15 promo PID direct probes, then 2 browser batches
+    // (categories + promo PIDs).
+    expect(fetchHtml).toHaveBeenCalledTimes(16);
+    expect(fetchBrowserPages).toHaveBeenCalledTimes(2);
     expect(fetchBrowserPages.mock.calls[0]?.[0]).toBe('RackNerd');
     expect(fetchBrowserPages.mock.calls[0]?.[1]).toHaveLength(8);
     expect(fetchBrowserPages.mock.calls[0]?.[1]).toContain(
@@ -813,10 +856,13 @@ describe('provider adapters', () => {
       'https://my.racknerd.com/index.php?rp=/store/hybrid-dedicated-servers',
     );
     expect(fetchBrowserPages.mock.calls[0]?.[2]).toBe('.product');
+    expect(fetchBrowserPages.mock.calls[1]?.[1]).toHaveLength(15);
     expect(results.length).toBeGreaterThan(0);
-    expect(adapter.warnings).toEqual([
-      expect.stringContaining('windows-vps-with-nvme-ssd: HTTP 503'),
-    ]);
+    expect(adapter.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('windows-vps-with-nvme-ssd: HTTP 503'),
+      ]),
+    );
   });
 
   it('parses Clouvider products with pricing and availability', () => {

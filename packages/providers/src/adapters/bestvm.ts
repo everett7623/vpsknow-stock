@@ -8,8 +8,10 @@ interface Category {
   location: string;
   url: string;
 }
+
 const PORTAL = 'https://bestvm.cloud';
 const CATEGORIES: readonly Category[] = [
+  { slug: 'iepl', location: 'Hong Kong', url: `${PORTAL}/store/iepl` },
   { slug: 'de-pro', location: 'Germany', url: `${PORTAL}/store/de-pro` },
   { slug: 'us1', location: 'United States', url: `${PORTAL}/store/us1` },
   { slug: 'jpbgp', location: 'Tokyo', url: `${PORTAL}/store/jpbgp` },
@@ -61,9 +63,9 @@ function bandwidthInTb(text: string): number {
 }
 
 function billingCycleFrom(text: string): BillingCycle {
-  if (/按季|quarterly/i.test(text)) return 'quarterly';
+  if (/按季|\/\s*季|quarterly/i.test(text)) return 'quarterly';
   if (/半年|semi[- ]?annually/i.test(text)) return 'semi-annually';
-  if (/按年|annually|yearly/i.test(text)) return 'annually';
+  if (/按年|\/\s*年|annually|yearly/i.test(text)) return 'annually';
   if (/两年|biennially/i.test(text)) return 'biennially';
   if (/三年|triennially/i.test(text)) return 'triennially';
   return 'monthly';
@@ -113,23 +115,38 @@ export class BestVMAdapter implements ProviderAdapter {
     const $ = cheerio.load(html);
     const results: StockResult[] = [];
 
-    $('.product[id^="product"]').each((_, element) => {
+    // New storefront uses article.bv-plan; keep legacy .product cards for fixtures.
+    const cards = $('article.bv-plan[id^="product"], .product[id^="product"]');
+    cards.each((_, element) => {
       const card = $(element);
       const numericId = card.attr('id')?.match(/^product(\d+)$/)?.[1];
-      const planName = card.find('[id$="-name"]').first().text().replace(/\s+/g, ' ').trim();
+      const planName = card.find('h3, [id$="-name"]').first().text().replace(/\s+/g, ' ').trim();
       if (!numericId || !planName) return;
 
-      const description = card.find('.product-desc').text().replace(/\s+/g, ' ').trim();
+      const description = card
+        .find('.bv-plan-desc, .product-desc, [id$="-description"]')
+        .first()
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim();
       const cardText = card.text().replace(/\s+/g, ' ').trim();
-      const orderButton = card.find('.btn-order-now').first();
+      const orderButton = card
+        .find('[id$="-order-button"], .btn-order-now, a.btn-primary, a.btn-success')
+        .first();
       const orderHref = orderButton.attr('href')?.trim() ?? '';
       const quantityMatch = cardText.match(/(\d+)\s*可用/i);
       const quantity = quantityMatch ? Number.parseInt(quantityMatch[1]!, 10) : null;
       const unavailable =
-        /缺货|售罄|out\s*of\s*stock|sold\s*out|unavailable/i.test(cardText) ||
-        orderButton.hasClass('disabled') ||
-        quantity === 0;
-      const pricing = card.find('.product-pricing').text().replace(/\s+/g, ' ').trim();
+        /缺货|售罄|out\s*of\s*stock|sold\s*out|unavailable|暂时缺货|暂不可选购/i.test(cardText)
+        || orderButton.hasClass('disabled')
+        || orderButton.is('[disabled]')
+        || quantity === 0;
+      const pricing = card
+        .find('.bv-plan-price, .product-pricing, [id$="-price"]')
+        .first()
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim();
       const storage = parseStorage(description);
       const cores = Math.round(numberFrom(description, /CPU\s*[：:]\s*(\d+(?:\.\d+)?)\s*核/i));
 

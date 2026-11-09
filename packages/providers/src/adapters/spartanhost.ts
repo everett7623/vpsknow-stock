@@ -55,6 +55,24 @@ const CATEGORIES: readonly Category[] = [
     category: 'storage',
     url: `${BILLING_ORIGIN}/store/storage-kvm-vps-dallas`,
   },
+  {
+    slug: 'ddos-protected-hdd-e3-kvm-vps-seattle',
+    location: 'Seattle',
+    category: 'vps',
+    url: `${BILLING_ORIGIN}/store/ddos-protected-hdd-e3-kvm-vps-seattle`,
+  },
+  {
+    slug: 'ddos-protected-seattle-dedicated-servers-china-optimised',
+    location: 'Seattle',
+    category: 'dedicated',
+    url: `${BILLING_ORIGIN}/store/ddos-protected-seattle-dedicated-servers-china-optimised`,
+  },
+  {
+    slug: 'seattle-rapid-deploy-dedicated-servers-china-optimised',
+    location: 'Seattle',
+    category: 'dedicated',
+    url: `${BILLING_ORIGIN}/store/seattle-rapid-deploy-dedicated-servers-china-optimised`,
+  },
 ] as const;
 
 function numberFrom(text: string, pattern: RegExp): number {
