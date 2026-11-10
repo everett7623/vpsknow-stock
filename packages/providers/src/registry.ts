@@ -34,6 +34,8 @@ import { NeburstAdapter } from './adapters/neburst.js';
 import { HNCloudAdapter } from './adapters/hncloud.js';
 import { SixSixCloudsAdapter } from './adapters/666clouds.js';
 import { YunyooAdapter } from './adapters/yunyoo.js';
+import { CloudSilkAdapter } from './adapters/cloudsilk.js';
+import { ByteVirtAdapter } from './adapters/bytevirt.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -71,6 +73,8 @@ const adapters: ProviderAdapter[] = [
   new HNCloudAdapter(),
   new SixSixCloudsAdapter(),
   new YunyooAdapter(),
+  new CloudSilkAdapter(),
+  new ByteVirtAdapter(),
 ];
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(

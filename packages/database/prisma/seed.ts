@@ -409,6 +409,36 @@ async function main() {
     },
   });
 
+  const cloudsilk = await prisma.provider.upsert({
+    where: { slug: 'cloudsilk' },
+    update: {
+      name: 'CloudSilk',
+      website: 'https://cloudsilk.io',
+      tier: 'B',
+    },
+    create: {
+      slug: 'cloudsilk',
+      name: 'CloudSilk',
+      website: 'https://cloudsilk.io',
+      tier: 'B',
+    },
+  });
+
+  const bytevirt = await prisma.provider.upsert({
+    where: { slug: 'bytevirt' },
+    update: {
+      name: 'ByteVirt',
+      website: 'https://bytevirt.com',
+      tier: 'B',
+    },
+    create: {
+      slug: 'bytevirt',
+      name: 'ByteVirt',
+      website: 'https://bytevirt.com',
+      tier: 'B',
+    },
+  });
+
   // Keep directory records and adapters, but only monitor the approved provider set.
   await prisma.provider.updateMany({ data: { isActive: false } });
   await prisma.provider.updateMany({
@@ -1155,6 +1185,18 @@ async function main() {
       targetUrl: 'https://yunyoo.cc/cart?aff=HYWEANDG',
       shortUrl: 'https://go.uukk.de/yunyoo',
     },
+    {
+      providerId: cloudsilk.id,
+      slug: 'cloudsilk',
+      targetUrl: 'https://cloudsilk.io/aff.php?aff=688',
+      shortUrl: 'https://go.uukk.de/cloudsilk',
+    },
+    {
+      providerId: bytevirt.id,
+      slug: 'bytevirt',
+      targetUrl: 'https://bytevirt.com/aff.php?aff=429',
+      shortUrl: 'https://go.uukk.de/bytevirt',
+    },
   ];
 
   for (const link of affiliateLinks) {
@@ -1170,7 +1212,7 @@ async function main() {
   }
 
   console.log('Seeding complete!');
-  console.log(`  Providers: 34`);
+  console.log(`  Providers: 36`);
   console.log(`  Active allowlist: ${ACTIVE_PROVIDER_SLUGS.length}`);
   console.log(`  Products: ${bwgPlans.length + dmitPlans.length + buyvmPlans.length}`);
   console.log(`  Affiliate Links: ${affiliateLinks.length}`);

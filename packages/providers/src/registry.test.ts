@@ -37,6 +37,8 @@ const REQUIRED_PROVIDERS = [
   'hncloud',
   '666clouds',
   'yunyoo',
+  'cloudsilk',
+  'bytevirt',
 ] as const;
 
 describe('provider registry', () => {

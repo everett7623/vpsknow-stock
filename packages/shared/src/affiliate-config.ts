@@ -192,6 +192,29 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     originalUrl: 'https://yunyoo.cc/cart?aff=HYWEANDG',
   },
 
+  cloudsilk: {
+    provider: 'cloudsilk',
+    affId: '688',
+    urlTemplate: 'https://cloudsilk.io/aff.php?aff={affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'aff',
+      allowedOrigins: ['https://cloudsilk.io'],
+      fallbackToLanding: true,
+    },
+    originalUrl: 'https://cloudsilk.io/aff.php?aff=688',
+  },
+
+  bytevirt: {
+    provider: 'bytevirt',
+    affId: '429',
+    urlTemplate: 'https://bytevirt.com/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://bytevirt.com/aff.php?aff=429',
+  },
+
   // ========== A-Tier Providers ==========
 
   racknerd: {
@@ -505,6 +528,8 @@ const PROVIDER_NAME_ALIASES: Record<string, string> = {
   ccs: 'colocrossing',
   speedy: 'speedypage',
   vps: 'vps',
+  cloudsilk: 'cloudsilk',
+  bytevirt: 'bytevirt',
 };
 
 /**

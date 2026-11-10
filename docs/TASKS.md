@@ -1420,7 +1420,7 @@ Discovery pipeline (4 layers):
 
 ### Approved Phase 4 Additions — Restock Monitoring
 
-Existing adapters enabled by seed: RackNerd, DediRock, Evoxt, BageVM, VMRack, GoMami, ColoCrossing, ChicagoVPS, LightLayer, SpeedyPage, BestVM, Neburst, HNCloud.
+Existing adapters enabled by seed: RackNerd, DediRock, Evoxt, BageVM, VMRack, GoMami, ColoCrossing, ChicagoVPS, LightLayer, SpeedyPage, BestVM, Neburst, HNCloud, 666Clouds, YUNYOO, CloudSilk, ByteVirt.
 
 The worker scheduler and production data migration enforce the same 20-provider implemented subset. Existing jobs for providers outside the allowlist are removed at worker startup and rejected before adapter execution.
 
@@ -1460,7 +1460,7 @@ Exception: Hetzner Server Auction + special dedicated → monitor in Phase 4.
 
 ### Must NOT Do
 
-- ❌ Monitor providers outside the approved 21-provider allowlist
+- ❌ Monitor providers outside the approved active allowlist (`MONITORED_PROVIDERS`)
 - ❌ Use 机场/代理-related domains
 - ❌ Conflate Restock and Offer event types because they share one public channel
 - ❌ Treat always-in-stock cloud providers as restock targets

@@ -26,6 +26,8 @@ export const MONITORED_PROVIDERS = [
   { slug: 'hncloud', name: 'HNCloud', intervalMs: 300_000 },
   { slug: '666clouds', name: '666Clouds', intervalMs: 300_000 },
   { slug: 'yunyoo', name: 'YUNYOO', intervalMs: 300_000 },
+  { slug: 'cloudsilk', name: 'CloudSilk', intervalMs: 300_000 },
+  { slug: 'bytevirt', name: 'ByteVirt', intervalMs: 300_000 },
   // zgocloud: removed from monitoring (poor reputation); adapter/seed record kept inactive.
 ] as const;
 
