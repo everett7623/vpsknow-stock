@@ -1,10 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { CloudSilkAdapter } from '../cloudsilk.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function fixture(name: string): string {
   return readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -47,7 +44,9 @@ describe('CloudSilkAdapter', () => {
   });
 
   it('checks every public China-optimized CloudSilk store', async () => {
-    const fetchHtml = vi.fn(async () => fixture('cloudsilk.html'));
+    const fetchHtml = vi.fn(async (_provider: string, _url: string): Promise<string> =>
+      fixture('cloudsilk.html'),
+    );
     const results = await new CloudSilkAdapter(fetchHtml).check();
 
     expect(fetchHtml.mock.calls.map(([, url]) => url)).toEqual([
