@@ -55,6 +55,7 @@ const LOCATION_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
   ['Toronto', /\bToronto\b/i],
   ['Amsterdam', /\bAmsterdam\b/i],
   ['Frankfurt', /\bFrankfurt\b/i],
+  ['Zurich', /\bZurich\b/i],
   ['London', /\bLondon\b/i],
   ['Paris', /\bParis\b/i],
   ['Strasbourg', /\bStrasbourg\b/i],
@@ -162,9 +163,41 @@ function parsePrice(value: string): ParsedPrice | null {
 }
 
 function parseLocations(value: string): string[] {
-  return LOCATION_PATTERNS.filter(([, pattern]) => pattern.test(value)).map(
-    ([location]) => location,
-  );
+  return LOCATION_PATTERNS
+    .map(([location, pattern]) => {
+      const match = pattern.exec(value);
+      return match?.index === undefined ? null : { location, index: match.index };
+    })
+    .filter((entry): entry is { location: string; index: number } => entry !== null)
+    .sort((left, right) => left.index - right.index)
+    .map((entry) => entry.location);
+}
+
+/**
+ * Titles like "Zurich $8.32/mo recurring or Frankfurt $7.28 first month"
+ * must not collapse into a single unlabeled price + one location.
+ */
+function dualExamplePriceText(title: string): string | null {
+  const segments = title.split(/\bor\b/i);
+  if (segments.length < 2) return null;
+
+  const parts: string[] = [];
+  for (const segment of segments) {
+    const locations = parseLocations(segment);
+    const price = parsePrice(segment);
+    if (!locations.length || !price) continue;
+
+    const qualifier = /\brecurring\b/i.test(segment)
+      ? ' recurring'
+      : /\bfirst\s+(?:month|period)\b/i.test(segment)
+        ? ' first month'
+        : price.billingCycle
+          ? ` ${price.billingCycle}`
+          : '';
+    parts.push(`${price.priceText} ${locations[0]}${qualifier}`);
+  }
+
+  return parts.length >= 2 ? parts.join('; ') : null;
 }
 
 function normalizeExternalUrl(href: string | null): string | null {
@@ -241,6 +274,7 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
   const body = normalizeText(contentRoot.text() || $.text());
   const combined = `${title} ${body}`;
   const parsedPrice = parsePrice(title) ?? parsePrice(body);
+  const labeledDualPrice = dualExamplePriceText(title);
   const orderHref =
     contentRoot
       .find('a[href]')
@@ -281,9 +315,9 @@ export function parseLetOffer(title: string, html: string, author: string): Pars
     locations,
     priceCents: parsedPrice?.priceCents ?? null,
     priceAmount: parsedPrice?.priceAmount ?? null,
-    priceText: parsedPrice?.priceText ?? null,
+    priceText: labeledDualPrice ?? parsedPrice?.priceText ?? null,
     currency: parsedPrice?.currency ?? null,
-    billingCycle: parsedPrice?.billingCycle ?? null,
+    billingCycle: labeledDualPrice ? null : (parsedPrice?.billingCycle ?? null),
     couponCode: couponMatch?.[1] ?? null,
     orderUrl,
     ipv4,

@@ -251,4 +251,27 @@ describe('LowEndTalk parsers', () => {
       parseLetOffer('VPS offer', '<article>Network details on order page.</article>', 'Host').ipv4,
     ).toBeNull();
   });
+
+  it('keeps Zurich and Frankfurt dual examples labelled instead of merging them', () => {
+    const offer = parseLetOffer(
+      'DigitalCloud | Zurich VPS $8.32/mo recurring or Frankfurt $7.28 first month | KVM NVMe',
+      `<article>
+        <p>Zurich / NEWL20: $8.32 first month and renewals. Frankfurt / NEWL30: $7.28 first month, then $10.40.</p>
+        <a href="https://digitalcloud.pro/order/dc_lite_1?payment_months=1&location=zrh1&promocode=NEWL20">Zurich: NEWL20 order</a>
+      </article>`,
+      'DigitalCloud',
+    );
+
+    expect(offer).toMatchObject({
+      provider: 'DigitalCloud',
+      category: 'vps',
+      locations: ['Zurich', 'Frankfurt'],
+      priceCents: 832,
+      currency: 'USD',
+      billingCycle: null,
+      priceText: '$8.32 Zurich recurring; $7.28 Frankfurt first month',
+      orderUrl:
+        'https://digitalcloud.pro/order/dc_lite_1?payment_months=1&location=zrh1&promocode=NEWL20',
+    });
+  });
 });

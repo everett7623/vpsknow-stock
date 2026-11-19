@@ -18,6 +18,7 @@ export const LOCATION_ALIASES: Record<string, string> = {
   ash: 'Ashburn',
   ams: 'Amsterdam',
   fra: 'Frankfurt',
+  zrh: 'Zurich',
   lon: 'London',
   par: 'Paris',
   hkg: 'Hong Kong',
@@ -51,6 +52,7 @@ export const REGION_MAP: Record<string, string> = {
   'Buffalo': 'US East',
   'Amsterdam': 'Europe',
   'Frankfurt': 'Europe',
+  'Zurich': 'Europe',
   'London': 'Europe',
   'Paris': 'Europe',
   'Luxembourg': 'Europe',
@@ -90,7 +92,11 @@ export function resolveRegion(location: string): string {
   }
   if (/\b(dallas|chicago|texas|midwest)\b/i.test(trimmed)) return 'US Central';
   if (/\b(new\s*york|ashburn|miami|virginia|buffalo)\b/i.test(trimmed)) return 'US East';
-  if (/\b(amsterdam|frankfurt|london|paris|luxembourg|germany|netherlands|uk)\b/i.test(trimmed)) {
+  if (
+    /\b(amsterdam|frankfurt|zurich|london|paris|luxembourg|germany|switzerland|netherlands|uk)\b/i.test(
+      trimmed,
+    )
+  ) {
     return 'Europe';
   }
   if (/\b(sydney|australia)\b/i.test(trimmed)) return 'Oceania';
