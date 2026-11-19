@@ -14,10 +14,11 @@ import {
 describe('subscription helpers', () => {
   it('exposes the full active monitoring provider set', () => {
     const slugs = PROVIDERS.map(([slug]) => slug);
-    expect(slugs).toHaveLength(22);
+    expect(slugs).toHaveLength(25);
     expect(slugs).toEqual(
-      expect.arrayContaining(['hncloud', 'buyvm', 'dmit', 'evoxt', '666clouds', 'yunyoo']),
+      expect.arrayContaining(['hncloud', 'buyvm', 'dmit', 'evoxt', '666clouds', 'yunyoo', 'zorocloud']),
     );
+    expect(slugs).not.toContain('solidvps');
     expect(slugs).not.toContain('zgocloud');
     expect(slugs).not.toContain('vmiss');
     expect(slugs).not.toEqual(

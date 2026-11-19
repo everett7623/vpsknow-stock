@@ -12,7 +12,7 @@
 - **Website**: `stock.vpsknow.com`
 - **Alerts Channel**: `@vpsknow_offers`
 - **Subscription Bot**: `@vpsknow_stock_bot`
-- **Affiliate**: All order links go through `go.uukk.de`
+- **Affiliate**: Order links use the built-in `stock.vpsknow.com/go/{slug}` short link. The redirect target is the provider affiliate URL.
 
 ---
 
@@ -119,7 +119,7 @@ docker compose down             # Stop all services
 
 **Phase 1 — MVP (acceptance) + Phase 4 polish (in progress)**
 
-Monitoring allowlist: **24 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
+Monitoring allowlist: **25 active** providers (shared `MONITORED_PROVIDERS` drives seed + worker + bot).
 VMISS is website-inactive; restocks are ingested from a public TG preview into `@vpsknow_offers` with our aff links.
 Recent polish on `main`: provider spec filters, offers region/limited, bot coarse regions + `subscribe_{slug}`, product `ipv4` / `bandwidthLabel` / catalog `Unknown` status.
 
@@ -165,7 +165,7 @@ Phase 2 adds: GreenCloudVPS, SpartanHost, VMISS, V.PS, SaltyFish
 - Restock and LET Offers → `@vpsknow_offers` channel
 - Keep Restock and Offer as distinct event types for formatting and Bot subscriptions.
 - Format: structured text with emoji, not raw data dumps.
-- All order links MUST go through `go.uukk.de` affiliate.
+- Order links use `stock.vpsknow.com/go/{slug}` (`buildStockGoUrl`). Do not publish `go.uukk.de` short links.
 
 ### Database
 - Schema lives in `packages/database/prisma/schema.prisma`.

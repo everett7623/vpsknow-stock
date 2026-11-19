@@ -2,9 +2,11 @@
 
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+import { useLocale } from '@/components/locale-provider';
 
 export function ThemeToggle(): React.JSX.Element {
   const { resolvedTheme, setTheme } = useTheme();
+  const { dictionary } = useLocale();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -12,14 +14,15 @@ export function ThemeToggle(): React.JSX.Element {
   }, []);
 
   const isDark = !mounted || resolvedTheme === 'dark';
+  const label = isDark ? dictionary.common.lightMode : dictionary.common.darkMode;
 
   return (
     <button
       type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:border-stock/50 hover:text-foreground"
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={isDark ? 'Light mode' : 'Dark mode'}
+      aria-label={label}
+      title={label}
     >
       {isDark ? (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>

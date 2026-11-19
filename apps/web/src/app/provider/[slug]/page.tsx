@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductOrderUrl, getProviderBySlug, getProviderSiteUrl } from '@/lib/data';
+import { getDictionary } from '@/lib/i18n/get-locale';
 import { formatDate, formatPrice, botSubscribeUrl, formatBandwidth, resolveStockAvailability } from '@/lib/utils';
 import { lineTypeLabel, detectPlanOfferTag } from '@/lib/plan-tags';
 
@@ -13,15 +14,22 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const provider = await getProviderBySlug(slug);
-  if (!provider) return { title: 'Provider Not Found' };
+  const [{ dictionary }, provider] = await Promise.all([
+    getDictionary(),
+    getProviderBySlug(slug),
+  ]);
+  if (!provider) return { title: dictionary.provider.notFound };
   const inStock = provider.products.filter((product) => product.inStock).length;
-  const description = `${provider.name} VPS stock status, plans, prices, and recent availability. ${inStock} plans currently in stock.`;
+  const isZh = dictionary.nav.home === '首页';
+  const description = isZh
+    ? `${provider.name} VPS 库存、套餐、价格与近期可用性。当前有货 ${inStock} 个套餐。`
+    : `${provider.name} VPS stock status, plans, prices, and recent availability. ${inStock} plans currently in stock.`;
+  const title = isZh ? `${provider.name} VPS 库存` : `${provider.name} VPS Stock`;
   return {
-    title: `${provider.name} VPS Stock`,
+    title,
     description,
     alternates: { canonical: `/provider/${provider.slug}` },
-    openGraph: { title: `${provider.name} VPS Stock`, description },
+    openGraph: { title, description },
   };
 }
 
@@ -31,8 +39,12 @@ export default async function ProviderDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const provider = await getProviderBySlug(slug);
+  const [{ locale, dictionary }, provider] = await Promise.all([
+    getDictionary(),
+    getProviderBySlug(slug),
+  ]);
   if (!provider) notFound();
+  const t = dictionary.provider;
 
   const inStockProducts = provider.products.filter(
     (product) => resolveStockAvailability(product.inStock, product.availabilitySource) === 'in',
@@ -74,7 +86,7 @@ export default async function ProviderDetailPage({
     <main className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-8">
         <Link href={`/providers?p=${provider.slug}`} className="text-muted-foreground transition-colors hover:text-foreground">
-          Stock monitor
+          {t.stockMonitor}
         </Link>
 
         <header className="space-y-2">
@@ -87,7 +99,7 @@ export default async function ProviderDetailPage({
                 rel="noreferrer"
                 className="text-sm text-stock hover:opacity-90"
               >
-                Official website
+                {dictionary.common.officialWebsite}
               </a>
               <a
                 href={botSubscribeUrl(provider.slug)}
@@ -95,43 +107,43 @@ export default async function ProviderDetailPage({
                 rel="noreferrer"
                 className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 transition-colors hover:border-sky-500 hover:text-sky-800 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:border-sky-500 dark:hover:text-sky-200"
               >
-                Subscribe on Telegram
+                {t.subscribeTelegram}
               </a>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Last checked: {isStale ? 'Status Unknown' : formatDate(lastCheckedAt)}
+            {t.lastChecked}{isStale ? t.statusUnknown : formatDate(lastCheckedAt, locale)}
           </p>
         </header>
 
         <div className="flex flex-wrap gap-3 sm:gap-4">
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 dark:border-emerald-800 dark:bg-emerald-950/50">
             <span className="font-mono text-lg font-bold text-stock">{inStockProducts.length}</span>
-            <span className="ml-2 text-sm text-stock/70">In Stock</span>
+            <span className="ml-2 text-sm text-stock/70">{dictionary.stock.inStock}</span>
           </div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 dark:border-amber-800 dark:bg-amber-950/40">
             <span className="font-mono text-lg font-bold text-amber-800 dark:text-amber-300">{unknownProducts.length}</span>
-            <span className="ml-2 text-sm text-amber-700/80 dark:text-amber-300/80">Unknown</span>
+            <span className="ml-2 text-sm text-amber-700/80 dark:text-amber-300/80">{dictionary.stock.unknown}</span>
           </div>
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 dark:border-red-900/50 dark:bg-red-950/30">
             <span className="font-mono text-lg font-bold text-danger">{outOfStockProducts.length}</span>
-            <span className="ml-2 text-sm text-danger/70">Out of Stock</span>
+            <span className="ml-2 text-sm text-danger/70">{dictionary.stock.outOfStock}</span>
           </div>
         </div>
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold text-foreground">Available Plans</h2>
-          {inStockProducts.length === 0 ? <p className="text-muted-foreground/80">No in-stock plans.</p> : (
+          <h2 className="mb-4 text-xl font-semibold text-foreground">{t.availablePlans}</h2>
+          {inStockProducts.length === 0 ? <p className="text-muted-foreground/80">{t.noInStock}</p> : (
             <div className="overflow-x-auto">
               <table className="min-w-[980px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
-                    <th className="pb-2 pr-4">Line</th>
-                    <th className="pb-2 pr-4">CPU</th><th className="pb-2 pr-4">RAM</th>
-                    <th className="pb-2 pr-4">Storage</th><th className="pb-2 pr-4">Bandwidth</th>
-                    <th className="pb-2 pr-4">Price</th>
-                    <th className="pb-2 pr-4">Last Checked</th><th className="pb-2">Action</th>
+                    <th className="pb-2 pr-4">{t.plan}</th><th className="pb-2 pr-4">{t.location}</th>
+                    <th className="pb-2 pr-4">{t.line}</th>
+                    <th className="pb-2 pr-4">{t.cpu}</th><th className="pb-2 pr-4">{t.ram}</th>
+                    <th className="pb-2 pr-4">{t.storage}</th><th className="pb-2 pr-4">{t.bandwidth}</th>
+                    <th className="pb-2 pr-4">{t.price}</th>
+                    <th className="pb-2 pr-4">{t.lastCheckedCol}</th><th className="pb-2">{t.action}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,19 +158,21 @@ export default async function ProviderDetailPage({
                         </Link>
                       </td>
                       <td className="py-3 pr-4 text-foreground/80">{product.location}</td>
-                      <td className="py-3 pr-4 text-xs text-foreground/80">{lineTypeLabel(product.lineType)}</td>
-                      <td className="py-3 pr-4 font-mono text-xs text-foreground/80">{product.cpu || 'N/A'}</td>
+                      <td className="py-3 pr-4 text-xs text-foreground/80">
+                        {lineTypeLabel(product.lineType, dictionary.providers.standardLine)}
+                      </td>
+                      <td className="py-3 pr-4 font-mono text-xs text-foreground/80">{product.cpu || dictionary.common.na}</td>
                       <td className="py-3 pr-4 font-mono text-xs text-foreground/80">
-                        {product.ramMb ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${product.ramMb >= 1024 ? 'GB' : 'MB'}` : 'N/A'}
+                        {product.ramMb ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${product.ramMb >= 1024 ? 'GB' : 'MB'}` : dictionary.common.na}
                       </td>
                       <td className="py-3 pr-4 font-mono text-xs text-foreground/80">
-                        {product.storageGb ? `${product.storageGb} GB ${product.storageType || ''}` : 'N/A'}
+                        {product.storageGb ? `${product.storageGb} GB ${product.storageType || ''}` : dictionary.common.na}
                       </td>
                       <td className="py-3 pr-4 font-mono text-xs text-foreground/80">
-                        {formatBandwidth(product.bandwidthTb, product.bandwidthLabel)}
+                        {formatBandwidth(product.bandwidthTb, product.bandwidthLabel, locale)}
                       </td>
                       <td className="py-3 pr-4 font-mono text-stock">{formatPrice(product)}</td>
-                      <td className="py-3 pr-4 text-xs text-muted-foreground/80">{formatDate(product.lastCheckedAt)}</td>
+                      <td className="py-3 pr-4 text-xs text-muted-foreground/80">{formatDate(product.lastCheckedAt, locale)}</td>
                       <td className="py-3">
                         {product.orderUrl && (
                           <a
@@ -167,7 +181,7 @@ export default async function ProviderDetailPage({
                             rel="noreferrer"
                             className="rounded bg-accent px-3 py-1 text-xs font-medium text-accent-foreground hover:bg-stock-strong"
                           >
-                            Order
+                            {dictionary.common.order}
                           </a>
                         )}
                       </td>
@@ -181,19 +195,19 @@ export default async function ProviderDetailPage({
 
         {unknownProducts.length > 0 && (
           <section>
-            <h2 className="mb-4 text-xl font-semibold text-amber-800 dark:text-amber-300">Stock Unknown</h2>
+            <h2 className="mb-4 text-xl font-semibold text-amber-800 dark:text-amber-300">{t.stockUnknown}</h2>
             <p className="mb-3 text-sm text-muted-foreground">
-              Catalog-only refresh — live inventory is not confirmed (for example VMISS behind Cloudflare).
+              {t.catalogOnly}
             </p>
             <div className="overflow-x-auto">
               <table className="min-w-[560px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground/80">
-                    <th className="pb-2 pr-4">Plan</th>
-                    <th className="pb-2 pr-4">Location</th>
-                    <th className="pb-2 pr-4">Line</th>
-                    <th className="pb-2 pr-4">Price</th>
-                    <th className="pb-2">Last Checked</th>
+                    <th className="pb-2 pr-4">{t.plan}</th>
+                    <th className="pb-2 pr-4">{t.location}</th>
+                    <th className="pb-2 pr-4">{t.line}</th>
+                    <th className="pb-2 pr-4">{t.price}</th>
+                    <th className="pb-2">{t.lastCheckedCol}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -208,9 +222,11 @@ export default async function ProviderDetailPage({
                         </Link>
                       </td>
                       <td className="py-2 pr-4 text-muted-foreground/80">{product.location}</td>
-                      <td className="py-2 pr-4 text-xs text-muted-foreground/80">{lineTypeLabel(product.lineType)}</td>
+                      <td className="py-2 pr-4 text-xs text-muted-foreground/80">
+                        {lineTypeLabel(product.lineType, dictionary.providers.standardLine)}
+                      </td>
                       <td className="py-2 pr-4 font-mono text-muted-foreground/80">{formatPrice(product)}</td>
-                      <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt)}</td>
+                      <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt, locale)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -220,14 +236,14 @@ export default async function ProviderDetailPage({
         )}
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold text-muted-foreground">Out of Stock</h2>
-          {outOfStockProducts.length === 0 ? <p className="text-muted-foreground/80">No sold-out plans.</p> : (
+          <h2 className="mb-4 text-xl font-semibold text-muted-foreground">{t.outOfStock}</h2>
+          {outOfStockProducts.length === 0 ? <p className="text-muted-foreground/80">{t.noSoldOut}</p> : (
             <div className="overflow-x-auto">
               <table className="min-w-[560px] w-full text-sm opacity-60">
                 <thead><tr className="border-b border-border text-left text-muted-foreground/80">
-                  <th className="pb-2 pr-4">Plan</th><th className="pb-2 pr-4">Location</th>
-                  <th className="pb-2 pr-4">Line</th>
-                  <th className="pb-2 pr-4">Price</th><th className="pb-2">Last Checked</th>
+                  <th className="pb-2 pr-4">{t.plan}</th><th className="pb-2 pr-4">{t.location}</th>
+                  <th className="pb-2 pr-4">{t.line}</th>
+                  <th className="pb-2 pr-4">{t.price}</th><th className="pb-2">{t.lastCheckedCol}</th>
                 </tr></thead>
                 <tbody>{outOfStockProductsSorted.map((product) => (
                   <tr key={product.id} className="border-b border-border/30">
@@ -240,9 +256,11 @@ export default async function ProviderDetailPage({
                       </Link>
                     </td>
                     <td className="py-2 pr-4 text-muted-foreground/80">{product.location}</td>
-                    <td className="py-2 pr-4 text-xs text-muted-foreground/80">{lineTypeLabel(product.lineType)}</td>
+                    <td className="py-2 pr-4 text-xs text-muted-foreground/80">
+                      {lineTypeLabel(product.lineType, dictionary.providers.standardLine)}
+                    </td>
                     <td className="py-2 pr-4 font-mono text-muted-foreground/80">{formatPrice(product)}</td>
-                    <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt)}</td>
+                    <td className="py-2 text-xs text-muted-foreground/70">{formatDate(product.lastCheckedAt, locale)}</td>
                   </tr>
                 ))}</tbody>
               </table>

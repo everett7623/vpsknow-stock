@@ -19,25 +19,41 @@ export function detectPlanOfferTag(planName: string, productId = ''): PlanOfferT
   return null;
 }
 
-export function offerTagLabel(tag: PlanOfferTag): string | null {
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+
+export function offerTagLabel(
+  tag: PlanOfferTag,
+  dictionary?: Dictionary['offerTag'],
+): string | null {
+  if (!tag) return null;
+  if (dictionary) {
+    if (tag === 'special') return dictionary.special;
+    if (tag === 'promo') return dictionary.promo;
+    if (tag === 'limited') return dictionary.limited;
+  }
   if (tag === 'special') return 'Special';
   if (tag === 'promo') return 'Promo';
   if (tag === 'limited') return 'Limited';
   return null;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  vps: 'VPS',
-  vds: 'VDS',
-  dedicated: 'Dedicated',
-  nat_vps: 'NAT VPS',
-  storage: 'Storage',
-};
-
-export function categoryLabel(category: string): string {
-  return CATEGORY_LABELS[category] ?? category.replace(/[-_]/g, ' ').toUpperCase();
+export function categoryLabel(category: string, dictionary?: Dictionary['category']): string {
+  if (dictionary && category in dictionary) {
+    return dictionary[category as keyof Dictionary['category']];
+  }
+  const fallback: Record<string, string> = {
+    vps: 'VPS',
+    vds: 'VDS',
+    dedicated: 'Dedicated',
+    nat_vps: 'NAT VPS',
+    storage: 'Storage',
+  };
+  return fallback[category] ?? category.replace(/[-_]/g, ' ').toUpperCase();
 }
 
-export function lineTypeLabel(lineType: string | null | undefined): string {
-  return lineType?.trim() || 'Standard / unclassified';
+export function lineTypeLabel(
+  lineType: string | null | undefined,
+  standardFallback = 'Standard / unclassified',
+): string {
+  return lineType?.trim() || standardFallback;
 }

@@ -1,5 +1,7 @@
 import type { Product } from '@vpsknow/database';
 import { currencyPrefix } from '@vpsknow/shared';
+import { DEFAULT_LOCALE, intlLocale, type Locale } from '@/lib/i18n/config';
+import { dictionaries } from '@/lib/i18n/dictionaries';
 
 export function formatPrice(product: Product): string {
   const amount = (product.priceCents / 100).toFixed(2);
@@ -28,20 +30,24 @@ export function formatMonthlyEquivalent(
   return `${currencyPrefix(product.currency)}${(monthlyEquivalentCents(product) / 100).toFixed(2)} ${product.currency}/mo`;
 }
 
-export function formatDate(date: Date | string | null): string {
-  if (!date) return 'never';
+export function formatDate(date: Date | string | null, locale: Locale = DEFAULT_LOCALE): string {
+  if (!date) return dictionaries[locale].common.never;
   return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
 }
 
 /** Human-friendly relative time for live monitoring UIs. */
-export function formatRelativeTime(date: Date | string | null, now = Date.now()): string {
-  if (!date) return 'unknown';
+export function formatRelativeTime(
+  date: Date | string | null,
+  now = Date.now(),
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  if (!date) return dictionaries[locale].common.unknown;
   const then = new Date(date).getTime();
-  if (!Number.isFinite(then)) return 'unknown';
+  if (!Number.isFinite(then)) return dictionaries[locale].common.unknown;
 
   const deltaMs = then - now;
   const absMs = Math.abs(deltaMs);
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(intlLocale(locale), { numeric: 'auto' });
 
   const minutes = Math.round(absMs / 60_000);
   const hours = Math.round(absMs / 3_600_000);
@@ -86,11 +92,13 @@ export function resolveStockAvailability(
 export function formatBandwidth(
   bandwidthTb: number | null | undefined,
   bandwidthLabel?: string | null,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   const label = bandwidthLabel?.trim();
   if (label) return label;
-  if (bandwidthTb == null || bandwidthTb <= 0) return 'N/A';
-  if (bandwidthTb >= 100) return 'Unmetered';
+  const t = dictionaries[locale].common;
+  if (bandwidthTb == null || bandwidthTb <= 0) return t.na;
+  if (bandwidthTb >= 100) return t.unlimited;
   if (bandwidthTb >= 1) {
     const rounded = Number.isInteger(bandwidthTb) ? bandwidthTb.toFixed(0) : bandwidthTb.toFixed(1);
     return `${rounded} TB`;
@@ -98,8 +106,9 @@ export function formatBandwidth(
   return `${Math.round(bandwidthTb * 1000)} GB`;
 }
 
-export function formatIpv4(ipv4: boolean | null | undefined): string {
-  if (ipv4 === true) return 'Yes';
-  if (ipv4 === false) return 'No';
-  return 'N/A';
+export function formatIpv4(ipv4: boolean | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
+  const t = dictionaries[locale].common;
+  if (ipv4 === true) return t.yes;
+  if (ipv4 === false) return t.no;
+  return t.na;
 }

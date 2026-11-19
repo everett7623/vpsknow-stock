@@ -39,6 +39,7 @@ const REQUIRED_PROVIDERS = [
   'yunyoo',
   'cloudsilk',
   'bytevirt',
+  'zorocloud',
 ] as const;
 
 describe('provider registry', () => {
