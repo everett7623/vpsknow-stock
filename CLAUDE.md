@@ -134,7 +134,7 @@ The worker's stock engine (`apps/worker/src/stock-engine.ts`) implements confide
 
 - Restock events and LET offers → `@vpsknow_offers` channel
 - Restock and Offer remain distinct event types for message formatting and Bot subscriptions
-- All order links **must** go through `go.uukk.de` affiliate URLs
+- Order links use the built-in `stock.vpsknow.com/go/{slug}` short link. Do not publish `go.uukk.de` short links.
 - `packages/telegram/src/send.ts`: `sendChannelMessage`, `sendPrivateMessage`
 - `packages/telegram/src/templates.ts`: message formatters
 - Bot handles `/start`, `/subscribe`, `/unsubscribe`, `/settings`

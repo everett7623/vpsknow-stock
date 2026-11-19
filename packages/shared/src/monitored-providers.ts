@@ -28,6 +28,8 @@ export const MONITORED_PROVIDERS = [
   { slug: 'yunyoo', name: 'YUNYOO', intervalMs: 300_000 },
   { slug: 'cloudsilk', name: 'CloudSilk', intervalMs: 300_000 },
   { slug: 'bytevirt', name: 'ByteVirt', intervalMs: 300_000 },
+  { slug: 'zorocloud', name: 'ZoroCloud', intervalMs: 300_000 },
+  // solidvps: not monitored. Affiliate sheet says wait until a paid account unlocks an aff link.
   // zgocloud: removed from monitoring (poor reputation); adapter/seed record kept inactive.
 ] as const;
 

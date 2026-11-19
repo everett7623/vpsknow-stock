@@ -1,4 +1,7 @@
+'use client';
+
 import { currencyPrefix } from '@vpsknow/shared';
+import { useLocale } from '@/components/locale-provider';
 
 interface PricePoint {
   id: string;
@@ -17,6 +20,7 @@ export function PriceHistory({
   points: PricePoint[];
   currency: string;
 }) {
+  const { locale } = useLocale();
   const values = points
     .filter((point): point is PricePoint & { priceCents: number } => point.priceCents !== null)
     .reverse();
@@ -24,7 +28,9 @@ export function PriceHistory({
   if (values.length < 2) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-muted-foreground/80">
-        Price history will appear after at least two stock checks.
+        {locale === 'zh'
+          ? '至少两次库存检查后才会显示价格历史。'
+          : 'Price history will appear after at least two stock checks.'}
       </div>
     );
   }
@@ -60,7 +66,9 @@ export function PriceHistory({
       </svg>
       <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground/80">
         <span>{first.checkedAt.toISOString().slice(0, 10)}</span>
-        <span>{values.length} checks</span>
+        <span>
+          {values.length} {locale === 'zh' ? '次检查' : 'checks'}
+        </span>
         <span>{last.checkedAt.toISOString().slice(0, 10)}</span>
       </div>
     </div>

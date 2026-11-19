@@ -8,6 +8,8 @@ import {
   getProviders,
   type ProviderWithProducts,
 } from '@/lib/data';
+import { getDictionary } from '@/lib/i18n/get-locale';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
   categoryLabel,
   detectPlanOfferTag,
@@ -29,60 +31,69 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'VPS Stock Monitor',
-  description: 'Browse monitored VPS providers and live plan availability.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { dictionary } = await getDictionary();
+  return {
+    title: dictionary.meta.stockTitle,
+    description: dictionary.meta.stockDescription,
+  };
+}
 
 type StockFilter = 'all' | 'in' | 'out' | 'unknown';
 type OfferFilter = 'all' | 'special' | 'promo' | 'limited' | 'regular';
 type SortKey = 'price_asc' | 'price_desc' | 'name';
 type SpecsMode = 'minimum' | 'exact';
 
-const RAM_PRESETS = [
-  { value: 'all', label: 'Any RAM' },
-  { value: '1024', label: '≥ 1 GB' },
-  { value: '2048', label: '≥ 2 GB' },
-  { value: '4096', label: '≥ 4 GB' },
-  { value: '8192', label: '≥ 8 GB' },
-  { value: '16384', label: '≥ 16 GB' },
-] as const;
-
-const STORAGE_PRESETS = [
-  { value: 'all', label: 'Any disk' },
-  { value: '20', label: '≥ 20 GB' },
-  { value: '40', label: '≥ 40 GB' },
-  { value: '80', label: '≥ 80 GB' },
-  { value: '160', label: '≥ 160 GB' },
-  { value: '320', label: '≥ 320 GB' },
-  { value: '500', label: '≥ 500 GB' },
-  { value: '1000', label: '≥ 1 TB' },
-] as const;
-
-const BANDWIDTH_PRESETS = [
-  { value: 'all', label: 'Any bandwidth' },
-  { value: '0.5', label: '≥ 0.5 TB' },
-  { value: '1', label: '≥ 1 TB' },
-  { value: '2', label: '≥ 2 TB' },
-  { value: '5', label: '≥ 5 TB' },
-  { value: '10', label: '≥ 10 TB' },
-  { value: '100', label: 'Unmetered / ≥ 100 TB' },
-] as const;
-
-const CPU_PRESETS = [
-  { value: 'all', label: 'Any CPU' },
-  { value: '1', label: '≥ 1 vCPU' },
-  { value: '2', label: '≥ 2 vCPU' },
-  { value: '4', label: '≥ 4 vCPU' },
-  { value: '8', label: '≥ 8 vCPU' },
-] as const;
-
-const DISK_TYPE_PRESETS = [
-  { value: 'all', label: 'Any disk type' },
-  { value: 'nvme', label: 'NVMe' },
-  { value: 'ssd', label: 'SSD' },
-  { value: 'hdd', label: 'HDD' },
-] as const;
+function buildPresets(t: Dictionary['providers']): {
+  ram: ReadonlyArray<{ value: string; label: string }>;
+  storage: ReadonlyArray<{ value: string; label: string }>;
+  bandwidth: ReadonlyArray<{ value: string; label: string }>;
+  cpu: ReadonlyArray<{ value: string; label: string }>;
+  disk: ReadonlyArray<{ value: string; label: string }>;
+} {
+  return {
+    ram: [
+      { value: 'all', label: t.anyRam },
+      { value: '1024', label: t.ram1 },
+      { value: '2048', label: t.ram2 },
+      { value: '4096', label: t.ram4 },
+      { value: '8192', label: t.ram8 },
+      { value: '16384', label: t.ram16 },
+    ],
+    storage: [
+      { value: 'all', label: t.anyDisk },
+      { value: '20', label: t.disk20 },
+      { value: '40', label: t.disk40 },
+      { value: '80', label: t.disk80 },
+      { value: '160', label: t.disk160 },
+      { value: '320', label: t.disk320 },
+      { value: '500', label: t.disk500 },
+      { value: '1000', label: t.disk1tb },
+    ],
+    bandwidth: [
+      { value: 'all', label: t.anyBandwidth },
+      { value: '0.5', label: t.bw05 },
+      { value: '1', label: t.bw1 },
+      { value: '2', label: t.bw2 },
+      { value: '5', label: t.bw5 },
+      { value: '10', label: t.bw10 },
+      { value: '100', label: t.bwUnmetered },
+    ],
+    cpu: [
+      { value: 'all', label: t.anyCpu },
+      { value: '1', label: t.cpu1 },
+      { value: '2', label: t.cpu2 },
+      { value: '4', label: t.cpu4 },
+      { value: '8', label: t.cpu8 },
+    ],
+    disk: [
+      { value: 'all', label: t.anyDiskType },
+      { value: 'nvme', label: 'NVMe' },
+      { value: 'ssd', label: 'SSD' },
+      { value: 'hdd', label: 'HDD' },
+    ],
+  };
+}
 
 interface SearchParams {
   p?: string;
@@ -309,8 +320,14 @@ function planJunkRank(product: {
   return 0;
 }
 
-function OfferBadge({ tag }: { tag: PlanOfferTag }) {
-  const label = offerTagLabel(tag);
+function OfferBadge({
+  tag,
+  offerTag,
+}: {
+  tag: PlanOfferTag;
+  offerTag: Dictionary['offerTag'];
+}) {
+  const label = offerTagLabel(tag, offerTag);
   if (!label || !tag) return <span className="text-muted-foreground/70">—</span>;
 
   const styles =
@@ -331,7 +348,12 @@ export default async function ProvidersPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const providers = await getProviders();
+  const [{ locale, dictionary }, providers] = await Promise.all([
+    getDictionary(),
+    getProviders(),
+  ]);
+  const t = dictionary.providers;
+  const presets = buildPresets(t);
   const requestedSlug = params.p?.trim() || 'all';
   const selected = requestedSlug === 'all'
     ? null
@@ -443,8 +465,8 @@ export default async function ProvidersPage({
         <aside className="sticky top-14 z-30 border-b border-border bg-background lg:h-[calc(100vh-3.5rem)] lg:w-64 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r xl:w-72">
           <div className="space-y-3 p-3 sm:p-4 lg:space-y-4 lg:p-5">
             <div className="flex items-baseline justify-between gap-3 lg:block lg:space-y-1">
-              <h1 className="text-lg font-bold text-foreground sm:text-xl">Providers</h1>
-              <p className="text-xs text-muted-foreground/80">{providers.length} monitored</p>
+              <h1 className="text-lg font-bold text-foreground sm:text-xl">{t.title}</h1>
+              <p className="text-xs text-muted-foreground/80">{providers.length} {t.monitored}</p>
             </div>
 
             <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:gap-1 lg:px-0 lg:pb-0">
@@ -457,7 +479,7 @@ export default async function ProvidersPage({
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="whitespace-nowrap text-sm font-medium">All Providers</span>
+                  <span className="whitespace-nowrap text-sm font-medium">{t.allProviders}</span>
                   <span className="shrink-0 font-mono text-xs text-muted-foreground/80">
                     {providers.reduce((count, provider) => count + provider.products.filter(
                       (product) => resolveStockAvailability(
@@ -519,13 +541,13 @@ export default async function ProvidersPage({
 
         <section className="min-w-0 flex-1 space-y-5 p-3 sm:p-5 lg:p-6">
           {providers.length === 0 ? (
-            <p className="text-muted-foreground/80">No active providers.</p>
+            <p className="text-muted-foreground/80">{t.noActive}</p>
           ) : (
             <>
               <header className="space-y-2">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <h2 className="text-xl font-bold text-foreground sm:text-2xl">
-                    {selected?.name ?? 'All Providers'}
+                    {selected?.name ?? t.allProviders}
                   </h2>
                   {selected && (
                     <>
@@ -535,22 +557,27 @@ export default async function ProvidersPage({
                         rel="noreferrer"
                         className="text-sm text-stock hover:opacity-90"
                       >
-                        Official site
+                        {dictionary.common.officialSite}
                       </a>
                       <Link
                         href={`/provider/${selected.slug}`}
                         className="text-sm text-muted-foreground hover:text-foreground"
                       >
-                        Full page
+                        {dictionary.common.fullPage}
                       </Link>
                     </>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground/80">
-                  {inStockCount} in stock · {sourceProducts.length} plans · Last checked:{' '}
-                  {lastCheckedAt
-                    ? `${formatRelativeTime(lastCheckedAt)} (${formatDate(lastCheckedAt)})`
-                    : 'Unknown'}
+                  {t.summary
+                    .replace('{inStock}', String(inStockCount))
+                    .replace('{plans}', String(sourceProducts.length))
+                    .replace(
+                      '{checked}',
+                      lastCheckedAt
+                        ? `${formatRelativeTime(lastCheckedAt, Date.now(), locale)} (${formatDate(lastCheckedAt, locale)})`
+                        : t.lastCheckedUnknown,
+                    )}
                 </p>
               </header>
 
@@ -560,37 +587,37 @@ export default async function ProvidersPage({
               >
                 <input type="hidden" name="p" value={selected?.slug ?? 'all'} />
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Specs mode
+                  {t.specsMode}
                   <select
                     name="mode"
                     defaultValue={specsMode}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="minimum">Minimum (≥)</option>
-                    <option value="exact">Exact (=)</option>
+                    <option value="minimum">{t.minimum}</option>
+                    <option value="exact">{t.exact}</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Stock
+                  {t.stock}
                   <select
                     name="stock"
                     defaultValue={stock}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All</option>
-                    <option value="in">In stock</option>
-                    <option value="out">Sold out</option>
-                    <option value="unknown">Unknown</option>
+                    <option value="all">{dictionary.common.all}</option>
+                    <option value="in">{dictionary.stock.inStock}</option>
+                    <option value="out">{dictionary.stock.soldOut}</option>
+                    <option value="unknown">{dictionary.stock.unknown}</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Region
+                  {t.region}
                   <select
                     name="region"
                     defaultValue={region}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All regions</option>
+                    <option value="all">{t.allRegions}</option>
                     {listRegions().map((item) => (
                       <option key={item} value={item}>
                         {item}
@@ -599,13 +626,13 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Location
+                  {t.location}
                   <select
                     name="location"
                     defaultValue={location}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All locations</option>
+                    <option value="all">{t.allLocations}</option>
                     {locations.map((item) => (
                       <option key={item} value={item}>
                         {item}
@@ -614,44 +641,44 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Category
+                  {t.category}
                   <select
                     name="category"
                     defaultValue={category}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All types</option>
+                    <option value="all">{t.allTypes}</option>
                     {categories.map((item) => (
                       <option key={item} value={item}>
-                        {categoryLabel(item)}
+                        {categoryLabel(item, dictionary.category)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Optimized line
+                  {t.optimizedLine}
                   <select
                     name="line"
                     defaultValue={line}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All lines</option>
+                    <option value="all">{t.allLines}</option>
                     {lineTypes.map((item) => (
                       <option key={item} value={item}>
-                        {lineTypeLabel(item)}
+                        {lineTypeLabel(item, t.standardLine)}
                       </option>
                     ))}
-                    <option value="standard">Standard / unclassified</option>
+                    <option value="standard">{t.standardLine}</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  RAM
+                  {t.ram}
                   <select
                     name="ram"
                     defaultValue={ram}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    {RAM_PRESETS.map((preset) => (
+                    {presets.ram.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {specsPresetLabel(preset.label, specsMode)}
                       </option>
@@ -659,13 +686,13 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Storage
+                  {t.storage}
                   <select
                     name="storage"
                     defaultValue={storage}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    {STORAGE_PRESETS.map((preset) => (
+                    {presets.storage.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {specsPresetLabel(preset.label, specsMode)}
                       </option>
@@ -673,13 +700,13 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Disk type
+                  {t.diskType}
                   <select
                     name="disk"
                     defaultValue={disk}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    {DISK_TYPE_PRESETS.map((preset) => (
+                    {presets.disk.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {preset.label}
                       </option>
@@ -687,13 +714,13 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Bandwidth
+                  {t.bandwidth}
                   <select
                     name="bw"
                     defaultValue={bw}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    {BANDWIDTH_PRESETS.map((preset) => (
+                    {presets.bandwidth.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {specsPresetLabel(preset.label, specsMode)}
                       </option>
@@ -701,13 +728,13 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  CPU
+                  {t.cpu}
                   <select
                     name="cpu"
                     defaultValue={cpu}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    {CPU_PRESETS.map((preset) => (
+                    {presets.cpu.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {specsPresetLabel(preset.label, specsMode)}
                       </option>
@@ -715,25 +742,25 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  IPv4
+                  {t.ipv4}
                   <select
                     name="ipv4"
                     defaultValue={ipv4Filter}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">Any</option>
-                    <option value="yes">Included</option>
-                    <option value="no">Not included</option>
+                    <option value="all">{dictionary.common.any}</option>
+                    <option value="yes">{t.included}</option>
+                    <option value="no">{t.notIncluded}</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Billing
+                  {t.billing}
                   <select
                     name="billing"
                     defaultValue={billing}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All cycles</option>
+                    <option value="all">{t.allCycles}</option>
                     {billingCycles.map((item) => (
                       <option key={item} value={item}>
                         {item}
@@ -742,13 +769,13 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Currency
+                  {t.currency}
                   <select
                     name="currency"
                     defaultValue={currency}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All currencies</option>
+                    <option value="all">{t.allCurrencies}</option>
                     {currencies.map((item) => (
                       <option key={item} value={item}>
                         {item}
@@ -757,61 +784,61 @@ export default async function ProvidersPage({
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Offer
+                  {t.offer}
                   <select
                     name="offer"
                     defaultValue={offer}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="all">All offers</option>
-                    <option value="special">Special</option>
-                    <option value="promo">Promo</option>
-                    <option value="limited">Limited</option>
-                    <option value="regular">Regular</option>
+                    <option value="all">{t.allOffers}</option>
+                    <option value="special">{dictionary.offerTag.special}</option>
+                    <option value="promo">{dictionary.offerTag.promo}</option>
+                    <option value="limited">{dictionary.offerTag.limited}</option>
+                    <option value="regular">{dictionary.offerTag.regular}</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Min monthly price
+                  {t.minMonthly}
                   <input
                     name="minPrice"
                     type="number"
                     min="0"
                     step="0.01"
                     defaultValue={minPrice}
-                    placeholder={currency === 'all' ? 'Choose currency' : `Any ${currency}`}
+                    placeholder={currency === 'all' ? dictionary.common.chooseCurrency : `${dictionary.common.anyCurrency} ${currency}`}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Max monthly price
+                  {t.maxMonthly}
                   <input
                     name="maxPrice"
                     type="number"
                     min="0"
                     step="0.01"
                     defaultValue={maxPrice}
-                    placeholder={currency === 'all' ? 'Choose currency' : `Any ${currency}`}
+                    placeholder={currency === 'all' ? dictionary.common.chooseCurrency : `${dictionary.common.anyCurrency} ${currency}`}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80">
-                  Sort
+                  {t.sort}
                   <select
                     name="sort"
                     defaultValue={sort}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
-                    <option value="price_asc">Monthly price ↑ (promo first)</option>
-                    <option value="price_desc">Monthly price ↓</option>
-                    <option value="name">Plan name</option>
+                    <option value="price_asc">{t.sortPriceAsc}</option>
+                    <option value="price_desc">{t.sortPriceDesc}</option>
+                    <option value="name">{t.sortName}</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground/80 sm:col-span-2 xl:col-span-2">
-                  Search
+                  {t.search}
                   <input
                     name="q"
                     defaultValue={query}
-                    placeholder="Plan / location / ID"
+                    placeholder={t.searchPlaceholder}
                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </label>
@@ -820,22 +847,22 @@ export default async function ProvidersPage({
                     type="submit"
                     className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-stock-strong"
                   >
-                    Apply filters
+                    {dictionary.common.applyFilters}
                   </button>
                   <Link
                     href={`/providers?p=${selected?.slug ?? 'all'}`}
                     className="rounded px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                   >
-                    Reset
+                    {dictionary.common.reset}
                   </Link>
-                  <span className="pb-2 text-xs text-muted-foreground/80">{products.length} shown</span>
+                  <span className="pb-2 text-xs text-muted-foreground/80">{products.length} {t.shown}</span>
                 </div>
               </form>
 
               <div className="space-y-3 md:hidden">
                 {products.length === 0 ? (
                   <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground/80">
-                    No plans match the current filters.
+                    {t.noMatch}
                   </p>
                 ) : (
                   products.map((product) => {
@@ -850,10 +877,10 @@ export default async function ProvidersPage({
                       ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${
                           product.ramMb >= 1024 ? 'GB' : 'MB'
                         }`
-                      : 'N/A';
+                      : dictionary.common.na;
                     const storageLabel = product.storageGb
                       ? `${product.storageGb} GB ${product.storageType || ''}`.trim()
-                      : 'N/A';
+                      : dictionary.common.na;
 
                     return (
                       <article
@@ -870,8 +897,8 @@ export default async function ProvidersPage({
                             </Link>
                             <p className="text-sm text-muted-foreground">
                               {allProvidersSelected ? `${productProvider.name} · ` : ''}
-                              {product.location} · {categoryLabel(product.category)}
-                              {product.lineType ? ` · ${lineTypeLabel(product.lineType)}` : ''}
+                              {product.location} · {categoryLabel(product.category, dictionary.category)}
+                              {product.lineType ? ` · ${lineTypeLabel(product.lineType, t.standardLine)}` : ''}
                             </p>
                           </div>
                           <StockBadge
@@ -881,38 +908,38 @@ export default async function ProvidersPage({
                         </div>
                         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           <div>
-                            <dt className="inline text-muted-foreground/70">CPU </dt>
+                            <dt className="inline text-muted-foreground/70">{t.cpu} </dt>
                             <dd className="inline font-mono text-foreground/80">
-                              {product.cpu || 'N/A'}
+                              {product.cpu || dictionary.common.na}
                             </dd>
                           </div>
                           <div>
-                            <dt className="inline text-muted-foreground/70">RAM </dt>
+                            <dt className="inline text-muted-foreground/70">{t.ram} </dt>
                             <dd className="inline font-mono text-foreground/80">{ramLabel}</dd>
                           </div>
                           <div>
-                            <dt className="inline text-muted-foreground/70">Disk </dt>
+                            <dt className="inline text-muted-foreground/70">{t.storage} </dt>
                             <dd className="inline font-mono text-foreground/80">{storageLabel}</dd>
                           </div>
                           <div>
-                            <dt className="inline text-muted-foreground/70">BW </dt>
+                            <dt className="inline text-muted-foreground/70">{t.bandwidth} </dt>
                             <dd className="inline font-mono text-foreground/80">
-                              {formatBandwidth(product.bandwidthTb, product.bandwidthLabel)}
+                              {formatBandwidth(product.bandwidthTb, product.bandwidthLabel, locale)}
                             </dd>
                           </div>
                           <div>
-                            <dt className="inline text-muted-foreground/70">IPv4 </dt>
+                            <dt className="inline text-muted-foreground/70">{t.ipv4} </dt>
                             <dd className="inline font-mono text-foreground/80">
-                              {formatIpv4(product.ipv4)}
+                              {formatIpv4(product.ipv4, locale)}
                             </dd>
                           </div>
                           <div className="flex items-center gap-2">
-                            <OfferBadge tag={tag} />
+                            <OfferBadge tag={tag} offerTag={dictionary.offerTag} />
                             <span className="font-mono text-stock">
                               {formatMonthlyEquivalent(product)}
                               {product.billingCycle !== 'monthly' && (
                                 <span className="ml-1 text-muted-foreground/70">
-                                  ({formatPrice(product)} {product.currency} billed)
+                                  ({formatPrice(product)} {product.currency} {dictionary.common.billed})
                                 </span>
                               )}
                             </span>
@@ -926,7 +953,7 @@ export default async function ProvidersPage({
                               rel="noreferrer"
                               className="font-medium text-stock hover:text-stock-strong"
                             >
-                              Order
+                              {dictionary.common.order}
                             </a>
                           ) : availability !== 'in' ? (
                             <a
@@ -935,14 +962,14 @@ export default async function ProvidersPage({
                               rel="noreferrer"
                               className="text-sky-600 hover:text-sky-500 dark:text-sky-300"
                             >
-                              Notify Me
+                              {dictionary.common.notifyMe}
                             </a>
                           ) : null}
                           <Link
                             href={`/provider/${productProvider.slug}/${encodeURIComponent(product.productId)}`}
                             className="text-muted-foreground hover:text-foreground"
                           >
-                            Details
+                            {dictionary.common.details}
                           </Link>
                         </div>
                       </article>
@@ -955,26 +982,26 @@ export default async function ProvidersPage({
                 <table className="min-w-[1180px] w-full text-sm">
                   <thead className="bg-card text-left text-muted-foreground">
                     <tr className="border-b border-border">
-                      <th className="px-4 py-3">Plan</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Location</th>
-                      <th className="px-4 py-3">Line</th>
-                      <th className="px-4 py-3">CPU</th>
-                      <th className="px-4 py-3">RAM</th>
-                      <th className="px-4 py-3">Storage</th>
-                      <th className="px-4 py-3">Bandwidth</th>
-                      <th className="px-4 py-3">IPv4</th>
-                      <th className="px-4 py-3">Offer</th>
-                      <th className="px-4 py-3">Price / Monthly</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Action</th>
+                      <th className="px-4 py-3">{t.plan}</th>
+                      <th className="px-4 py-3">{t.type}</th>
+                      <th className="px-4 py-3">{t.location}</th>
+                      <th className="px-4 py-3">{t.line}</th>
+                      <th className="px-4 py-3">{t.cpu}</th>
+                      <th className="px-4 py-3">{t.ram}</th>
+                      <th className="px-4 py-3">{t.storage}</th>
+                      <th className="px-4 py-3">{t.bandwidth}</th>
+                      <th className="px-4 py-3">{t.ipv4}</th>
+                      <th className="px-4 py-3">{t.offerCol}</th>
+                      <th className="px-4 py-3">{t.priceMonthly}</th>
+                      <th className="px-4 py-3">{t.status}</th>
+                      <th className="px-4 py-3">{t.action}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {products.length === 0 ? (
                       <tr>
                         <td colSpan={13} className="px-4 py-8 text-center text-muted-foreground/80">
-                          No plans match the current filters.
+                          {t.noMatch}
                         </td>
                       </tr>
                     ) : (
@@ -1002,43 +1029,43 @@ export default async function ProvidersPage({
                               )}
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">
-                              {categoryLabel(product.category)}
+                              {categoryLabel(product.category, dictionary.category)}
                             </td>
                             <td className="px-4 py-3 text-foreground/80">{product.location}</td>
                             <td className="px-4 py-3 text-xs text-foreground/80">
                               <span className={product.lineType ? 'font-medium text-sky-700 dark:text-sky-300' : 'text-muted-foreground/70'}>
-                                {lineTypeLabel(product.lineType)}
+                                {lineTypeLabel(product.lineType, t.standardLine)}
                               </span>
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
-                              {product.cpu || 'N/A'}
+                              {product.cpu || dictionary.common.na}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
                               {product.ramMb
                                 ? `${product.ramMb >= 1024 ? product.ramMb / 1024 : product.ramMb} ${
                                     product.ramMb >= 1024 ? 'GB' : 'MB'
                                   }`
-                                : 'N/A'}
+                                : dictionary.common.na}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
                               {product.storageGb
                                 ? `${product.storageGb} GB ${product.storageType || ''}`.trim()
-                                : 'N/A'}
+                                : dictionary.common.na}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
-                              {formatBandwidth(product.bandwidthTb, product.bandwidthLabel)}
+                              {formatBandwidth(product.bandwidthTb, product.bandwidthLabel, locale)}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-foreground/80">
-                              {formatIpv4(product.ipv4)}
+                              {formatIpv4(product.ipv4, locale)}
                             </td>
                             <td className="px-4 py-3">
-                              <OfferBadge tag={tag} />
+                              <OfferBadge tag={tag} offerTag={dictionary.offerTag} />
                             </td>
                             <td className="px-4 py-3 font-mono text-stock">
                               <div>{formatMonthlyEquivalent(product)}</div>
                               {product.billingCycle !== 'monthly' && (
                                 <div className="text-xs text-muted-foreground/70">
-                                  {formatPrice(product)} {product.currency} billed
+                                  {formatPrice(product)} {product.currency} {dictionary.common.billed}
                                 </div>
                               )}
                             </td>
@@ -1056,7 +1083,7 @@ export default async function ProvidersPage({
                                   rel="noreferrer"
                                   className="text-stock hover:text-stock"
                                 >
-                                  Order
+                                  {dictionary.common.order}
                                 </a>
                               ) : availability !== 'in' ? (
                                 <a
@@ -1065,7 +1092,7 @@ export default async function ProvidersPage({
                                   rel="noreferrer"
                                   className="text-sky-600 hover:text-sky-500 dark:text-sky-300"
                                 >
-                                  Notify Me
+                                  {dictionary.common.notifyMe}
                                 </a>
                               ) : (
                                 <span className="text-muted-foreground/70">—</span>

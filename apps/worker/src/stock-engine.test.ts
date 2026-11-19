@@ -1002,7 +1002,10 @@ describe('product affiliate mapping', () => {
       'https://billing.highendnetwork.com/aff.php?aff=68',
     );
     expect(generateAffiliateUrl('666clouds')).toBe('https://www.666clouds.com/aff.php?aff=2071');
-    expect(generateAffiliateUrl('yunyoo')).toBe('https://yunyoo.cc/cart?aff=HYWEANDG');
+    expect(generateAffiliateUrl('yunyoo')).toBe('https://yunyoo.cc/aff/HYWEANDG');
+    expect(generateAffiliateUrl('zorocloud', '68')).toBe(
+      'https://my.zorocloud.com/aff.php?aff=1853&pid=68',
+    );
   });
 
   it('merges the HNCloud referral parameter only into its official origin', () => {
@@ -1039,5 +1042,15 @@ describe('product affiliate mapping', () => {
     expect(resolveAffiliateProviderSlug('GreenCloudVPS')).toBe('greencloudvps');
     expect(resolveAffiliateProviderSlug('BWH')).toBe('bandwagonhost');
     expect(resolveAffiliateProviderSlug('UnknownHost')).toBeNull();
+    expect(resolveAffiliateProviderSlug('Prepaid-Host')).toBe('prepaidhost');
+    expect(buildProductAffiliateUrl('prepaidhost', 'https://prepaid-host.com/a/hostmonit', null)).toBe(
+      'https://prepaid-host.com/a/Jensfrank',
+    );
+    expect(
+      buildProductAffiliateUrl('alphavps', 'https://alphavps.com/clients/aff.php?aff=293&pid=292', '292'),
+    ).toBe('https://alphavps.com/clients/aff.php?aff=756&pid=292');
+    expect(buildProductAffiliateUrl('rfchost', 'https://my.rfchost.com/aff.php?aff=1247&pid=160', '160')).toBe(
+      'https://my.rfchost.com/aff.php?aff=1054&pid=160',
+    );
   });
 });

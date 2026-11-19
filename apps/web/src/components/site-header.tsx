@@ -3,14 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BrandLogo } from '@/components/brand-logo';
+import { LocaleSwitcher } from '@/components/locale-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { useLocale } from '@/components/locale-provider';
 import { botSubscribeUrl } from '@/lib/utils';
-
-const links = [
-  { href: '/', label: 'Home' },
-  { href: '/providers', label: 'Stock' },
-  { href: '/offers', label: 'Offers' },
-] as const;
 
 function isActivePath(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
@@ -20,6 +16,13 @@ function isActivePath(pathname: string, href: string): boolean {
 export function SiteHeader(): React.JSX.Element {
   const pathname = usePathname();
   const isProviders = pathname.startsWith('/providers');
+  const { dictionary } = useLocale();
+
+  const links = [
+    { href: '/', label: dictionary.nav.home },
+    { href: '/providers', label: dictionary.nav.stock },
+    { href: '/offers', label: dictionary.nav.offers },
+  ] as const;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-md">
@@ -56,7 +59,7 @@ export function SiteHeader(): React.JSX.Element {
             rel="noreferrer"
             className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground transition-colors hover:bg-stock-strong sm:text-sm"
           >
-            Alerts
+            {dictionary.nav.alerts}
           </a>
           <a
             href="https://t.me/vpsknow_offers"
@@ -64,9 +67,12 @@ export function SiteHeader(): React.JSX.Element {
             rel="noreferrer"
             className="hidden shrink-0 hover:text-foreground sm:inline"
           >
-            Channel
+            {dictionary.nav.channel}
           </a>
-          <ThemeToggle />
+          <div className="ml-0.5 flex shrink-0 items-center gap-1.5 sm:ml-1">
+            <LocaleSwitcher />
+            <ThemeToggle />
+          </div>
         </nav>
       </div>
     </header>

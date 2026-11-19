@@ -20,7 +20,7 @@
   --color-warning: var(--warning);
   --color-brand-cyan: var(--brand-cyan);
   --color-brand-purple: var(--brand-purple);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 

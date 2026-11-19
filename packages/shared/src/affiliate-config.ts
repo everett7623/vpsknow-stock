@@ -1,8 +1,8 @@
 /**
  * Affiliate 配置文件 - 从 Excel 导入的真实数据
  *
- * 数据来源: 主机与域名服务商短链接汇总-20260801.xlsx
- * 更新时间: 2026-08-01
+ * 数据来源: 主机与域名服务商短链接汇总-20261117.xlsx
+ * 更新时间: 2026-11-17
  */
 
 interface AffiliateConfigBase {
@@ -182,14 +182,14 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
   yunyoo: {
     provider: 'yunyoo',
     affId: 'HYWEANDG',
-    urlTemplate: 'https://yunyoo.cc/cart?aff={affId}',
+    urlTemplate: 'https://yunyoo.cc/aff/{affId}',
     supportsPid: false,
     productAffiliate: {
       strategy: 'query-param',
       parameter: 'aff',
       allowedOrigins: ['https://yunyoo.cc'],
     },
-    originalUrl: 'https://yunyoo.cc/cart?aff=HYWEANDG',
+    originalUrl: 'https://yunyoo.cc/aff/HYWEANDG',
   },
 
   cloudsilk: {
@@ -213,6 +213,15 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     supportsPid: true,
     pidSource: 'whmcs-card-id',
     originalUrl: 'https://bytevirt.com/aff.php?aff=429',
+  },
+
+  zorocloud: {
+    provider: 'zorocloud',
+    affId: '1853',
+    urlTemplate: 'https://my.zorocloud.com/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'whmcs-card-id',
+    originalUrl: 'https://my.zorocloud.com/aff.php?aff=1853',
   },
 
   // ========== A-Tier Providers ==========
@@ -422,6 +431,40 @@ export const AFFILIATE_CONFIGS: Record<string, AffiliateConfig> = {
     pidSource: 'whmcs-card-id',
     originalUrl: 'https://my.speedypage.com/aff.php?aff=405',
   },
+
+  alphavps: {
+    provider: 'alphavps',
+    affId: '756',
+    urlTemplate: 'https://alphavps.com/clients/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'order-url',
+    originalUrl: 'https://alphavps.com/clients/aff.php?aff=756',
+  },
+
+  rfchost: {
+    provider: 'rfchost',
+    affId: '1054',
+    urlTemplate: 'https://my.rfchost.com/aff.php?aff={affId}&pid={pid}',
+    supportsPid: true,
+    pidSource: 'order-url',
+    originalUrl: 'https://my.rfchost.com/aff.php?aff=1054',
+  },
+
+  // Path affiliate. Any product URL falls back to this landing, which sets the
+  // cookie and redirects to https://prepaid-host.com/de.
+  prepaidhost: {
+    provider: 'prepaidhost',
+    affId: 'Jensfrank',
+    urlTemplate: 'https://prepaid-host.com/a/{affId}',
+    supportsPid: false,
+    productAffiliate: {
+      strategy: 'query-param',
+      parameter: 'aff',
+      allowedOrigins: [],
+      fallbackToLanding: true,
+    },
+    originalUrl: 'https://prepaid-host.com/a/Jensfrank',
+  },
 };
 
 /**
@@ -530,6 +573,10 @@ const PROVIDER_NAME_ALIASES: Record<string, string> = {
   vps: 'vps',
   cloudsilk: 'cloudsilk',
   bytevirt: 'bytevirt',
+  prepaidhost: 'prepaidhost',
+  prepaid: 'prepaidhost',
+  alphavps: 'alphavps',
+  rfchost: 'rfchost',
 };
 
 /**
