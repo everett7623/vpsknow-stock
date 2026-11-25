@@ -1,10 +1,11 @@
-export const LOCALES = ['en', 'zh'] as const;
+export const LOCALES = ['zh', 'en'] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = 'zh';
 
-export const LOCALE_COOKIE = 'vpsknow_locale';
+/** Bumped so browsers that cached the prior English-default cookie start on Chinese. */
+export const LOCALE_COOKIE = 'vpsknow_locale_v2';
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   zh: '中文',
