@@ -7,6 +7,6 @@ export {
   LOCALE_LABELS,
   LOCALES,
   type Locale,
-} from './config.js';
-export { dictionaries, getDictionarySync, type Dictionary } from './dictionaries.js';
-export { getDictionary, getLocale } from './get-locale.js';
+} from './config';
+export { dictionaries, getDictionarySync, type Dictionary } from './dictionaries';
+export { getDictionary, getLocale } from './get-locale';

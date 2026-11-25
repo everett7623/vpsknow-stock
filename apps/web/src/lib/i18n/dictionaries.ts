@@ -1,4 +1,4 @@
-import type { Locale } from './config.js';
+import type { Locale } from './config';
 
 export type Dictionary = {
   meta: {
