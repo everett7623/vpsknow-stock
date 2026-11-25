@@ -1,7 +1,12 @@
 import { prisma } from '@vpsknow/database';
 import type { StockResult } from '@vpsknow/providers';
 import { RESTOCK_COOLDOWN_MS } from '@vpsknow/shared';
-import { formatRestockMessage, sendChannelMessage } from '@vpsknow/telegram';
+import {
+  editChannelMessage,
+  formatRestockMessage,
+  formatSoldOutEditMessage,
+  sendChannelMessage,
+} from '@vpsknow/telegram';
 import type { Logger } from 'pino';
 
 const PUBLIC_CHANNEL_ID = process.env.TELEGRAM_OFFERS_CHANNEL_ID?.trim() || '@vpsknow_offers';
@@ -42,6 +47,99 @@ export async function deliverRestockNotification(
     logger.error(
       { provider: result.provider, product: result.planName, err: error },
       'Failed to send Telegram notification',
+    );
+    return false;
+  }
+}
+
+/**
+ * Edit the latest public-channel restock message for a product with strikethrough sold-out copy.
+ */
+export async function markChannelRestockSoldOut(
+  productId: string,
+  result: StockResult,
+  soldOutEventId: string,
+  logger: Logger,
+): Promise<boolean> {
+  const restockEvent = await prisma.stockEvent.findFirst({
+    where: {
+      productId,
+      eventType: 'restock',
+      notified: true,
+      telegramMessages: {
+        some: {
+          channelId: PUBLIC_CHANNEL_ID,
+          status: 'sent',
+        },
+      },
+    },
+    orderBy: { detectedAt: 'desc' },
+    select: {
+      id: true,
+      telegramMessages: {
+        where: {
+          channelId: PUBLIC_CHANNEL_ID,
+          status: 'sent',
+        },
+        orderBy: { sentAt: 'desc' },
+        take: 1,
+        select: {
+          id: true,
+          messageId: true,
+          content: true,
+        },
+      },
+    },
+  });
+
+  const telegramMessage = restockEvent?.telegramMessages[0];
+  if (!telegramMessage) {
+    logger.debug(
+      { provider: result.provider, product: result.planName, productId },
+      'No channel restock message to mark sold out',
+    );
+    return false;
+  }
+
+  try {
+    const edited = formatSoldOutEditMessage(telegramMessage.content);
+    await editChannelMessage(PUBLIC_CHANNEL_ID, telegramMessage.messageId, edited, {
+      parseMode: 'HTML',
+      disableWebPagePreview: true,
+    });
+
+    await prisma.$transaction([
+      prisma.telegramMessage.update({
+        where: { id: telegramMessage.id },
+        data: {
+          content: edited,
+          status: 'sold_out',
+        },
+      }),
+      prisma.stockEvent.update({
+        where: { id: soldOutEventId },
+        data: { notified: true },
+      }),
+    ]);
+
+    logger.info(
+      {
+        provider: result.provider,
+        product: result.planName,
+        messageId: telegramMessage.messageId,
+      },
+      'RESTOCK channel message marked sold out',
+    );
+    return true;
+  } catch (error) {
+    logger.error(
+      {
+        provider: result.provider,
+        product: result.planName,
+        messageId: telegramMessage.messageId,
+        err: error,
+      },
+      'Failed to mark channel restock message sold out',
     );
     return false;
   }

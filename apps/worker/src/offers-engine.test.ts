@@ -440,11 +440,11 @@ describe('discoverLetOffers', () => {
     });
     expect(sendMessage).toHaveBeenCalledWith(
       '@vpsknow_offers',
-      expect.stringContaining(`🔗 Source: ${discussion.url}`),
+      expect.stringContaining(`🔗 来源：${discussion.url}`),
       { disableWebPagePreview: true },
     );
     const message = sendMessage.mock.calls[0]?.[1];
-    expect(message).toContain('🔗 Order: https://example.com/order');
+    expect(message).toContain('🔗 购买：https://example.com/order');
     expect(message).not.toContain('View offer');
     expect(message).not.toContain('go.uukk.de');
     expect(message).toContain('🌐 stock.vpsknow.com');
@@ -496,7 +496,7 @@ describe('discoverLetOffers', () => {
 
     await discoverLetOffers(redis, fetcher, dependencies);
 
-    expect(sendMessage.mock.calls[0]?.[1]).toContain('💰 Price: From CA$16.00/year');
+    expect(sendMessage.mock.calls[0]?.[1]).toContain('💰 价格：起 CA$16.00/年');
   });
 
   it('rejects a stored offer whose URL is not from its original source', async () => {

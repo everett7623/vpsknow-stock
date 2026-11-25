@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { StockResult } from '@vpsknow/providers';
-import { formatOfferMessage, formatRestockMessage } from './formatter.js';
+import {
+  formatDailyStockDigest,
+  formatOfferMessage,
+  formatRestockMessage,
+  formatSoldOutEditMessage,
+} from './formatter.js';
 
 const footer = [
   '🌐 stock.vpsknow.com',
@@ -29,36 +34,36 @@ const stockResult: StockResult = {
 };
 
 describe('Telegram message formatters', () => {
-  it('appends the common footer to restock messages', () => {
+  it('formats Chinese restock messages with Beijing time', () => {
     const message = formatRestockMessage(
       stockResult,
       'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
       new Date('2026-08-04T05:28:00.000Z'),
     );
 
-    expect(message).toContain('🔗 Order: https://stock.vpsknow.com/go/buyvm-slice-1024-lv');
-    expect(message).toContain('⚙️ Specifications');
-    expect(message).toContain('├ Storage: 20 GB SSD');
-    expect(message).toContain('├ Bandwidth: 1 TB');
-    expect(message).toContain('├ IPv4: Yes');
-    expect(message).toContain('├ IPv6: Yes');
-    expect(message).not.toContain('├ Port:');
-    expect(message).toContain('⏱ Detected: 2026-08-04 05:28:00 UTC');
-    expect(message).toContain('#Restock #BuyVM #Las_Vegas #vps');
+    expect(message).toContain('🟢 补货 · BuyVM');
+    expect(message).toContain('📦 Slice 1024');
+    expect(message).toContain('• 机房：Las Vegas');
+    expect(message).toContain('• 配置：1Core / 1GB / 20GB-SSD / 1TB');
+    expect(message).toContain('• 价格：月付 $3.50');
+    expect(message).toContain('• 状态：有货');
+    expect(message).toContain('🔗 购买：https://stock.vpsknow.com/go/buyvm-slice-1024-lv');
+    expect(message).toContain('⏱ 北京时间 2026/08/04 13:28:00');
+    expect(message).toContain('#补货 #BuyVM #Las_Vegas #vps');
     expect(message.endsWith(footer)).toBe(true);
   });
 
   it.each([
-    ['USD', '$3.50/mo'],
-    ['EUR', '€3.50/mo'],
-    ['GBP', '£3.50/mo'],
-    ['CAD', 'CA$3.50/mo'],
-    ['CNY', 'CN¥3.50/mo'],
-    ['AED', 'AED 3.50/mo'],
+    ['USD', '月付 $3.50'],
+    ['EUR', '月付 €3.50'],
+    ['GBP', '月付 £3.50'],
+    ['CAD', '月付 CA$3.50'],
+    ['CNY', '月付 CN¥3.50'],
+    ['AED', '月付 AED 3.50'],
   ])('formats merchant currency %s without relabeling it as USD', (currency, expected) => {
     const message = formatRestockMessage({ ...stockResult, currency });
 
-    expect(message).toContain(`└ Price: ${expected}`);
+    expect(message).toContain(`• 价格：${expected}`);
   });
 
   it('formats optional VPS specifications with provider source units', () => {
@@ -88,22 +93,32 @@ describe('Telegram message formatters', () => {
       new Date('2026-08-05T06:51:15.000Z'),
     );
 
-    expect(message).toContain('├ Storage: 20GB NVMe RAID-10');
-    expect(message).toContain('├ Bandwidth: 500GB');
-    expect(message).toContain('├ Port: 500Mbps');
-    expect(message).toContain('├ Line: CN2 GIA');
-    expect(message).not.toContain('├ OS:');
-    expect(message).not.toContain('├ Control Panel:');
-    expect(message).not.toContain('├ Backup/Snapshot:');
-    expect(message).not.toContain('├ Note:');
-    expect(message).toContain(
-      '├ Remark: OS: Linux; Control Panel: Virtfusion; Backup/Snapshot: Daily Backups; Note: No refund/Money back on this plan.',
-    );
-    expect(message).toContain('└ Price: $25.00/mo');
+    expect(message).toContain('• 线路：CN2 GIA');
+    expect(message).toContain('• 配置：1core@EPYCMilan / 2GB / 20GB NVMe RAID-10 / 500Mbps / 500GB');
+    expect(message).toContain('• 价格：月付 $25.00');
     expect(message).not.toContain('0.488 TB');
   });
 
-  it('formats offers with merchant order and forum source URLs', () => {
+  it('builds an HTML sold-out edit that strikes through the original restock', () => {
+    const original = formatRestockMessage(
+      stockResult,
+      'https://stock.vpsknow.com/go/buyvm-slice-1024-lv',
+      new Date('2026-08-04T05:28:00.000Z'),
+    );
+    const edited = formatSoldOutEditMessage(original);
+
+    expect(edited).toContain('🔴 <b>已售罄</b> · 原补货通知已划掉');
+    expect(edited).toContain('<s>');
+    expect(edited).toContain('• 状态：已售罄');
+    expect(edited).toContain('BuyVM');
+  });
+
+  it('escapes HTML when striking through sold-out content', () => {
+    const edited = formatSoldOutEditMessage('价格 < $5 & more');
+    expect(edited).toContain('价格 &lt; $5 &amp; more');
+  });
+
+  it('formats Chinese offers with merchant order and forum source URLs', () => {
     const orderUrl = 'https://example.com/order';
     const originalUrl = 'https://lowendtalk.com/discussion/12345/example-offer';
     const message = formatOfferMessage({
@@ -119,13 +134,13 @@ describe('Telegram message formatters', () => {
       orderUrl,
     });
 
-    expect(message).toContain(`🔗 Order: ${orderUrl}`);
-    expect(message).toContain(`🔗 Source: ${originalUrl}`);
-    expect(message).toContain('📍 Locations: Los Angeles');
-    expect(message).toContain('💰 Price: From $12.00/year');
-    expect(message).toContain('🎟 Coupon: FLASH26');
-    expect(message).toContain('#Offer #ExampleHost #VPS #Los_Angeles');
-    expect(message).not.toContain('View offer');
+    expect(message).toContain('🔥 新优惠 · ExampleHost');
+    expect(message).toContain(`🔗 购买：${orderUrl}`);
+    expect(message).toContain(`🔗 来源：${originalUrl}`);
+    expect(message).toContain('📍 机房：Los Angeles');
+    expect(message).toContain('💰 价格：起 $12.00/年');
+    expect(message).toContain('🎟 优惠码：FLASH26');
+    expect(message).toContain('#优惠 #ExampleHost #VPS #Los_Angeles');
     expect(message).not.toContain('go.uukk.de');
     expect(message.endsWith(footer)).toBe(true);
   });
@@ -145,8 +160,8 @@ describe('Telegram message formatters', () => {
       orderUrl: null,
     });
 
-    expect(message).not.toContain('🔗 Order:');
-    expect(message).toContain(`🔗 Source: ${originalUrl}`);
+    expect(message).not.toContain('🔗 购买：');
+    expect(message).toContain(`🔗 来源：${originalUrl}`);
     expect(message.endsWith(footer)).toBe(true);
   });
 
@@ -164,8 +179,8 @@ describe('Telegram message formatters', () => {
       orderUrl: 'https://example.com/order',
     });
 
-    expect(message).toContain('🔗 Order: https://example.com/order');
-    expect(message).not.toContain('🔗 Source:');
+    expect(message).toContain('🔗 购买：https://example.com/order');
+    expect(message).not.toContain('🔗 来源：');
     expect(message).not.toContain('poorvps');
   });
 
@@ -183,7 +198,7 @@ describe('Telegram message formatters', () => {
       orderUrl: 'https://just.hosting/order',
     });
 
-    expect(message).toContain('#Offer #JUST_HOSTING #VPS');
+    expect(message).toContain('#优惠 #JUST_HOSTING #VPS');
     expect(message).not.toContain('#Los_Angeles');
   });
 
@@ -191,5 +206,37 @@ describe('Telegram message formatters', () => {
     expect(() => formatRestockMessage(stockResult, undefined, new Date('invalid'))).toThrow(
       'detectedAt must be a valid date',
     );
+  });
+
+  it('formats a daily in-stock digest grouped by provider', () => {
+    const message = formatDailyStockDigest(
+      [
+        {
+          provider: 'BuyVM',
+          planName: 'Slice 1024',
+          location: 'Las Vegas',
+          specs: '1C / 1GB / 20GB',
+          price: '月付 $3.50',
+          orderUrl: 'https://stock.vpsknow.com/go/buyvm',
+        },
+        {
+          provider: 'BandwagonHost',
+          planName: 'THE PLAN',
+          location: 'DC6',
+          lineType: 'CN2 GIA-E',
+          specs: '2C / 2GB / 40GB',
+          price: '年付 $49.99',
+          orderUrl: 'https://stock.vpsknow.com/go/bwg',
+        },
+      ],
+      new Date('2026-11-25T03:00:00.000Z'),
+    );
+
+    expect(message).toContain('💻 每日有货汇总');
+    expect(message).toContain('有货：2');
+    expect(message).toContain('—— BandwagonHost（1）——');
+    expect(message).toContain('• 线路：CN2 GIA-E');
+    expect(message).toContain('—— BuyVM（1）——');
+    expect(message.endsWith(footer)).toBe(true);
   });
 });

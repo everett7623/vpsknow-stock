@@ -46,8 +46,15 @@ export function redactProxyUrl(proxyUrl: string): string {
 export function resolveProviderProxyUrl(provider: string): string | undefined {
   const slug = provider.trim().toLowerCase().replace(/\s+/g, '');
   const specificKey = (() => {
-    if (slug === 'vmiss' || slug === 'dmit' || slug === 'vps' || slug === 'v.ps') {
-      const normalized = slug === 'v.ps' ? 'VPS' : slug.toUpperCase();
+    if (
+      slug === 'vmiss'
+      || slug === 'dmit'
+      || slug === 'vps'
+      || slug === 'v.ps'
+      || slug === 'rfchost'
+    ) {
+      const normalized =
+        slug === 'v.ps' ? 'VPS' : slug === 'rfchost' ? 'RFCHOST' : slug.toUpperCase();
       return `${normalized}_PROXY_URL`;
     }
     return undefined;

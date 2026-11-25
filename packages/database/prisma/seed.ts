@@ -474,13 +474,13 @@ async function main() {
     update: {
       name: 'RfcHost',
       website: 'https://my.rfchost.com',
-      tier: 'B',
+      tier: 'A',
     },
     create: {
       slug: 'rfchost',
       name: 'RfcHost',
       website: 'https://my.rfchost.com',
-      tier: 'B',
+      tier: 'A',
     },
   });
 

@@ -18,6 +18,7 @@ import {
 import { discoverOffers } from './offers-engine.js';
 import { discoverVmissTgSignals } from './vmiss-tg-engine.js';
 import { processStockResults } from './stock-engine.js';
+import { publishDailyStockDigest } from './daily-digest.js';
 import { runDataRetention } from './maintenance.js';
 import { startHealthServer, type HealthCheckResult } from './health.js';
 import { PROVIDER_INTERVALS, isMonitoredProvider } from './provider-schedule.js';
@@ -46,6 +47,17 @@ async function bootstrap(): Promise<void> {
       name: 'delete-expired-stock-checks',
       data: {},
       opts: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 } },
+    },
+  );
+
+  // 11:00 Beijing time (UTC+8) daily in-stock digest for the public channel.
+  await maintenanceQueue.upsertJobScheduler(
+    'daily-stock-digest',
+    { pattern: '0 3 * * *' },
+    {
+      name: 'daily-stock-digest',
+      data: {},
+      opts: { attempts: 2, backoff: { type: 'exponential', delay: 60_000 } },
     },
   );
 
@@ -211,7 +223,13 @@ async function bootstrap(): Promise<void> {
 
   const maintenanceWorker = new Worker(
     MAINTENANCE_QUEUE_NAME,
-    async () => {
+    async (job) => {
+      if (job.name === 'daily-stock-digest') {
+        const summary = await publishDailyStockDigest(logger);
+        logger.info(summary, 'Daily stock digest complete');
+        return;
+      }
+
       const summary = await runDataRetention();
       logger.info(summary, 'Data retention complete');
     },

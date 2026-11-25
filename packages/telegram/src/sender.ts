@@ -41,3 +41,35 @@ export async function sendChannelMessage(
 
   throw new Error('Unreachable');
 }
+
+export async function editChannelMessage(
+  channelId: string,
+  messageId: number,
+  text: string,
+  options?: {
+    parseMode?: 'HTML' | 'MarkdownV2';
+    disableWebPagePreview?: boolean;
+  },
+): Promise<void> {
+  const b = getBot();
+
+  const maxRetries = 3;
+  const backoffMs = 5_000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await b.api.editMessageText(channelId, messageId, text, {
+        parse_mode: options?.parseMode,
+        link_preview_options: options?.disableWebPagePreview
+          ? { is_disabled: true }
+          : undefined,
+      });
+      return;
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      await new Promise((r) => setTimeout(r, backoffMs * attempt));
+    }
+  }
+
+  throw new Error('Unreachable');
+}

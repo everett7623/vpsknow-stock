@@ -19,6 +19,7 @@ import { EvoxtAdapter } from '../evoxt.js';
 import { AlwyzonAdapter } from '../alwyzon.js';
 import { DediRockAdapter } from '../dedirock.js';
 import { OnidelAdapter } from '../onidel.js';
+import { RfcHostAdapter } from '../rfchost.js';
 import { BageVMAdapter } from '../bagevm.js';
 import { TierHiveAdapter } from '../tierhive.js';
 import { GullosAdapter } from '../gullos.js';
@@ -1059,6 +1060,38 @@ describe('provider adapters', () => {
     expect(results.length).toBeGreaterThan(0);
     expect(results[0]).toHaveProperty('provider', 'onidel');
     expect(results[0]).toHaveProperty('inStock');
+  });
+
+  it('parses RfcHost WHMCS product cards for stock and specs', () => {
+    const category = {
+      slug: 'hkg1-china-opt',
+      location: 'Hong Kong',
+      lineHint: 'China Optimization',
+      url: 'https://my.rfchost.com/index.php?rp=/store/hong-kong-1-china-optimization-network',
+    };
+    const results = new RfcHostAdapter().parse(fixture('rfchost.html'), category);
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      provider: 'rfchost',
+      productId: 'rfchost-160',
+      planName: 'HKG1 Premium Mini',
+      location: 'Hong Kong',
+      cpu: '1 vCPU',
+      ramMb: 1024,
+      storageGb: 20,
+      storageType: 'NVMe',
+      bandwidthTb: 0.5,
+      price: 999,
+      billingCycle: 'monthly',
+      inStock: true,
+      orderUrl: 'https://my.rfchost.com/cart.php?a=add&pid=160',
+    });
+    expect(results[1]).toMatchObject({
+      productId: 'rfchost-161',
+      inStock: false,
+      price: 1999,
+    });
   });
 
   it('parses BageVM quantity as authoritative stock with VPS specifications', () => {

@@ -37,6 +37,7 @@ import { YunyooAdapter } from './adapters/yunyoo.js';
 import { CloudSilkAdapter } from './adapters/cloudsilk.js';
 import { ByteVirtAdapter } from './adapters/bytevirt.js';
 import { ZoroCloudAdapter } from './adapters/zorocloud.js';
+import { RfcHostAdapter } from './adapters/rfchost.js';
 
 const adapters: ProviderAdapter[] = [
   new BandwagonHostAdapter(),
@@ -77,6 +78,7 @@ const adapters: ProviderAdapter[] = [
   new CloudSilkAdapter(),
   new ByteVirtAdapter(),
   new ZoroCloudAdapter(),
+  new RfcHostAdapter(),
 ];
 
 export const registry: ReadonlyMap<string, ProviderAdapter> = new Map(

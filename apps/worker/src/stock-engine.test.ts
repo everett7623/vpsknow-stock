@@ -27,7 +27,9 @@ const databaseMocks = vi.hoisted(() => ({
 
 const telegramMocks = vi.hoisted(() => ({
   formatRestockMessage: vi.fn(),
+  formatSoldOutEditMessage: vi.fn(),
   sendChannelMessage: vi.fn(),
+  editChannelMessage: vi.fn(),
 }));
 const subscriberMocks = vi.hoisted(() => ({
   notifyRestockSubscribers: vi.fn(),
@@ -47,7 +49,10 @@ vi.mock('@vpsknow/database', () => ({
       create: databaseMocks.stockEventCreate,
       update: databaseMocks.stockEventUpdate,
     },
-    telegramMessage: { create: databaseMocks.telegramMessageCreate },
+    telegramMessage: {
+      create: databaseMocks.telegramMessageCreate,
+      update: vi.fn(),
+    },
     affiliateLink: { upsert: databaseMocks.affiliateLinkUpsert },
     $transaction: databaseMocks.transaction,
   },
@@ -55,7 +60,9 @@ vi.mock('@vpsknow/database', () => ({
 
 vi.mock('@vpsknow/telegram', () => ({
   formatRestockMessage: telegramMocks.formatRestockMessage,
+  formatSoldOutEditMessage: telegramMocks.formatSoldOutEditMessage,
   sendChannelMessage: telegramMocks.sendChannelMessage,
+  editChannelMessage: telegramMocks.editChannelMessage,
 }));
 vi.mock('./subscriber-notifications.js', () => subscriberMocks);
 
@@ -556,7 +563,7 @@ describe('processStockResults', () => {
     );
   });
 
-  it('records a sold-out event without notifying Telegram', async () => {
+  it('records a sold-out event and skips channel edit when no prior restock message exists', async () => {
     const logger = createLogger();
     databaseMocks.productUpsert.mockResolvedValue(createProduct(true, 0));
 
@@ -582,6 +589,7 @@ describe('processStockResults', () => {
       }),
     });
     expect(telegramMocks.sendChannelMessage).not.toHaveBeenCalled();
+    expect(telegramMocks.editChannelMessage).not.toHaveBeenCalled();
   });
 
   it('preserves a restock when Telegram delivery fails', async () => {

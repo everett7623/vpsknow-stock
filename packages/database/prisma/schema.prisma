@@ -139,7 +139,7 @@ model TelegramMessage {
   stockEventId String?
   content      String
   sentAt       DateTime @default(now())
-  status       String   @default("sent") // sent, failed, deleted
+  status       String   @default("sent") // sent, failed, deleted, sold_out, digest
 
   stockEvent StockEvent? @relation(fields: [stockEventId], references: [id])
 

@@ -12,6 +12,10 @@ export const MONITORED_PROVIDERS = [
   { slug: 'vps', name: 'V.PS', intervalMs: 300_000 },
   { slug: 'saltyfish', name: 'SaltyFish', intervalMs: 300_000 },
   { slug: 'racknerd', name: 'RackNerd', intervalMs: 180_000 },
+  { slug: 'clouvider', name: 'Clouvider', intervalMs: 180_000 },
+  { slug: 'liteserver', name: 'LiteServer', intervalMs: 180_000 },
+  { slug: 'alwyzon', name: 'Alwyzon', intervalMs: 180_000 },
+  { slug: 'onidel', name: 'Onidel', intervalMs: 180_000 },
   { slug: 'dedirock', name: 'DediRock', intervalMs: 180_000 },
   { slug: 'evoxt', name: 'Evoxt', intervalMs: 300_000 },
   { slug: 'bagevm', name: 'BageVM', intervalMs: 180_000 },
@@ -29,6 +33,9 @@ export const MONITORED_PROVIDERS = [
   { slug: 'cloudsilk', name: 'CloudSilk', intervalMs: 300_000 },
   { slug: 'bytevirt', name: 'ByteVirt', intervalMs: 300_000 },
   { slug: 'zorocloud', name: 'ZoroCloud', intervalMs: 300_000 },
+  { slug: 'rfchost', name: 'RfcHost', intervalMs: 180_000 },
+  // crunchbits: acquired / shut down — do not monitor.
+  // lisahost: average reputation — do not monitor.
   // solidvps: not monitored. Affiliate sheet says wait until a paid account unlocks an aff link.
   // zgocloud: removed from monitoring (poor reputation); adapter/seed record kept inactive.
 ] as const;

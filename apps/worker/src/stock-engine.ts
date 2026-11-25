@@ -11,11 +11,12 @@ import {
   generateShortLinkSlug,
 } from '@vpsknow/shared';
 import type { Logger } from 'pino';
-import { notifyRestockSubscribers } from './subscriber-notifications.js';
 import {
   deliverRestockNotification,
+  markChannelRestockSoldOut,
   retryPendingRestockNotification,
 } from './restock-notifications.js';
+import { notifyRestockSubscribers } from './subscriber-notifications.js';
 
 interface ProcessResult {
   checked: number;
@@ -389,13 +390,27 @@ export async function processStockResults(
           },
         });
 
-        await prisma.stockEvent.create({
+        const soldOutEvent = await prisma.stockEvent.create({
           data: {
             productId: product.id,
             eventType: 'sold_out',
             metadata: toStockEventMetadata(result),
           },
         });
+
+        const marked = await markChannelRestockSoldOut(
+          product.id,
+          result,
+          soldOutEvent.id,
+          logger,
+        );
+        if (!marked) {
+          // No prior channel restock message — still record sold-out without channel edit.
+          logger.debug(
+            { provider: providerSlug, product: result.planName },
+            'Sold out recorded without channel message edit',
+          );
+        }
 
         summary.soldOut++;
         logger.info(
